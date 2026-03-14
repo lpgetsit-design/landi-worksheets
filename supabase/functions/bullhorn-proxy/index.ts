@@ -16,6 +16,8 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   // Step 1: Get authorization code via POST with form data
   const authUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
 
+  console.log("Auth request URL:", authUrl);
+
   const authResp = await fetch(authUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -26,10 +28,18 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
     }).toString(),
     redirect: "manual",
   });
+
+  console.log("Auth response status:", authResp.status);
+  console.log("Auth response headers:", JSON.stringify(Object.fromEntries(authResp.headers.entries())));
+
   const location = authResp.headers.get("location");
   if (!location) {
-    throw new Error("No redirect from Bullhorn authorize endpoint");
+    const body = await authResp.text();
+    console.log("Auth response body (no location):", body.slice(0, 500));
+    throw new Error("No redirect from Bullhorn authorize endpoint. Status: " + authResp.status);
   }
+
+  console.log("Redirect location:", location);
 
   const codeMatch = location.match(/code=([^&]+)/);
   if (!codeMatch) {

@@ -49,10 +49,15 @@ export const CrmBadgeNode = Node.create({
       }),
       [
         "span",
-        { class: "text-muted-foreground font-semibold" },
-        `${type}`,
+        { class: "text-muted-foreground" },
+        `[${node.attrs.entityId}] `,
       ],
-      ["span", {}, ` ${node.attrs.label}`],
+      ["span", {}, `${node.attrs.label} `],
+      [
+        "span",
+        { class: "text-muted-foreground font-semibold" },
+        `(${type})`,
+      ],
     ];
   },
 });

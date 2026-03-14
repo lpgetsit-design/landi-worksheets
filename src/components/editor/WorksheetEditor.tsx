@@ -330,7 +330,7 @@ ${content}`;
             content_md: md,
           }).catch(console.error);
           toast.success("Content enhanced");
-        }} />
+        }} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
           <EditorContent editor={editor} />

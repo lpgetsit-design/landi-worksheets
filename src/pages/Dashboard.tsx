@@ -26,6 +26,10 @@ const Dashboard = () => {
       queryClient.invalidateQueries({ queryKey: ["worksheets"] });
       navigate(`/worksheet/${ws.id}`);
     },
+    onError: (err: any) => {
+      console.error("Create worksheet error:", err);
+      toast.error("Failed to create worksheet: " + err.message);
+    },
   });
 
   const deleteMutation = useMutation({

@@ -6,32 +6,95 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "replace_worksheet_content",
+      description:
+        "Replace the entire worksheet content with new markdown. Use when the user asks to edit, rewrite, fix, format, or change their worksheet content.",
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The full updated worksheet content in markdown format",
+          },
+        },
+        required: ["content"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_worksheet_title",
+      description: "Change the worksheet title.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "The new title" },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_document_type",
+      description:
+        "Change the worksheet document type. Valid values: note, skill, prompt, template.",
+      parameters: {
+        type: "object",
+        properties: {
+          document_type: {
+            type: "string",
+            enum: ["note", "skill", "prompt", "template"],
+            description: "The new document type",
+          },
+        },
+        required: ["document_type"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, mode, worksheetContent } = await req.json();
+    const { messages, worksheetTitle, worksheetContent, worksheetType } =
+      await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt =
-      mode === "edit"
-        ? `You are an expert writing editor integrated into a worksheet app. The user will give you instructions to edit their worksheet content.
+    const systemPrompt = `You are an expert AI assistant embedded in a worksheet editor app. You can both answer questions AND take actions to modify the user's worksheet using the tools available to you.
 
-RULES:
-1. First, briefly explain what changes you will make (1-2 sentences).
-2. Then, output the FULL revised worksheet content inside a single markdown code block (use triple backticks).
-3. The code block should contain the complete updated text — not just the changed parts.
-4. Do NOT omit any sections. Always return the entire document with changes applied.
+Current worksheet state:
+- Title: "${worksheetTitle || "Untitled"}"
+- Document type: ${worksheetType || "note"}
+- Content:
+${worksheetContent || "(empty)"}
 
-Current worksheet content:
+GUIDELINES:
+- When the user asks you to edit, fix, rewrite, or change the worksheet, use the replace_worksheet_content tool with the FULL updated markdown content.
+- When asked to change the title, use update_worksheet_title.
+- When asked to change the document type, use update_document_type.
+- You can call multiple tools in a single response for multi-step edits.
+- When the user asks questions or wants information, just respond normally without using tools.
+- After making changes, briefly confirm what you did.
+- Always preserve content the user didn't ask you to change.`;
 
-${worksheetContent || "(empty)"}`
-        : `You are a helpful AI assistant for a worksheet editor. Answer the user's questions clearly and concisely. If they reference their worksheet, here is the current content:
-
-${worksheetContent || "(empty)"}`;
+    const apiMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ];
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -43,11 +106,9 @@ ${worksheetContent || "(empty)"}`;
         },
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-          ],
-          stream: true,
+          messages: apiMessages,
+          tools,
+          stream: false,
         }),
       }
     );
@@ -73,8 +134,11 @@ ${worksheetContent || "(empty)"}`;
       );
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    const data = await response.json();
+    const choice = data.choices?.[0];
+
+    return new Response(JSON.stringify(choice), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("chat error:", e);

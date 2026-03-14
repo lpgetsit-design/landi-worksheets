@@ -1,14 +1,23 @@
 import { useState, useRef } from "react";
-import { X, Send, MessageSquare, Pencil, RotateCcw, Check, Undo2 } from "lucide-react";
+import { X, Send, RotateCcw, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import type { DocumentType } from "@/lib/worksheets";
+
+interface ToolCall {
+  id: string;
+  function: { name: string; arguments: string };
+}
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
 }
 
 interface AIChatPanelProps {
@@ -16,140 +25,151 @@ interface AIChatPanelProps {
   onClose: () => void;
   selectedText?: string;
   worksheetContent?: string;
+  worksheetTitle?: string;
+  worksheetType?: DocumentType;
   onApplyEdit?: (content: string) => void;
+  onUpdateTitle?: (title: string) => void;
+  onUpdateDocumentType?: (type: DocumentType) => void;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdit }: AIChatPanelProps) => {
-  const [mode, setMode] = useState<"qa" | "edit">("qa");
+const toolLabels: Record<string, string> = {
+  replace_worksheet_content: "Updated worksheet content",
+  update_worksheet_title: "Changed title",
+  update_document_type: "Changed document type",
+};
+
+const AIChatPanel = ({
+  open,
+  onClose,
+  selectedText,
+  worksheetContent,
+  worksheetTitle,
+  worksheetType,
+  onApplyEdit,
+  onUpdateTitle,
+  onUpdateDocumentType,
+}: AIChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [appliedMessageId, setAppliedMessageId] = useState<string | null>(null);
-  const [previousContent, setPreviousContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-  const extractEditContent = (content: string): string => {
-    // Try to extract content from a markdown code block
-    const codeBlockMatch = content.match(/```(?:\w*)\n([\s\S]*?)```/);
-    if (codeBlockMatch) return codeBlockMatch[1].trim();
-    // Otherwise return the full content (the AI was told to return only revised text)
-    return content;
+  const executeTool = (name: string, args: string): string => {
+    try {
+      const parsed = JSON.parse(args);
+      switch (name) {
+        case "replace_worksheet_content":
+          onApplyEdit?.(parsed.content);
+          return "Worksheet content updated successfully.";
+        case "update_worksheet_title":
+          onUpdateTitle?.(parsed.title);
+          return `Title changed to "${parsed.title}".`;
+        case "update_document_type":
+          onUpdateDocumentType?.(parsed.document_type as DocumentType);
+          return `Document type changed to "${parsed.document_type}".`;
+        default:
+          return `Unknown tool: ${name}`;
+      }
+    } catch (e) {
+      return `Tool error: ${e instanceof Error ? e.message : "Unknown error"}`;
+    }
   };
 
-  const handleApply = (msg: Message, currentContent: string) => {
-    const editContent = extractEditContent(msg.content);
-    setPreviousContent(currentContent);
-    setAppliedMessageId(msg.id);
-    onApplyEdit?.(editContent);
-    toast.success("Edit applied to worksheet");
-  };
+  const callAgent = async (conversationMessages: Message[]): Promise<void> => {
+    const apiMessages = conversationMessages.map((m) => {
+      const base: any = { role: m.role, content: m.content };
+      if (m.tool_calls) base.tool_calls = m.tool_calls;
+      if (m.tool_call_id) {
+        base.tool_call_id = m.tool_call_id;
+        base.name = m.name;
+      }
+      return base;
+    });
 
-  const handleRevert = () => {
-    if (previousContent !== null) {
-      onApplyEdit?.(previousContent);
-      setPreviousContent(null);
-      setAppliedMessageId(null);
-      toast.info("Reverted to previous content");
+    const resp = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({
+        messages: apiMessages,
+        worksheetTitle: worksheetTitle || "",
+        worksheetContent: worksheetContent || "",
+        worksheetType: worksheetType || "note",
+      }),
+      signal: abortRef.current?.signal,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: "Request failed" }));
+      toast.error(err.error || "AI request failed");
+      return;
+    }
+
+    const choice = await resp.json();
+    const assistantMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: choice.message?.content || "",
+      tool_calls: choice.message?.tool_calls,
+    };
+
+    const updatedMessages = [...conversationMessages, assistantMsg];
+    setMessages(updatedMessages);
+    scrollToBottom();
+
+    // If the AI returned tool calls, execute them and continue the loop
+    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
+        const result = executeTool(tc.function.name, tc.function.arguments);
+        return {
+          id: crypto.randomUUID(),
+          role: "tool" as const,
+          content: result,
+          tool_call_id: tc.id,
+          name: tc.function.name,
+        };
+      });
+
+      const withToolResults = [...updatedMessages, ...toolResultMessages];
+      setMessages(withToolResults);
+      scrollToBottom();
+
+      // Continue the agentic loop
+      await callAgent(withToolResults);
     }
   };
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || isStreaming) return;
+    if (!text || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
     const allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInput("");
-    setIsStreaming(true);
+    setIsLoading(true);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const resp = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
-          mode,
-          worksheetContent: worksheetContent || "",
-        }),
-        signal: controller.signal,
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Request failed" }));
-        toast.error(err.error || "AI request failed");
-        setIsStreaming(false);
-        return;
-      }
-
-      if (!resp.body) throw new Error("No response body");
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let assistantContent = "";
-      const assistantId = crypto.randomUUID();
-
-      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
-
-      let streamDone = false;
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              const snapshot = assistantContent;
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, content: snapshot } : m))
-              );
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-        scrollToBottom();
-      }
+      await callAgent(allMessages);
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        console.error("Chat stream error:", e);
+        console.error("Chat error:", e);
         toast.error("Failed to get AI response");
       }
     } finally {
-      setIsStreaming(false);
+      setIsLoading(false);
       abortRef.current = null;
     }
   };
@@ -170,9 +190,7 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdi
               abortRef.current?.abort();
               setMessages([]);
               setInput("");
-              setIsStreaming(false);
-              setAppliedMessageId(null);
-              setPreviousContent(null);
+              setIsLoading(false);
             }}
             title="Reset conversation"
           >
@@ -182,34 +200,6 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdi
             <X className="h-4 w-4" />
           </Button>
         </div>
-      </div>
-
-      {/* Mode Toggle */}
-      <div className="flex border-b border-border">
-        <button
-          className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
-            mode === "qa"
-              ? "border-b-2 border-foreground text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-          onClick={() => setMode("qa")}
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          Q&A
-        </button>
-        <button
-          className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
-            mode === "edit"
-              ? "border-b-2 border-foreground text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-          onClick={() => setMode("edit")}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          Edit
-        </button>
       </div>
 
       {/* Selected Text Context */}
@@ -227,59 +217,56 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdi
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-center text-sm text-muted-foreground">
-              {mode === "qa"
-                ? "Ask questions about your worksheet"
-                : "Describe the edits you want to make"}
+              Ask questions or tell me to edit your worksheet
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {messages.map((msg) => (
-              <div key={msg.id}>
-                <div
-                  className={cn(
-                    "rounded-md px-3 py-2 text-sm",
-                    msg.role === "user"
-                      ? "ml-6 bg-primary text-primary-foreground"
-                      : "mr-6 bg-muted text-foreground"
-                  )}
-                >
-                  {msg.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-                {/* Apply / Revert buttons for edit-mode assistant messages */}
-                {msg.role === "assistant" && mode === "edit" && msg.content && !isStreaming && (
-                  <div className="mr-6 mt-1.5 flex items-center gap-1.5">
-                    {appliedMessageId === msg.id ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
-                        onClick={handleRevert}
-                      >
-                        <Undo2 className="h-3 w-3" />
-                        Revert
-                      </Button>
+            {messages.map((msg) => {
+              // Tool result messages — show as inline action indicators
+              if (msg.role === "tool") {
+                return (
+                  <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Wrench className="h-3 w-3" />
+                    <span>{toolLabels[msg.name || ""] || msg.name}: {msg.content}</span>
+                  </div>
+                );
+              }
+
+              // Assistant messages with tool_calls but no text — show action indicator
+              if (msg.role === "assistant" && msg.tool_calls && !msg.content) {
+                return (
+                  <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Wrench className="h-3 w-3 animate-spin" />
+                    <span>Taking action...</span>
+                  </div>
+                );
+              }
+
+              // Skip assistant messages that are just tool-call wrappers with no content
+              if (msg.role === "assistant" && !msg.content && !msg.tool_calls) return null;
+
+              return (
+                <div key={msg.id}>
+                  <div
+                    className={cn(
+                      "rounded-md px-3 py-2 text-sm",
+                      msg.role === "user"
+                        ? "ml-6 bg-primary text-primary-foreground"
+                        : "mr-6 bg-muted text-foreground"
+                    )}
+                  >
+                    {msg.role === "assistant" ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+                      </div>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
-                        onClick={() => handleApply(msg, worksheetContent || "")}
-                      >
-                        <Check className="h-3 w-3" />
-                        Apply to worksheet
-                      </Button>
+                      msg.content
                     )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -293,11 +280,11 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdi
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder={mode === "qa" ? "Ask a question..." : "Describe your edit..."}
-            disabled={isStreaming}
+            placeholder="Ask or instruct..."
+            disabled={isLoading}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           />
-          <Button size="icon" className="h-9 w-9" onClick={handleSend} disabled={isStreaming}>
+          <Button size="icon" className="h-9 w-9" onClick={handleSend} disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

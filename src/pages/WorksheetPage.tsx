@@ -5,16 +5,20 @@ import { Button } from "@/components/ui/button";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
-import { useQuery } from "@tanstack/react-query";
-import { getWorksheet } from "@/lib/worksheets";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getWorksheet, updateWorksheet } from "@/lib/worksheets";
+import type { DocumentType } from "@/lib/worksheets";
 import { marked } from "marked";
 
 const WorksheetPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
+  const [worksheetTitle, setWorksheetTitle] = useState("");
+  const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const editorRef = useRef<WorksheetEditorHandle>(null!);
 
   const { data: worksheet, isLoading, error } = useQuery({
@@ -23,12 +27,13 @@ const WorksheetPage = () => {
     enabled: !!id && id !== "new",
   });
 
-  // Initialize worksheetContent from DB once loaded
   useEffect(() => {
-    if (worksheet?.content_md) {
-      setWorksheetContent(worksheet.content_md);
+    if (worksheet) {
+      if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
+      setWorksheetTitle(worksheet.title);
+      setWorksheetType((worksheet.document_type as DocumentType) || "note");
     }
-  }, [worksheet?.content_md]);
+  }, [worksheet]);
 
   const handleSelectionAI = useCallback((text: string) => {
     setSelectedText(text);
@@ -37,11 +42,26 @@ const WorksheetPage = () => {
 
   const handleApplyEdit = useCallback((content: string) => {
     if (editorRef.current) {
-      // Convert markdown to HTML for TipTap
       const html = marked.parse(content, { async: false }) as string;
       editorRef.current.setContent(html);
     }
   }, []);
+
+  const handleUpdateTitle = useCallback((title: string) => {
+    setWorksheetTitle(title);
+    if (id) {
+      updateWorksheet(id, { title }).catch(console.error);
+      queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
+    }
+  }, [id, queryClient]);
+
+  const handleUpdateDocumentType = useCallback((type: DocumentType) => {
+    setWorksheetType(type);
+    if (id) {
+      updateWorksheet(id, { document_type: type } as any).catch(console.error);
+      queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
+    }
+  }, [id, queryClient]);
 
   if (id === "new") {
     navigate("/");
@@ -96,9 +116,9 @@ const WorksheetPage = () => {
           <WorksheetEditor
             editorRef={editorRef}
             worksheetId={worksheet.id}
-            initialTitle={worksheet.title}
+            initialTitle={worksheetTitle}
             initialContent={worksheet.content_json}
-            initialDocumentType={worksheet.document_type || "note"}
+            initialDocumentType={worksheetType}
             onSelectionAI={handleSelectionAI}
             onContentChange={setWorksheetContent}
           />
@@ -110,7 +130,11 @@ const WorksheetPage = () => {
         onClose={() => setChatOpen(false)}
         selectedText={selectedText}
         worksheetContent={worksheetContent}
+        worksheetTitle={worksheetTitle}
+        worksheetType={worksheetType}
         onApplyEdit={handleApplyEdit}
+        onUpdateTitle={handleUpdateTitle}
+        onUpdateDocumentType={handleUpdateDocumentType}
       />
     </div>
   );

@@ -8,7 +8,9 @@ import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
 import { updateWorksheet } from "@/lib/worksheets";
+import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
@@ -21,13 +23,15 @@ interface WorksheetEditorProps {
   worksheetId: string;
   initialTitle: string;
   initialContent: Json | null;
+  initialDocumentType: DocumentType;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 
-const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDocumentType, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
     const [title, setTitle] = useState(initialTitle);
+    const [documentType, setDocumentType] = useState<DocumentType>(initialDocumentType);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 
     const editor = useEditor({
@@ -85,15 +89,34 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectio
       [onSelectionAI]
     );
 
+    const handleDocumentTypeChange = useCallback((value: string) => {
+      const newType = value as DocumentType;
+      setDocumentType(newType);
+      updateWorksheet(worksheetId, { document_type: newType } as any).catch(console.error);
+    }, [worksheetId]);
+
     return (
       <div className="flex flex-col">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mb-4 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
-          placeholder="Untitled"
-        />
+        <div className="mb-4 flex items-center gap-3">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+            placeholder="Untitled"
+          />
+          <Select value={documentType} onValueChange={handleDocumentTypeChange}>
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="skill">Skill</SelectItem>
+              <SelectItem value="prompt">Prompt</SelectItem>
+              <SelectItem value="template">Template</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {editor && <EditorToolbar editor={editor} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}

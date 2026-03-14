@@ -1,10 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
+export type DocumentType = "note" | "skill" | "prompt" | "template";
+
 export interface Worksheet {
   id: string;
   user_id: string;
   title: string;
+  document_type: DocumentType;
   content_json: Json | null;
   content_html: string | null;
   content_md: string | null;
@@ -13,10 +16,10 @@ export interface Worksheet {
   updated_at: string;
 }
 
-export const createWorksheet = async (userId: string, title = "Untitled") => {
+export const createWorksheet = async (userId: string, title = "Untitled", documentType: DocumentType = "note") => {
   const { data, error } = await supabase
     .from("worksheets")
-    .insert({ user_id: userId, title })
+    .insert({ user_id: userId, title, document_type: documentType })
     .select()
     .single();
   if (error) throw error;

@@ -98,6 +98,7 @@ const WorksheetPage = () => {
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}
+            initialDocumentType={worksheet.document_type || "note"}
             onSelectionAI={handleSelectionAI}
             onContentChange={setWorksheetContent}
           />

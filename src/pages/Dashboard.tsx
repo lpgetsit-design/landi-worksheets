@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, FileText, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorksheets, createWorksheet, deleteWorksheet } from "@/lib/worksheets";
@@ -72,7 +73,10 @@ const Dashboard = () => {
               >
                 <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{ws.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-foreground">{ws.title}</p>
+                    <Badge variant="outline" className="text-[10px] capitalize shrink-0">{ws.document_type || "note"}</Badge>
+                  </div>
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {formatDate(ws.updated_at)}

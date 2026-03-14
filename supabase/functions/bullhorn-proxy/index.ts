@@ -13,15 +13,19 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
 
-  // Step 1: Get authorization code via password grant
-  const authUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
-  authUrl.searchParams.set("client_id", clientId);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("username", username);
-  authUrl.searchParams.set("password", password);
-  authUrl.searchParams.set("action", "Login");
+  // Step 1: Get authorization code via POST with form data
+  const authUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
 
-  const authResp = await fetch(authUrl.toString(), { redirect: "manual" });
+  const authResp = await fetch(authUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      action: "Login",
+      username,
+      password,
+    }).toString(),
+    redirect: "manual",
+  });
   const location = authResp.headers.get("location");
   if (!location) {
     throw new Error("No redirect from Bullhorn authorize endpoint");

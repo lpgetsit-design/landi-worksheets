@@ -46,13 +46,14 @@ const Dashboard = () => {
   const { entityOptions, entityWorksheetIds } = useMemo(() => {
     const optMap = new Map<string, EntityOption>();
     const wsIds = new Set<string>();
+    const filterKeys = new Set(entityFilters.map((f) => `${f.entity_type}:${f.entity_id}`));
 
     for (const e of allEntities) {
       const key = `${e.entity_type}:${e.entity_id}`;
       if (!optMap.has(key)) {
         optMap.set(key, { entity_type: e.entity_type, entity_id: e.entity_id, label: e.label });
       }
-      if (entityFilter && e.entity_type === entityFilter.entity_type && e.entity_id === entityFilter.entity_id) {
+      if (filterKeys.has(key)) {
         wsIds.add(e.worksheet_id);
       }
     }
@@ -61,11 +62,11 @@ const Dashboard = () => {
       entityOptions: Array.from(optMap.values()).sort((a, b) => a.label.localeCompare(b.label)),
       entityWorksheetIds: wsIds,
     };
-  }, [allEntities, entityFilter]);
+  }, [allEntities, entityFilters]);
 
   const filtered = useMemo(() => {
     let list = typeFilter === "all" ? worksheets : worksheets.filter((ws) => ws.document_type === typeFilter);
-    if (entityFilter) {
+    if (entityFilters.length > 0) {
       list = list.filter((ws) => entityWorksheetIds.has(ws.id));
     }
     list = [...list].sort((a, b) => {
@@ -74,7 +75,7 @@ const Dashboard = () => {
       return sortDir === "desc" ? bVal - aVal : aVal - bVal;
     });
     return list;
-  }, [worksheets, typeFilter, sortField, sortDir, entityFilter, entityWorksheetIds]);
+  }, [worksheets, typeFilter, sortField, sortDir, entityFilters, entityWorksheetIds]);
 
   const createMutation = useMutation({
     mutationFn: () => createWorksheet(user!.id),

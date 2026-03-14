@@ -3,52 +3,66 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import { updateWorksheet } from "@/lib/worksheets";
+import type { Json } from "@/integrations/supabase/types";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
 interface WorksheetEditorProps {
+  worksheetId: string;
+  initialTitle: string;
+  initialContent: Json | null;
   onSelectionAI?: (text: string) => void;
 }
 
-const WorksheetEditor = ({ onSelectionAI }: WorksheetEditorProps) => {
-  const [title, setTitle] = useState("Untitled");
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI }: WorksheetEditorProps) => {
+  const [title, setTitle] = useState(initialTitle);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Placeholder.configure({
-        placeholder: "Write something...",
-      }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      Placeholder.configure({ placeholder: "Write something..." }),
       TaskList,
       TaskItem.configure({ nested: true }),
     ],
-    content: "",
+    content: (initialContent as any) || "",
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-serif",
+        class: "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-serif",
       },
     },
     onUpdate: ({ editor }) => {
-      // Auto-save debounce would go here
-      const html = editor.getHTML();
-      const json = editor.getJSON();
-      const md = turndown.turndown(html);
-      // Will save to Supabase when connected
-      console.log("Content updated", { html: html.length, md: md.length });
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => {
+        const html = editor.getHTML();
+        const json = editor.getJSON();
+        const md = turndown.turndown(html);
+        updateWorksheet(worksheetId, {
+          content_json: json as unknown as Json,
+          content_html: html,
+          content_md: md,
+        }).catch(console.error);
+      }, 500);
     },
   });
 
+  // Save title on change with debounce
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (title !== initialTitle) {
+        updateWorksheet(worksheetId, { title }).catch(console.error);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [title, worksheetId, initialTitle]);
+
   const handleAskAI = useCallback(
-    (text: string) => {
-      onSelectionAI?.(text);
-    },
+    (text: string) => { onSelectionAI?.(text); },
     [onSelectionAI]
   );
 
@@ -61,9 +75,7 @@ const WorksheetEditor = ({ onSelectionAI }: WorksheetEditorProps) => {
         className="mb-4 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
         placeholder="Untitled"
       />
-
       {editor && <EditorToolbar editor={editor} />}
-
       <div className="relative mt-2">
         {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
         <EditorContent editor={editor} />

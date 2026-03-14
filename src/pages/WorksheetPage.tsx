@@ -12,6 +12,7 @@ const WorksheetPage = () => {
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
+  const [worksheetContent, setWorksheetContent] = useState("");
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],

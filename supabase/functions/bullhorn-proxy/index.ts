@@ -12,29 +12,31 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const clientSecret = Deno.env.get("BULLHORN_CLIENT_SECRET")!;
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
-  const redirectUri = "https://www.bullhorn.com";
 
-  // Step 1: OAuth Authorization — GET with action=Login for programmatic auth
+  // Step 1: Build authorize URL with credentials for programmatic login
   const authorizeUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
   authorizeUrl.searchParams.set("client_id", clientId);
   authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("action", "Login");
   authorizeUrl.searchParams.set("username", username);
   authorizeUrl.searchParams.set("password", password);
 
-  // Follow redirects manually to intercept the code before the redirect_uri consumes it
+  // Follow redirects manually to intercept the auth code
   let url = authorizeUrl.toString();
   let code: string | null = null;
+  let regionalOrigin = "https://auth.bullhornstaffing.com";
 
   for (let i = 0; i < 10; i++) {
     const resp = await fetch(url, { redirect: "manual" });
-    await resp.text(); // consume body to prevent leaks
+    await resp.text(); // consume body
 
     const location = resp.headers.get("location");
-    console.log(`Redirect ${i}: status=${resp.status} location=${location?.slice(0, 120)}`);
+    if (!location) {
+      console.log(`Step ${i}: status=${resp.status}, no location header`);
+      break;
+    }
 
-    if (!location) break;
+    console.log(`Step ${i}: status=${resp.status} -> ${location.slice(0, 120)}`);
 
     // Check if this redirect contains the authorization code
     const codeMatch = location.match(/[?&]code=([^&]+)/);
@@ -44,6 +46,11 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
       break;
     }
 
+    // Track the regional auth origin for token exchange
+    if (location.includes("bullhornstaffing.com/oauth")) {
+      regionalOrigin = new URL(location).origin;
+    }
+
     url = location;
   }
 
@@ -51,8 +58,9 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
     throw new Error("Could not obtain authorization code after following redirects");
   }
 
-  // Step 2: Exchange code for access token
-  const tokenResp = await fetch("https://auth.bullhornstaffing.com/oauth/token", {
+  // Step 2: Exchange code for access token using regional endpoint
+  console.log("Token exchange at:", regionalOrigin);
+  const tokenResp = await fetch(`${regionalOrigin}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -60,7 +68,6 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: redirectUri,
     }).toString(),
   });
 

@@ -19,6 +19,24 @@ import { toast } from "sonner";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
+// Custom Turndown rule: serialize CRM badge spans into [[CRM:entityType:entityId:label]] placeholders
+turndown.addRule("crmBadge", {
+  filter: (node) =>
+    node.nodeName === "SPAN" && node.hasAttribute("data-crm-badge"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const entityType = el.getAttribute("data-entity-type") || "";
+    const entityId = el.getAttribute("data-entity-id") || "";
+    // Extract label from the second child span (the name span)
+    const spans = el.querySelectorAll("span");
+    let label = "";
+    if (spans.length >= 2) {
+      label = (spans[1] as HTMLElement).textContent?.trim() || "";
+    }
+    return `[[CRM:${entityType}:${entityId}:${label}]]`;
+  },
+});
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 const GenerateTitleButton = ({

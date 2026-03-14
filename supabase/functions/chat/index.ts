@@ -89,7 +89,14 @@ GUIDELINES:
 - You can call multiple tools in a single response for multi-step edits.
 - When the user asks questions or wants information, just respond normally without using tools.
 - After making changes, briefly confirm what you did.
-- Always preserve content the user didn't ask you to change.`;
+- Always preserve content the user didn't ask you to change.
+
+CRM BADGES:
+- The content may contain CRM entity references in the format [[CRM:entityType:entityId:label]], for example [[CRM:Candidate:12345:John Smith]].
+- These are linked records from the Bullhorn CRM system. They render as inline badges in the editor.
+- You MUST preserve them exactly as-is in your output, including their format and all data fields.
+- Do NOT modify, reformat, split, merge, or remove badge placeholders unless the user explicitly asks you to.
+- When rewriting or restructuring content, keep every [[CRM:...]] token intact and in context.`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },

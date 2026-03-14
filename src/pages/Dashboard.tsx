@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, FileText, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorksheets, createWorksheet, deleteWorksheet } from "@/lib/worksheets";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Send, MessageSquare, Pencil } from "lucide-react";
+import { X, Send, MessageSquare, Pencil, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -49,9 +49,20 @@ const AIChatPanel = ({ open, onClose, selectedText }: AIChatPanelProps) => {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground">AI Assistant</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => { setMessages([]); setInput(""); }}
+            title="Reset conversation"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Mode Toggle */}

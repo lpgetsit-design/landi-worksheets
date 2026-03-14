@@ -149,7 +149,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_worksheet_access: {
+        Args: {
+          _required_permission?: Database["public"]["Enums"]["worksheet_permission"]
+          _user_id: string
+          _worksheet_id: string
+        }
+        Returns: boolean
+      }
+      is_worksheet_owner: {
+        Args: { _user_id: string; _worksheet_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       worksheet_permission: "read" | "write"

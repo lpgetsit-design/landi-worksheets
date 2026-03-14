@@ -185,6 +185,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             content_html: html,
             content_md: md,
           }).catch(console.error);
+          syncWorksheetEntities(worksheetId, json as unknown as Json).catch(console.error);
         }, 500);
       },
     });

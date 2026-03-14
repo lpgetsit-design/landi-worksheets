@@ -29,8 +29,9 @@ interface WorksheetEditorProps {
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 
-const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDocumentType, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
     const [title, setTitle] = useState(initialTitle);
+    const [documentType, setDocumentType] = useState<DocumentType>(initialDocumentType);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 
     const editor = useEditor({

@@ -29,7 +29,7 @@ const Dashboard = () => {
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [entityFilter, setEntityFilter] = useState<EntityOption | null>(null);
+  const [entityFilters, setEntityFilters] = useState<EntityOption[]>([]);
   const [entityPopoverOpen, setEntityPopoverOpen] = useState(false);
 
   const { data: worksheets = [], isLoading } = useQuery({

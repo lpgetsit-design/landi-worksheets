@@ -42,7 +42,21 @@ const WorksheetPage = () => {
 
   const handleApplyEdit = useCallback((content: string) => {
     if (editorRef.current) {
-      const html = marked.parse(content, { async: false }) as string;
+      let html = marked.parse(content, { async: false }) as string;
+      // Restore CRM badge placeholders [[CRM:entityType:entityId:label]] back into badge HTML
+      html = html.replace(
+        /\[\[CRM:([^:]+):([^:]+):([^\]]+)\]\]/g,
+        (_match, entityType, entityId, label) => {
+          const ENTITY_SHORT: Record<string, string> = {
+            Candidate: "Candidate",
+            ClientContact: "Contact",
+            ClientCorporation: "Client",
+            JobOrder: "Job",
+          };
+          const typeLabel = ENTITY_SHORT[entityType] || entityType;
+          return `<span data-crm-badge="" data-entity-type="${entityType}" data-entity-id="${entityId}" class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none" contenteditable="false"><span class="text-muted-foreground">[${entityId}] </span><span>${label} </span><span class="text-muted-foreground font-semibold">(${typeLabel})</span></span>`;
+        }
+      );
       editorRef.current.setContent(html);
     }
   }, []);

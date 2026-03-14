@@ -12,16 +12,13 @@ const ENTITY_TYPES = [
 ] as const;
 
 function getEntityLabel(entity: BullhornEntity): string {
-  const { entityType } = entity;
-  if (entityType === "JobOrder") {
-    return (entity.title as string) || `Job #${entity.id}`;
-  }
-  if (entityType === "ClientCorporation") {
-    return (entity.name as string) || `Corp #${entity.id}`;
-  }
-  const first = (entity.firstName as string) || "";
-  const last = (entity.lastName as string) || "";
-  return `${first} ${last}`.trim() || `${entityType} #${entity.id}`;
+  // FastFind returns: { entityType, entityId, title, byLine, location }
+  // "title" is the display name for all entity types
+  return (entity.title as string) || `${entity.entityType} #${entity.entityId}`;
+}
+
+function getEntityId(entity: BullhornEntity): number {
+  return (entity.entityId as number) ?? (entity.id as number);
 }
 
 const ENTITY_SHORT: Record<string, string> = {
@@ -67,7 +64,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenuProps>(
         const label = getEntityLabel(entity);
         command({
           entityType: entity.entityType,
-          entityId: entity.id,
+          entityId: getEntityId(entity),
           label,
           metadata: entity,
         });
@@ -152,19 +149,25 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenuProps>(
 
             {phase === "search" && !loading && results.length > 0 && (
               <CommandGroup heading="Results">
-                {results.map((entity, index) => (
-                  <CommandItem
-                    key={`${entity.entityType}-${entity.id}`}
-                    onSelect={() => selectResult(entity)}
-                    data-selected={index === selectedIndex}
-                    className="flex items-center gap-2"
-                  >
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
-                      {ENTITY_SHORT[entity.entityType] || entity.entityType}
-                    </Badge>
-                    <span className="truncate">{getEntityLabel(entity)}</span>
-                  </CommandItem>
-                ))}
+                {results.map((entity, index) => {
+                  const eid = getEntityId(entity);
+                  return (
+                    <CommandItem
+                      key={`${entity.entityType}-${eid}-${index}`}
+                      onSelect={() => selectResult(entity)}
+                      data-selected={index === selectedIndex}
+                      className="flex items-center gap-2"
+                      value={`${entity.entityType}-${eid}-${getEntityLabel(entity)}`}
+                    >
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
+                        {ENTITY_SHORT[entity.entityType] || entity.entityType}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">[{eid}]</span>
+                      <span className="truncate">{getEntityLabel(entity)}</span>
+                    </CommandItem>
+                  );
+                })}
+                
               </CommandGroup>
             )}
           </CommandList>

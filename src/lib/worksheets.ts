@@ -16,10 +16,10 @@ export interface Worksheet {
   updated_at: string;
 }
 
-export const createWorksheet = async (userId: string, title = "Untitled") => {
+export const createWorksheet = async (userId: string, title = "Untitled", documentType: DocumentType = "note") => {
   const { data, error } = await supabase
     .from("worksheets")
-    .insert({ user_id: userId, title })
+    .insert({ user_id: userId, title, document_type: documentType })
     .select()
     .single();
   if (error) throw error;

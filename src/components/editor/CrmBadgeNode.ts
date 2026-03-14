@@ -1,4 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+import CrmBadgeView from "./CrmBadgeView";
 
 export interface CrmBadgeAttrs {
   entityType: string;
@@ -59,6 +61,10 @@ export const CrmBadgeNode = Node.create({
         `(${type})`,
       ],
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(CrmBadgeView, { as: "span" });
   },
 });
 

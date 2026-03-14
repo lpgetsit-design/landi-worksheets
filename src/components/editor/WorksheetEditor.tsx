@@ -201,8 +201,13 @@ ${content}`;
         return;
       }
 
-      // Convert markdown to HTML for the editor
-      const html = await marked.parse(enhanced);
+      // Convert markdown to HTML, then restore [[CRM:...]] placeholders as badge HTML
+      let html = await marked.parse(enhanced);
+      html = html.replace(
+        /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
+        (_match, entityType, entityId, label) =>
+          `<span data-crm-badge="" data-entity-type="${entityType}" data-entity-id="${entityId}" class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none" contenteditable="false"><span class="text-muted-foreground">[${entityId}] </span><span>${label} </span><span class="text-muted-foreground font-semibold">(${entityType})</span></span>`
+      );
       onContentEnhanced(html);
       toast.success("Content enhanced");
     } catch (e) {

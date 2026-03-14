@@ -114,6 +114,7 @@ export type Database = {
           content_json: Json | null
           content_md: string | null
           created_at: string
+          document_type: Database["public"]["Enums"]["document_type"]
           id: string
           meta: Json | null
           title: string
@@ -125,6 +126,7 @@ export type Database = {
           content_json?: Json | null
           content_md?: string | null
           created_at?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
           id?: string
           meta?: Json | null
           title?: string
@@ -136,6 +138,7 @@ export type Database = {
           content_json?: Json | null
           content_md?: string | null
           created_at?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
           id?: string
           meta?: Json | null
           title?: string
@@ -163,6 +166,7 @@ export type Database = {
       }
     }
     Enums: {
+      document_type: "note" | "skill" | "prompt" | "template"
       worksheet_permission: "read" | "write"
     }
     CompositeTypes: {
@@ -291,6 +295,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      document_type: ["note", "skill", "prompt", "template"],
       worksheet_permission: ["read", "write"],
     },
   },

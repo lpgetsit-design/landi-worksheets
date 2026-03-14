@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, Share2, ArrowLeft } from "lucide-react";
+import { MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";

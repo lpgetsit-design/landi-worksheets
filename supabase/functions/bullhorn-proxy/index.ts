@@ -147,25 +147,53 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, query, countPerEntity } = body;
 
-    if (action !== "fastfind") {
-      return new Response(
-        JSON.stringify({ error: "Unsupported action. Use 'fastfind'." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (action === "entity_lookup") {
+      if (!query || typeof query !== "string" || query.length < 1) {
+        return new Response(
+          JSON.stringify({ results: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const raw = await fastFind(query, countPerEntity || 10);
+      const results = (raw.data || []).map((item: any) => {
+        // Extract a human-readable label from the entity
+        const label =
+          item.title ||
+          [item.firstName, item.lastName].filter(Boolean).join(" ") ||
+          item.name ||
+          item.companyName ||
+          `${item.entityType} ${item.id}`;
+        return {
+          entityType: item.entityType,
+          entityId: item.id,
+          label,
+        };
+      });
+
+      return new Response(JSON.stringify({ results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (!query || typeof query !== "string" || query.length < 2) {
-      return new Response(
-        JSON.stringify({ data: [], meta: {} }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (action === "fastfind") {
+      if (!query || typeof query !== "string" || query.length < 2) {
+        return new Response(
+          JSON.stringify({ data: [], meta: {} }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await fastFind(query, countPerEntity || 5);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const result = await fastFind(query, countPerEntity || 5);
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Unsupported action. Use 'fastfind' or 'entity_lookup'." }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("Bullhorn proxy error:", error);
     return new Response(

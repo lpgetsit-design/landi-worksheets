@@ -38,6 +38,7 @@ const toolLabels: Record<string, string> = {
   replace_worksheet_content: "Updated worksheet content",
   update_worksheet_title: "Changed title",
   update_document_type: "Changed document type",
+  lookup_bullhorn_entity: "Looked up CRM entity",
 };
 
 const AIChatPanel = ({

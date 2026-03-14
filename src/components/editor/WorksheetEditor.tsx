@@ -89,15 +89,34 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
       [onSelectionAI]
     );
 
+    const handleDocumentTypeChange = useCallback((value: string) => {
+      const newType = value as DocumentType;
+      setDocumentType(newType);
+      updateWorksheet(worksheetId, { document_type: newType } as any).catch(console.error);
+    }, [worksheetId]);
+
     return (
       <div className="flex flex-col">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mb-4 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
-          placeholder="Untitled"
-        />
+        <div className="mb-4 flex items-center gap-3">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+            placeholder="Untitled"
+          />
+          <Select value={documentType} onValueChange={handleDocumentTypeChange}>
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="skill">Skill</SelectItem>
+              <SelectItem value="prompt">Prompt</SelectItem>
+              <SelectItem value="template">Template</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {editor && <EditorToolbar editor={editor} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}

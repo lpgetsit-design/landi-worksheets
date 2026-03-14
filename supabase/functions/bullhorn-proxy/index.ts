@@ -30,32 +30,31 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
 
   console.log("Login URL:", loginUrl.toString().replace(password, "***"));
 
-  // Follow all redirects — the final redirect should contain the code
-  const authResp = await fetch(loginUrl.toString(), { redirect: "follow" });
-  const finalUrl = authResp.url;
-  const body = await authResp.text();
+  // Use manual redirect to catch the code before it's consumed
+  const authResp = await fetch(loginUrl.toString(), { redirect: "manual" });
+  await authResp.text(); // consume body
 
-  console.log("Final URL:", finalUrl);
-  console.log("Auth response status:", authResp.status);
-  console.log("Response body preview:", body.slice(0, 300));
+  let location = authResp.headers.get("location");
+  console.log("Login redirect status:", authResp.status, "location:", location);
 
-  // Try to find code in the final URL
+  // May need to follow one more redirect to get the code
   let code: string | null = null;
-  const urlCodeMatch = finalUrl.match(/code=([^&]+)/);
-  if (urlCodeMatch) {
-    code = urlCodeMatch[1];
-  }
-
-  // Also check response body for code
-  if (!code) {
-    const bodyCodeMatch = body.match(/code=([^&"'\s]+)/);
-    if (bodyCodeMatch) {
-      code = bodyCodeMatch[1];
+  let maxFollows = 5;
+  while (location && !code && maxFollows-- > 0) {
+    const codeMatch = location.match(/code=([^&]+)/);
+    if (codeMatch) {
+      code = decodeURIComponent(codeMatch[1]);
+      break;
     }
+    // Follow this redirect manually
+    const nextResp = await fetch(location, { redirect: "manual" });
+    await nextResp.text();
+    location = nextResp.headers.get("location");
+    console.log("Following redirect:", location);
   }
 
   if (!code) {
-    throw new Error("Could not obtain authorization code. Final URL: " + finalUrl + " Body preview: " + body.slice(0, 200));
+    throw new Error("Could not obtain authorization code. Last location: " + location);
   }
   console.log("Got auth code:", code.slice(0, 10) + "...");
 

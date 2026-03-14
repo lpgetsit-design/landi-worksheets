@@ -17,6 +17,75 @@ import { toast } from "sonner";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+
+const GenerateTitleButton = ({
+  worksheetId,
+  getContent,
+  onTitleGenerated,
+}: {
+  worksheetId: string;
+  getContent: () => string;
+  onTitleGenerated: (title: string) => void;
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  const generate = async () => {
+    const content = getContent();
+    if (!content.trim()) {
+      onTitleGenerated("Untitled");
+      return;
+    }
+    setLoading(true);
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `Generate a short, concise title (max 6 words, no quotes) for this worksheet content:\n\n${content.slice(0, 2000)}`,
+            },
+          ],
+          worksheetTitle: "Untitled",
+          worksheetContent: content.slice(0, 2000),
+          worksheetType: "note",
+        }),
+      });
+      if (!resp.ok) throw new Error("Failed to generate title");
+      const choice = await resp.json();
+      const title = (choice.message?.content || "Untitled").replace(/^["']|["']$/g, "").trim();
+      onTitleGenerated(title || "Untitled");
+    } catch (e) {
+      console.error("Title generation error:", e);
+      toast.error("Failed to generate title");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 shrink-0"
+      onClick={generate}
+      disabled={loading}
+      title="Generate title from content"
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : (
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
+  );
+};
+
 export interface WorksheetEditorHandle {
   setContent: (html: string) => void;
   getHTML: () => string;

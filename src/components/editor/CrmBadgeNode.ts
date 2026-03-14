@@ -34,7 +34,19 @@ export const CrmBadgeNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'span[data-crm-badge]' }];
+    return [{
+      tag: 'span[data-crm-badge]',
+      getAttrs: (node: HTMLElement) => ({
+        entityType: node.getAttribute('data-entity-type') || '',
+        entityId: node.getAttribute('data-entity-id') || '',
+        label: (() => {
+          const spans = node.querySelectorAll('span');
+          // The second span contains the label
+          if (spans.length >= 2) return (spans[1] as HTMLElement).textContent?.trim() || '';
+          return '';
+        })(),
+      }),
+    }];
   },
 
   renderHTML({ node, HTMLAttributes }) {

@@ -81,6 +81,7 @@ const WorksheetPage = () => {
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}
             onSelectionAI={handleSelectionAI}
+            onContentChange={setWorksheetContent}
           />
         </div>
       </div>

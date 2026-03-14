@@ -64,7 +64,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenuProps>(
         const label = getEntityLabel(entity);
         command({
           entityType: entity.entityType,
-          entityId: entity.id,
+          entityId: getEntityId(entity),
           label,
           metadata: entity,
         });

@@ -353,6 +353,26 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
               <SelectItem value="template">Template</SelectItem>
             </SelectContent>
           </Select>
+          <EnhanceContentButton
+            worksheetId={worksheetId}
+            documentType={documentType}
+            getContent={() => {
+              if (!editor) return "";
+              return turndown.turndown(editor.getHTML());
+            }}
+            onContentEnhanced={(html) => {
+              if (!editor) return;
+              editor.commands.setContent(html);
+              // Trigger save
+              const md = turndown.turndown(html);
+              const json = editor.getJSON();
+              updateWorksheet(worksheetId, {
+                content_json: json as unknown as Json,
+                content_html: html,
+                content_md: md,
+              }).catch(console.error);
+            }}
+          />
         </div>
         {editor && <EditorToolbar editor={editor} />}
         <div className="relative mt-2">

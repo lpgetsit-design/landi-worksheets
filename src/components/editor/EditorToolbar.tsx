@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -17,9 +17,13 @@ import {
   Redo,
   Wand2,
   Loader2,
+  Table,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface EditorToolbarProps {
@@ -32,11 +36,13 @@ const ToolbarButton = ({
   active,
   children,
   title,
+  disabled,
 }: {
   onClick: () => void;
   active?: boolean;
   children: React.ReactNode;
   title: string;
+  disabled?: boolean;
 }) => (
   <Button
     variant="ghost"
@@ -45,10 +51,71 @@ const ToolbarButton = ({
     onClick={onClick}
     title={title}
     type="button"
+    disabled={disabled}
   >
     {children}
   </Button>
 );
+
+const LinkButton = ({ editor }: { editor: Editor }) => {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+
+  const handleSubmit = useCallback(() => {
+    if (url.trim()) {
+      const href = url.match(/^https?:\/\//) ? url : `https://${url}`;
+      editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+    } else {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    }
+    setUrl("");
+    setOpen(false);
+  }, [editor, url]);
+
+  const handleOpen = useCallback((isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      const existing = editor.getAttributes("link").href || "";
+      setUrl(existing);
+    }
+  }, [editor]);
+
+  return (
+    <Popover open={open} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-8 w-8", editor.isActive("link") && "bg-accent text-accent-foreground")}
+          title="Insert Link"
+          type="button"
+        >
+          <Link className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-3" align="start">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
+          className="flex gap-2"
+        >
+          <Input
+            placeholder="https://example.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="h-8 text-xs"
+            autoFocus
+          />
+          <Button type="submit" size="sm" className="h-8 text-xs">
+            {editor.isActive("link") && !url.trim() ? "Remove" : "Apply"}
+          </Button>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
   const [enhancing, setEnhancing] = useState(false);
@@ -93,6 +160,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       >
         <Code className="h-4 w-4" />
       </ToolbarButton>
+      <LinkButton editor={editor} />
 
       <Separator orientation="vertical" className="mx-1 h-6" />
 
@@ -153,6 +221,12 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         title="Horizontal Rule"
       >
         <Minus className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        title="Insert Table"
+      >
+        <Table className="h-4 w-4" />
       </ToolbarButton>
 
       <Separator orientation="vertical" className="mx-1 h-6" />

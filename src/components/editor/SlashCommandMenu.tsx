@@ -12,16 +12,13 @@ const ENTITY_TYPES = [
 ] as const;
 
 function getEntityLabel(entity: BullhornEntity): string {
-  const { entityType } = entity;
-  if (entityType === "JobOrder") {
-    return (entity.title as string) || `Job #${entity.id}`;
-  }
-  if (entityType === "ClientCorporation") {
-    return (entity.name as string) || `Corp #${entity.id}`;
-  }
-  const first = (entity.firstName as string) || "";
-  const last = (entity.lastName as string) || "";
-  return `${first} ${last}`.trim() || `${entityType} #${entity.id}`;
+  // FastFind returns: { entityType, entityId, title, byLine, location }
+  // "title" is the display name for all entity types
+  return (entity.title as string) || `${entity.entityType} #${entity.entityId}`;
+}
+
+function getEntityId(entity: BullhornEntity): number {
+  return (entity.entityId as number) ?? (entity.id as number);
 }
 
 const ENTITY_SHORT: Record<string, string> = {

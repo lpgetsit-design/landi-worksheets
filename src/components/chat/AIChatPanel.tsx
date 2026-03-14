@@ -259,7 +259,7 @@ const AIChatPanel = ({
                   >
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+                        <CrmChatContent content={msg.content || "..."} />
                       </div>
                     ) : (
                       msg.content

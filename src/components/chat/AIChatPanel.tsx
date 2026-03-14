@@ -3,7 +3,7 @@ import { X, Send, RotateCcw, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
+import CrmChatContent from "./CrmChatContent";
 import type { DocumentType } from "@/lib/worksheets";
 
 interface ToolCall {
@@ -259,7 +259,7 @@ const AIChatPanel = ({
                   >
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+                        <CrmChatContent content={msg.content || "..."} />
                       </div>
                     ) : (
                       msg.content

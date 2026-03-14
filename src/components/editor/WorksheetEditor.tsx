@@ -11,8 +11,80 @@ import { updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sparkles, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+
+const GenerateTitleButton = ({
+  worksheetId,
+  getContent,
+  onTitleGenerated,
+}: {
+  worksheetId: string;
+  getContent: () => string;
+  onTitleGenerated: (title: string) => void;
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  const generate = async () => {
+    const content = getContent();
+    if (!content.trim()) {
+      onTitleGenerated("Untitled");
+      return;
+    }
+    setLoading(true);
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `Generate a short, concise title (max 6 words, no quotes) for this worksheet content:\n\n${content.slice(0, 2000)}`,
+            },
+          ],
+          worksheetTitle: "Untitled",
+          worksheetContent: content.slice(0, 2000),
+          worksheetType: "note",
+        }),
+      });
+      if (!resp.ok) throw new Error("Failed to generate title");
+      const choice = await resp.json();
+      const title = (choice.message?.content || "Untitled").replace(/^["']|["']$/g, "").trim();
+      onTitleGenerated(title || "Untitled");
+    } catch (e) {
+      console.error("Title generation error:", e);
+      toast.error("Failed to generate title");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 shrink-0"
+      onClick={generate}
+      disabled={loading}
+      title="Generate title from content"
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : (
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
+  );
+};
 
 export interface WorksheetEditorHandle {
   setContent: (html: string) => void;
@@ -101,7 +173,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
 
     return (
       <div className="flex flex-col">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center gap-2">
           <input
             type="text"
             value={title}
@@ -109,6 +181,19 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             className="flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
             placeholder="Untitled"
           />
+          {(!title || title === "Untitled") && (
+            <GenerateTitleButton
+              worksheetId={worksheetId}
+              getContent={() => {
+                if (!editor) return "";
+                return turndown.turndown(editor.getHTML());
+              }}
+              onTitleGenerated={(t) => {
+                setTitle(t);
+                updateWorksheet(worksheetId, { title: t }).catch(console.error);
+              }}
+            />
+          )}
           <Select value={documentType} onValueChange={handleDocumentTypeChange}>
             <SelectTrigger className="w-[120px] h-8 text-xs">
               <SelectValue />

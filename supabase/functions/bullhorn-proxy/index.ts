@@ -13,12 +13,21 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
 
-  // Step 1: Get authorization code via POST with form data
-  const authUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
+  // Step 1: First GET to discover regional auth endpoint
+  const discoverUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
 
-  console.log("Auth request URL:", authUrl);
+  const discoverResp = await fetch(discoverUrl, { redirect: "manual" });
+  let regionalAuthUrl = discoverUrl;
 
-  const authResp = await fetch(authUrl, {
+  // Bullhorn returns 307 redirect to regional endpoint (e.g. auth-west9)
+  const regionalRedirect = discoverResp.headers.get("location");
+  if (regionalRedirect && !regionalRedirect.includes("code=")) {
+    regionalAuthUrl = regionalRedirect;
+    console.log("Regional auth URL:", regionalAuthUrl);
+  }
+
+  // Step 2: POST credentials to the (regional) auth endpoint
+  const authResp = await fetch(regionalAuthUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -29,17 +38,16 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
     redirect: "manual",
   });
 
-  console.log("Auth response status:", authResp.status);
-  console.log("Auth response headers:", JSON.stringify(Object.fromEntries(authResp.headers.entries())));
+  console.log("Auth POST status:", authResp.status);
 
   const location = authResp.headers.get("location");
   if (!location) {
     const body = await authResp.text();
-    console.log("Auth response body (no location):", body.slice(0, 500));
-    throw new Error("No redirect from Bullhorn authorize endpoint. Status: " + authResp.status);
+    console.log("Auth response body:", body.slice(0, 500));
+    throw new Error("No redirect from Bullhorn authorize. Status: " + authResp.status);
   }
 
-  console.log("Redirect location:", location);
+  console.log("Auth redirect:", location);
 
   const codeMatch = location.match(/code=([^&]+)/);
   if (!codeMatch) {

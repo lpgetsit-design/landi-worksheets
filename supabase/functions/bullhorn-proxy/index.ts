@@ -12,55 +12,47 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const clientSecret = Deno.env.get("BULLHORN_CLIENT_SECRET")!;
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
+  const redirectUri = "https://www.bullhorn.com";
 
-  // Step 1: Discover regional auth endpoint
-  const discoverUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
-  const discoverResp = await fetch(discoverUrl, { redirect: "manual" });
-  await discoverResp.text(); // consume body
+  // Step 1: OAuth Authorization — GET with action=Login for programmatic auth
+  const authorizeUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
+  authorizeUrl.searchParams.set("client_id", clientId);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizeUrl.searchParams.set("action", "Login");
+  authorizeUrl.searchParams.set("username", username);
+  authorizeUrl.searchParams.set("password", password);
 
-  // Get the regional redirect URL (includes client_id and response_type already)
-  const regionalRedirect = discoverResp.headers.get("location") || discoverUrl;
-  console.log("Regional redirect:", regionalRedirect);
-
-  // Step 2: Append login credentials to the regional URL and follow
-  const loginUrl = new URL(regionalRedirect);
-  loginUrl.searchParams.set("action", "Login");
-  loginUrl.searchParams.set("username", username);
-  loginUrl.searchParams.set("password", password);
-
-  console.log("Login URL:", loginUrl.toString().replace(password, "***"));
-
-  // Use manual redirect to catch the code before it's consumed
-  const authResp = await fetch(loginUrl.toString(), { redirect: "manual" });
-  await authResp.text(); // consume body
-
-  let location = authResp.headers.get("location");
-  console.log("Login redirect status:", authResp.status, "location:", location);
-
-  // May need to follow one more redirect to get the code
+  // Follow redirects manually to intercept the code before the redirect_uri consumes it
+  let url = authorizeUrl.toString();
   let code: string | null = null;
-  let maxFollows = 5;
-  while (location && !code && maxFollows-- > 0) {
-    const codeMatch = location.match(/code=([^&]+)/);
+
+  for (let i = 0; i < 10; i++) {
+    const resp = await fetch(url, { redirect: "manual" });
+    await resp.text(); // consume body to prevent leaks
+
+    const location = resp.headers.get("location");
+    console.log(`Redirect ${i}: status=${resp.status} location=${location?.slice(0, 120)}`);
+
+    if (!location) break;
+
+    // Check if this redirect contains the authorization code
+    const codeMatch = location.match(/[?&]code=([^&]+)/);
     if (codeMatch) {
       code = decodeURIComponent(codeMatch[1]);
+      console.log("Got auth code:", code.slice(0, 15) + "...");
       break;
     }
-    // Follow this redirect manually
-    const nextResp = await fetch(location, { redirect: "manual" });
-    await nextResp.text();
-    location = nextResp.headers.get("location");
-    console.log("Following redirect:", location);
+
+    url = location;
   }
 
   if (!code) {
-    throw new Error("Could not obtain authorization code. Last location: " + location);
+    throw new Error("Could not obtain authorization code after following redirects");
   }
-  console.log("Got auth code:", code.slice(0, 10) + "...");
 
-  // Step 3: Exchange code for access token
-  const regionalBase = new URL(regionalRedirect).origin;
-  const tokenResp = await fetch(`${regionalBase}/oauth/token`, {
+  // Step 2: Exchange code for access token
+  const tokenResp = await fetch("https://auth.bullhornstaffing.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -68,6 +60,7 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
       code,
       client_id: clientId,
       client_secret: clientSecret,
+      redirect_uri: redirectUri,
     }).toString(),
   });
 

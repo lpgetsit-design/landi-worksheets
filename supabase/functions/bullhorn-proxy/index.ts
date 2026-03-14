@@ -18,39 +18,45 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const discoverResp = await fetch(discoverUrl, { redirect: "manual" });
   await discoverResp.text(); // consume body
 
-  let regionalBase = "https://auth.bullhornstaffing.com";
-  const regionalRedirect = discoverResp.headers.get("location");
-  if (regionalRedirect) {
-    const rUrl = new URL(regionalRedirect);
-    regionalBase = rUrl.origin;
-    console.log("Regional base:", regionalBase);
+  // Get the regional redirect URL (includes client_id and response_type already)
+  const regionalRedirect = discoverResp.headers.get("location") || discoverUrl;
+  console.log("Regional redirect:", regionalRedirect);
+
+  // Step 2: Append login credentials to the regional URL and follow
+  const loginUrl = new URL(regionalRedirect);
+  loginUrl.searchParams.set("action", "Login");
+  loginUrl.searchParams.set("username", username);
+  loginUrl.searchParams.set("password", password);
+
+  console.log("Login URL:", loginUrl.toString().replace(password, "***"));
+
+  // Follow all redirects — the final redirect should contain the code
+  const authResp = await fetch(loginUrl.toString(), { redirect: "follow" });
+  const finalUrl = authResp.url;
+  const body = await authResp.text();
+
+  console.log("Final URL:", finalUrl);
+  console.log("Auth response status:", authResp.status);
+  console.log("Response body preview:", body.slice(0, 300));
+
+  // Try to find code in the final URL
+  let code: string | null = null;
+  const urlCodeMatch = finalUrl.match(/code=([^&]+)/);
+  if (urlCodeMatch) {
+    code = urlCodeMatch[1];
   }
 
-  // Step 2: GET authorize with credentials on the regional endpoint
-  const authParams = new URLSearchParams({
-    client_id: clientId,
-    response_type: "code",
-    action: "Login",
-    username,
-    password,
-  });
-  const authResp = await fetch(`${regionalBase}/oauth/authorize?${authParams}`, {
-    redirect: "manual",
-  });
-  await authResp.text(); // consume body
-
-  const location = authResp.headers.get("location");
-  console.log("Auth response status:", authResp.status, "location:", location);
-
-  if (!location) {
-    throw new Error("No redirect from regional authorize. Status: " + authResp.status);
+  // Also check response body for code
+  if (!code) {
+    const bodyCodeMatch = body.match(/code=([^&"'\s]+)/);
+    if (bodyCodeMatch) {
+      code = bodyCodeMatch[1];
+    }
   }
 
-  const codeMatch = location.match(/code=([^&]+)/);
-  if (!codeMatch) {
-    throw new Error("No auth code in redirect: " + location);
+  if (!code) {
+    throw new Error("Could not obtain authorization code. Final URL: " + finalUrl + " Body preview: " + body.slice(0, 200));
   }
-  const code = codeMatch[1];
   console.log("Got auth code:", code.slice(0, 10) + "...");
 
   // Step 3: Exchange code for access token (use regional token endpoint)

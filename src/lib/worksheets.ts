@@ -71,3 +71,69 @@ export const deleteWorksheet = async (id: string) => {
     .eq("id", id);
   if (error) throw error;
 };
+
+// --- Entity association helpers ---
+
+interface CrmBadgeAttrs {
+  entityType: string;
+  entityId: string;
+  label: string;
+}
+
+function extractCrmBadges(node: any): CrmBadgeAttrs[] {
+  const results: CrmBadgeAttrs[] = [];
+  if (!node) return results;
+  if (node.type === "crmBadge" && node.attrs) {
+    results.push({
+      entityType: node.attrs.entityType || "",
+      entityId: node.attrs.entityId || "",
+      label: node.attrs.label || "",
+    });
+  }
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      results.push(...extractCrmBadges(child));
+    }
+  }
+  return results;
+}
+
+export const syncWorksheetEntities = async (worksheetId: string, contentJson: Json | null) => {
+  const badges = extractCrmBadges(contentJson);
+
+  // Delete existing
+  const { error: delError } = await supabase
+    .from("worksheet_entities")
+    .delete()
+    .eq("worksheet_id", worksheetId);
+  if (delError) throw delError;
+
+  if (badges.length === 0) return;
+
+  // Deduplicate by entity_type + entity_id
+  const seen = new Set<string>();
+  const rows = badges.filter((b) => {
+    const key = `${b.entityType}:${b.entityId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((b) => ({
+    worksheet_id: worksheetId,
+    entity_type: b.entityType,
+    entity_id: b.entityId,
+    label: b.label,
+  }));
+
+  const { error: insError } = await supabase
+    .from("worksheet_entities")
+    .insert(rows);
+  if (insError) throw insError;
+};
+
+export const getWorksheetEntities = async () => {
+  const { data, error } = await supabase
+    .from("worksheet_entities")
+    .select("worksheet_id, entity_type, entity_id, label");
+  if (error) throw error;
+  return data;
+};

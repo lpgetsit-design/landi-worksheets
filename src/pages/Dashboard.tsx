@@ -1,17 +1,25 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, Clock, Trash2, ArrowUpDown } from "lucide-react";
+import { Plus, FileText, Clock, Trash2, ArrowUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getWorksheets, createWorksheet, deleteWorksheet } from "@/lib/worksheets";
+import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities } from "@/lib/worksheets";
 import { toast } from "sonner";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";
 type TypeFilter = "all" | "note" | "skill" | "prompt" | "template";
+
+interface EntityOption {
+  entity_type: string;
+  entity_id: string;
+  label: string;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -21,21 +29,52 @@ const Dashboard = () => {
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [entityFilter, setEntityFilter] = useState<EntityOption | null>(null);
+  const [entityPopoverOpen, setEntityPopoverOpen] = useState(false);
 
   const { data: worksheets = [], isLoading } = useQuery({
     queryKey: ["worksheets"],
     queryFn: getWorksheets,
   });
 
+  const { data: allEntities = [] } = useQuery({
+    queryKey: ["worksheet_entities"],
+    queryFn: getWorksheetEntities,
+  });
+
+  // Build worksheet_id set for entity filter + distinct entity options
+  const { entityOptions, entityWorksheetIds } = useMemo(() => {
+    const optMap = new Map<string, EntityOption>();
+    const wsIds = new Set<string>();
+
+    for (const e of allEntities) {
+      const key = `${e.entity_type}:${e.entity_id}`;
+      if (!optMap.has(key)) {
+        optMap.set(key, { entity_type: e.entity_type, entity_id: e.entity_id, label: e.label });
+      }
+      if (entityFilter && e.entity_type === entityFilter.entity_type && e.entity_id === entityFilter.entity_id) {
+        wsIds.add(e.worksheet_id);
+      }
+    }
+
+    return {
+      entityOptions: Array.from(optMap.values()).sort((a, b) => a.label.localeCompare(b.label)),
+      entityWorksheetIds: wsIds,
+    };
+  }, [allEntities, entityFilter]);
+
   const filtered = useMemo(() => {
     let list = typeFilter === "all" ? worksheets : worksheets.filter((ws) => ws.document_type === typeFilter);
+    if (entityFilter) {
+      list = list.filter((ws) => entityWorksheetIds.has(ws.id));
+    }
     list = [...list].sort((a, b) => {
       const aVal = new Date(a[sortField]).getTime();
       const bVal = new Date(b[sortField]).getTime();
       return sortDir === "desc" ? bVal - aVal : aVal - bVal;
     });
     return list;
-  }, [worksheets, typeFilter, sortField, sortDir]);
+  }, [worksheets, typeFilter, sortField, sortDir, entityFilter, entityWorksheetIds]);
 
   const createMutation = useMutation({
     mutationFn: () => createWorksheet(user!.id),
@@ -51,7 +90,10 @@ const Dashboard = () => {
 
   const deleteMutation = useMutation({
     mutationFn: deleteWorksheet,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["worksheets"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["worksheets"] });
+      queryClient.invalidateQueries({ queryKey: ["worksheet_entities"] });
+    },
   });
 
   const formatDate = (dateStr: string) => {
@@ -99,6 +141,47 @@ const Dashboard = () => {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSortDir} title={sortDir === "desc" ? "Newest first" : "Oldest first"}>
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
+
+        {/* Entity filter */}
+        {entityOptions.length > 0 && (
+          <>
+            <Popover open={entityPopoverOpen} onOpenChange={setEntityPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                  {entityFilter ? `${entityFilter.label} (${entityFilter.entity_type})` : "Filter by Entity"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[250px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search entities..." />
+                  <CommandList>
+                    <CommandEmpty>No entities found.</CommandEmpty>
+                    <CommandGroup>
+                      {entityOptions.map((eo) => (
+                        <CommandItem
+                          key={`${eo.entity_type}:${eo.entity_id}`}
+                          value={`${eo.label} ${eo.entity_type} ${eo.entity_id}`}
+                          onSelect={() => {
+                            setEntityFilter(eo);
+                            setEntityPopoverOpen(false);
+                          }}
+                        >
+                          <span className="truncate">{eo.label}</span>
+                          <span className="ml-auto text-[10px] text-muted-foreground">{eo.entity_type}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {entityFilter && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEntityFilter(null)} title="Clear entity filter">
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+          </>
+        )}
       </div>
 
       {isLoading ? (

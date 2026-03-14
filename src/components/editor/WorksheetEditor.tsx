@@ -72,6 +72,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         editorRef.current = {
           setContent: (html: string) => editor.commands.setContent(html),
           getHTML: () => editor.getHTML(),
+          setTitle: (t: string) => setTitle(t),
+          setDocumentType: (dt: DocumentType) => setDocumentType(dt),
         };
       }
     }, [editor, editorRef]);

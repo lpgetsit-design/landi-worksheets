@@ -17,6 +17,8 @@ const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fen
 export interface WorksheetEditorHandle {
   setContent: (html: string) => void;
   getHTML: () => string;
+  setTitle: (title: string) => void;
+  setDocumentType: (type: DocumentType) => void;
 }
 
 interface WorksheetEditorProps {

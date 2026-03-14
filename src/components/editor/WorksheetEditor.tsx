@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import CrmBadgeNode from "./CrmBadgeNode";
+import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
@@ -114,6 +116,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Placeholder.configure({ placeholder: "Write something..." }),
         TaskList,
         TaskItem.configure({ nested: true }),
+        CrmBadgeNode,
+        SlashCommandExtension,
       ],
       content: (initialContent as any) || "",
       editorProps: {

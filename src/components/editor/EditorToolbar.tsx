@@ -261,7 +261,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            Enhance
+            <span className="hidden sm:inline">Enhance</span>
           </Button>
         </>
       )}

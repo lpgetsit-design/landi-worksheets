@@ -106,19 +106,35 @@ const WorksheetPage = () => {
     );
   }
 
+  const isMobile = useIsMobile();
+
+  const chatPanel = (
+    <AIChatPanel
+      open={chatOpen}
+      onClose={() => setChatOpen(false)}
+      selectedText={selectedText}
+      worksheetContent={worksheetContent}
+      worksheetTitle={worksheetTitle}
+      worksheetType={worksheetType}
+      onApplyEdit={handleApplyEdit}
+      onUpdateTitle={handleUpdateTitle}
+      onUpdateDocumentType={handleUpdateDocumentType}
+    />
+  );
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[800px] px-6 py-8">
+        <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
           <div className="mb-4 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <Share2 className="h-3.5 w-3.5" />
-                Share
+                <span className="hidden sm:inline">Share</span>
               </Button>
               <Button
                 variant={chatOpen ? "secondary" : "outline"}
@@ -127,7 +143,7 @@ const WorksheetPage = () => {
                 onClick={() => setChatOpen(!chatOpen)}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                AI
+                <span className="hidden sm:inline">AI</span>
               </Button>
             </div>
           </div>
@@ -143,17 +159,16 @@ const WorksheetPage = () => {
         </div>
       </div>
 
-      <AIChatPanel
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        selectedText={selectedText}
-        worksheetContent={worksheetContent}
-        worksheetTitle={worksheetTitle}
-        worksheetType={worksheetType}
-        onApplyEdit={handleApplyEdit}
-        onUpdateTitle={handleUpdateTitle}
-        onUpdateDocumentType={handleUpdateDocumentType}
-      />
+      {isMobile ? (
+        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+          <SheetContent side="bottom" className="h-[85vh] p-0">
+            <SheetTitle className="sr-only">AI Assistant</SheetTitle>
+            {chatPanel}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        chatOpen && chatPanel
+      )}
     </div>
   );
 };

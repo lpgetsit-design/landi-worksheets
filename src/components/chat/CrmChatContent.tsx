@@ -1,23 +1,56 @@
 import ReactMarkdown from "react-markdown";
 import CrmBadgeInline from "./CrmBadgeInline";
 
-const CRM_REGEX = /\[\[CRM:(\w+):(\d+):([^\]]+)\]\]/g;
+const CRM_TOKEN = /\[\[CRM:(\w+):([^\]:]+):([^\]]+)\]\]/g;
 
 interface CrmChatContentProps {
   content: string;
 }
 
 export default function CrmChatContent({ content }: CrmChatContentProps) {
+  // If no CRM tokens, render plain markdown
+  if (!CRM_TOKEN.test(content)) {
+    return <ReactMarkdown>{content}</ReactMarkdown>;
+  }
+  // Reset regex lastIndex after test()
+  CRM_TOKEN.lastIndex = 0;
+
+  // Custom ReactMarkdown component that intercepts text nodes and replaces CRM tokens
+  return (
+    <ReactMarkdown
+      components={{
+        // Override the text renderer to parse CRM tokens inside text nodes
+        p: ({ children, ...props }) => <p {...props}>{processChildren(children)}</p>,
+        li: ({ children, ...props }) => <li {...props}>{processChildren(children)}</li>,
+        td: ({ children, ...props }) => <td {...props}>{processChildren(children)}</td>,
+        th: ({ children, ...props }) => <th {...props}>{processChildren(children)}</th>,
+        h1: ({ children, ...props }) => <h1 {...props}>{processChildren(children)}</h1>,
+        h2: ({ children, ...props }) => <h2 {...props}>{processChildren(children)}</h2>,
+        h3: ({ children, ...props }) => <h3 {...props}>{processChildren(children)}</h3>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+function processChildren(children: React.ReactNode): React.ReactNode {
+  if (!children) return children;
+  if (typeof children === "string") return replaceTokens(children);
+  if (Array.isArray(children)) return children.map((c, i) => (typeof c === "string" ? <span key={i}>{replaceTokens(c)}</span> : c));
+  return children;
+}
+
+function replaceTokens(text: string): React.ReactNode {
+  const regex = /\[\[CRM:(\w+):([^\]:]+):([^\]]+)\]\]/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
 
-  while ((match = CRM_REGEX.exec(content)) !== null) {
+  while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(
-        <ReactMarkdown key={key++}>{content.slice(lastIndex, match.index)}</ReactMarkdown>
-      );
+      parts.push(text.slice(lastIndex, match.index));
     }
     parts.push(
       <CrmBadgeInline
@@ -30,9 +63,9 @@ export default function CrmChatContent({ content }: CrmChatContentProps) {
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < content.length) {
-    parts.push(<ReactMarkdown key={key++}>{content.slice(lastIndex)}</ReactMarkdown>);
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
   }
 
-  return <>{parts}</>;
+  return parts.length === 1 ? parts[0] : <>{parts}</>;
 }

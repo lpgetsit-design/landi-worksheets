@@ -62,6 +62,10 @@ export const CrmBadgeNode = Node.create({
       ],
     ];
   },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(CrmBadgeView, { as: "span" });
+  },
 });
 
 export default CrmBadgeNode;

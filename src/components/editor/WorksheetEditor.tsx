@@ -23,6 +23,7 @@ interface WorksheetEditorProps {
   worksheetId: string;
   initialTitle: string;
   initialContent: Json | null;
+  initialDocumentType: DocumentType;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;

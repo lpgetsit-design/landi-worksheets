@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, Share2, ArrowLeft } from "lucide-react";
+import { MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
@@ -132,10 +132,6 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Share2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Share</span>
-              </Button>
               <Button
                 variant={chatOpen ? "secondary" : "outline"}
                 size="sm"

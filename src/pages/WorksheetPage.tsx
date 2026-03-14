@@ -49,6 +49,7 @@ const WorksheetPage = () => {
 
   const handleUpdateTitle = useCallback((title: string) => {
     setWorksheetTitle(title);
+    editorRef.current?.setTitle(title);
     if (id) {
       updateWorksheet(id, { title }).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
@@ -57,6 +58,7 @@ const WorksheetPage = () => {
 
   const handleUpdateDocumentType = useCallback((type: DocumentType) => {
     setWorksheetType(type);
+    editorRef.current?.setDocumentType(type);
     if (id) {
       updateWorksheet(id, { document_type: type } as any).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });

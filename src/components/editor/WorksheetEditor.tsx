@@ -104,7 +104,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
 
     return (
       <div className="flex flex-col">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-center gap-2">
           <input
             type="text"
             value={title}
@@ -112,6 +112,19 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             className="flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
             placeholder="Untitled"
           />
+          {(!title || title === "Untitled") && (
+            <GenerateTitleButton
+              worksheetId={worksheetId}
+              getContent={() => {
+                if (!editor) return "";
+                return turndown.turndown(editor.getHTML());
+              }}
+              onTitleGenerated={(t) => {
+                setTitle(t);
+                updateWorksheet(worksheetId, { title: t }).catch(console.error);
+              }}
+            />
+          )}
           <Select value={documentType} onValueChange={handleDocumentTypeChange}>
             <SelectTrigger className="w-[120px] h-8 text-xs">
               <SelectValue />

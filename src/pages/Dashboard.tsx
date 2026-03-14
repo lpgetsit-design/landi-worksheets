@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorksheets, createWorksheet, deleteWorksheet } from "@/lib/worksheets";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthProvider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getWorksheets, createWorksheet, deleteWorksheet } from "@/lib/worksheets";
 
 const Dashboard = () => {
   const navigate = useNavigate();

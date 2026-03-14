@@ -119,6 +119,119 @@ const GenerateTitleButton = ({
   );
 };
 
+const ENHANCE_PROMPTS: Record<DocumentType, string> = {
+  note: "Rewrite this note in a cleaner, well-organized format with proper headings, bullet points, and paragraphs where appropriate.",
+  skill: "Rewrite this skill document in a professional format suitable for a knowledge base. Use clear sections, concise language, and structured formatting.",
+  prompt: "Rewrite this prompt in a clear, well-structured format. Ensure instructions are precise, well-ordered, and easy to follow.",
+  template: "Rewrite this template in a polished, professional format with clear sections, placeholders, and consistent formatting.",
+};
+
+const EnhanceContentButton = ({
+  worksheetId,
+  documentType,
+  getContent,
+  onContentEnhanced,
+}: {
+  worksheetId: string;
+  documentType: DocumentType;
+  getContent: () => string;
+  onContentEnhanced: (html: string) => void;
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  const enhance = async () => {
+    const content = getContent();
+    if (!content.trim()) {
+      toast.error("No content to enhance");
+      return;
+    }
+    setLoading(true);
+    try {
+      const typeLabel = documentType.charAt(0).toUpperCase() + documentType.slice(1);
+      const prompt = `You are enhancing a "${typeLabel}" worksheet. ${ENHANCE_PROMPTS[documentType]}
+
+IMPORTANT RULES:
+- Do NOT add any new information, facts, or details that are not already present.
+- Keep the exact same content but paraphrase and restructure it for clarity and professionalism.
+- Preserve ALL [[CRM:...]] badges exactly as-is.
+- Use markdown formatting (headings, bold, lists, etc.) for better structure.
+- Return ONLY the enhanced content using the replace_worksheet_content tool.
+
+Here is the content to enhance:
+
+${content}`;
+
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+          worksheetTitle: "",
+          worksheetContent: content,
+          worksheetType: documentType,
+        }),
+      });
+
+      if (!resp.ok) throw new Error("Failed to enhance content");
+      const choice = await resp.json();
+      let enhanced = "";
+
+      // Check for replace_worksheet_content tool call
+      if (choice.message?.tool_calls?.length) {
+        for (const tc of choice.message.tool_calls) {
+          if (tc.function?.name === "replace_worksheet_content") {
+            try {
+              const args = JSON.parse(tc.function.arguments);
+              enhanced = args.content || "";
+            } catch {}
+          }
+        }
+      }
+
+      // Fallback to plain content
+      if (!enhanced && choice.message?.content) {
+        enhanced = choice.message.content;
+      }
+
+      if (!enhanced.trim()) {
+        toast.error("No enhanced content returned");
+        return;
+      }
+
+      // Convert markdown to HTML for the editor
+      const html = await marked.parse(enhanced);
+      onContentEnhanced(html);
+      toast.success("Content enhanced");
+    } catch (e) {
+      console.error("Enhance error:", e);
+      toast.error("Failed to enhance content");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 gap-1.5 text-xs text-muted-foreground"
+      onClick={enhance}
+      disabled={loading}
+      title="Enhance content with AI"
+    >
+      {loading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Wand2 className="h-3.5 w-3.5" />
+      )}
+      Enhance
+    </Button>
+  );
+};
+
 export interface WorksheetEditorHandle {
   setContent: (html: string) => void;
   getHTML: () => string;

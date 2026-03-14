@@ -94,7 +94,7 @@ const WorksheetPage = () => {
             </div>
           </div>
           <WorksheetEditor
-            ref={editorRef}
+            editorRef={editorRef}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}

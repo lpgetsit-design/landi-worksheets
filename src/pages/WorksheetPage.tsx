@@ -132,10 +132,6 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Share2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Share</span>
-              </Button>
               <Button
                 variant={chatOpen ? "secondary" : "outline"}
                 size="sm"

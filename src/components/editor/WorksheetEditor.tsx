@@ -60,14 +60,15 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectio
       },
     });
 
-    useImperativeHandle(ref, () => ({
-      setContent: (html: string) => {
-        if (editor) {
-          editor.commands.setContent(html);
-        }
-      },
-      getHTML: () => editor?.getHTML() || "",
-    }), [editor]);
+    // Expose editor handle via callback ref
+    useEffect(() => {
+      if (editorRef && editor) {
+        editorRef.current = {
+          setContent: (html: string) => editor.commands.setContent(html),
+          getHTML: () => editor.getHTML(),
+        };
+      }
+    }, [editor, editorRef]);
 
     // Save title on change with debounce
     useEffect(() => {

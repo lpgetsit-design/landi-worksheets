@@ -14,7 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      worksheet_access_grants: {
+        Row: {
+          created_at: string
+          granted_to_user_id: string
+          id: string
+          permission: Database["public"]["Enums"]["worksheet_permission"]
+          worksheet_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_to_user_id: string
+          id?: string
+          permission?: Database["public"]["Enums"]["worksheet_permission"]
+          worksheet_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_to_user_id?: string
+          id?: string
+          permission?: Database["public"]["Enums"]["worksheet_permission"]
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheet_access_grants_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worksheet_versions: {
+        Row: {
+          content_html: string | null
+          content_json: Json | null
+          content_md: string | null
+          created_at: string
+          id: string
+          worksheet_id: string
+        }
+        Insert: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          worksheet_id: string
+        }
+        Update: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheet_versions_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worksheets: {
+        Row: {
+          content_html: string | null
+          content_json: Json | null
+          content_md: string | null
+          created_at: string
+          id: string
+          meta: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +152,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      worksheet_permission: "read" | "write"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +279,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      worksheet_permission: ["read", "write"],
+    },
   },
 } as const

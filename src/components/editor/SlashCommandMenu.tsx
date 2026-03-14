@@ -167,7 +167,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenuProps>(
                     </CommandItem>
                   );
                 })}
-                ))}
+                
               </CommandGroup>
             )}
           </CommandList>

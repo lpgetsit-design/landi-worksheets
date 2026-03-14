@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -14,6 +15,8 @@ import {
   Minus,
   Undo,
   Redo,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -21,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 interface EditorToolbarProps {
   editor: Editor;
+  onEnhance?: () => Promise<void>;
 }
 
 const ToolbarButton = ({
@@ -46,7 +50,19 @@ const ToolbarButton = ({
   </Button>
 );
 
-const EditorToolbar = ({ editor }: EditorToolbarProps) => {
+const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
+  const [enhancing, setEnhancing] = useState(false);
+
+  const handleEnhance = async () => {
+    if (!onEnhance || enhancing) return;
+    setEnhancing(true);
+    try {
+      await onEnhance();
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1">
       <ToolbarButton
@@ -153,6 +169,28 @@ const EditorToolbar = ({ editor }: EditorToolbarProps) => {
       >
         <Redo className="h-4 w-4" />
       </ToolbarButton>
+
+      {onEnhance && (
+        <>
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-xs text-muted-foreground"
+            onClick={handleEnhance}
+            disabled={enhancing}
+            title="Enhance content with AI"
+            type="button"
+          >
+            {enhancing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="h-3.5 w-3.5" />
+            )}
+            Enhance
+          </Button>
+        </>
+      )}
     </div>
   );
 };

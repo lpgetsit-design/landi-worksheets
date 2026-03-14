@@ -90,6 +90,7 @@ const WorksheetPage = () => {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         selectedText={selectedText}
+        worksheetContent={worksheetContent}
       />
     </div>
   );

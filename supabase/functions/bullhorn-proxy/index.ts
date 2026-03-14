@@ -13,28 +13,54 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
 
-  // Step 1: Get authorization code via password grant
-  const authUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
-  authUrl.searchParams.set("client_id", clientId);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("username", username);
-  authUrl.searchParams.set("password", password);
-  authUrl.searchParams.set("action", "Login");
+  // Step 1: Discover regional auth endpoint
+  const discoverUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
+  const discoverResp = await fetch(discoverUrl, { redirect: "manual" });
+  await discoverResp.text(); // consume body
 
-  const authResp = await fetch(authUrl.toString(), { redirect: "manual" });
-  const location = authResp.headers.get("location");
-  if (!location) {
-    throw new Error("No redirect from Bullhorn authorize endpoint");
+  // Get the regional redirect URL (includes client_id and response_type already)
+  const regionalRedirect = discoverResp.headers.get("location") || discoverUrl;
+  console.log("Regional redirect:", regionalRedirect);
+
+  // Step 2: Append login credentials to the regional URL and follow
+  const loginUrl = new URL(regionalRedirect);
+  loginUrl.searchParams.set("action", "Login");
+  loginUrl.searchParams.set("username", username);
+  loginUrl.searchParams.set("password", password);
+
+  console.log("Login URL:", loginUrl.toString().replace(password, "***"));
+
+  // Use manual redirect to catch the code before it's consumed
+  const authResp = await fetch(loginUrl.toString(), { redirect: "manual" });
+  await authResp.text(); // consume body
+
+  let location = authResp.headers.get("location");
+  console.log("Login redirect status:", authResp.status, "location:", location);
+
+  // May need to follow one more redirect to get the code
+  let code: string | null = null;
+  let maxFollows = 5;
+  while (location && !code && maxFollows-- > 0) {
+    const codeMatch = location.match(/code=([^&]+)/);
+    if (codeMatch) {
+      code = decodeURIComponent(codeMatch[1]);
+      break;
+    }
+    // Follow this redirect manually
+    const nextResp = await fetch(location, { redirect: "manual" });
+    await nextResp.text();
+    location = nextResp.headers.get("location");
+    console.log("Following redirect:", location);
   }
 
-  const codeMatch = location.match(/code=([^&]+)/);
-  if (!codeMatch) {
-    throw new Error("No authorization code in redirect: " + location);
+  if (!code) {
+    throw new Error("Could not obtain authorization code. Last location: " + location);
   }
-  const code = codeMatch[1];
+  console.log("Got auth code:", code.slice(0, 10) + "...");
 
-  // Step 2: Exchange code for access token
-  const tokenResp = await fetch("https://auth.bullhornstaffing.com/oauth/token", {
+  // Step 3: Exchange code for access token
+  const regionalBase = new URL(regionalRedirect).origin;
+  const tokenResp = await fetch(`${regionalBase}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({

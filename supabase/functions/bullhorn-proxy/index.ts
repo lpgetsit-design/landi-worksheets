@@ -59,7 +59,8 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   }
   console.log("Got auth code:", code.slice(0, 10) + "...");
 
-  // Step 3: Exchange code for access token (use regional token endpoint)
+  // Step 3: Exchange code for access token
+  const regionalBase = new URL(regionalRedirect).origin;
   const tokenResp = await fetch(`${regionalBase}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

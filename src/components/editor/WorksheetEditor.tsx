@@ -101,9 +101,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectio
         </div>
       </div>
     );
-  }
-);
+};
 
-WorksheetEditor.displayName = "WorksheetEditor";
-
+export default WorksheetEditor;
 export default WorksheetEditor;

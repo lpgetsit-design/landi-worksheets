@@ -149,7 +149,7 @@ const Dashboard = () => {
             <Popover open={entityPopoverOpen} onOpenChange={setEntityPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  {entityFilter ? `${entityFilter.label} (${entityFilter.entity_type})` : "Filter by Entity"}
+                  {entityFilters.length > 0 ? `Entities (${entityFilters.length})` : "Filter by Entity"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[250px] p-0" align="start">
@@ -158,26 +158,36 @@ const Dashboard = () => {
                   <CommandList>
                     <CommandEmpty>No entities found.</CommandEmpty>
                     <CommandGroup>
-                      {entityOptions.map((eo) => (
-                        <CommandItem
-                          key={`${eo.entity_type}:${eo.entity_id}`}
-                          value={`${eo.label} ${eo.entity_type} ${eo.entity_id}`}
-                          onSelect={() => {
-                            setEntityFilter(eo);
-                            setEntityPopoverOpen(false);
-                          }}
-                        >
-                          <span className="truncate">{eo.label}</span>
-                          <span className="ml-auto text-[10px] text-muted-foreground">{eo.entity_type}</span>
-                        </CommandItem>
-                      ))}
+                      {entityOptions.map((eo) => {
+                        const key = `${eo.entity_type}:${eo.entity_id}`;
+                        const isSelected = entityFilters.some((f) => `${f.entity_type}:${f.entity_id}` === key);
+                        return (
+                          <CommandItem
+                            key={key}
+                            value={`${eo.label} ${eo.entity_type} ${eo.entity_id}`}
+                            onSelect={() => {
+                              setEntityFilters((prev) =>
+                                isSelected
+                                  ? prev.filter((f) => `${f.entity_type}:${f.entity_id}` !== key)
+                                  : [...prev, eo]
+                              );
+                            }}
+                          >
+                            <span className={`mr-2 h-4 w-4 border rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground"}`}>
+                              {isSelected ? "✓" : ""}
+                            </span>
+                            <span className="truncate">{eo.label}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">{eo.entity_type}</span>
+                          </CommandItem>
+                        );
+                      })}
                     </CommandGroup>
                   </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>
-            {entityFilter && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEntityFilter(null)} title="Clear entity filter">
+            {entityFilters.length > 0 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEntityFilters([])} title="Clear entity filter">
                 <X className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             )}

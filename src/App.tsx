@@ -9,14 +9,24 @@ import AppHeader from "@/components/AppHeader";
 import Dashboard from "./pages/Dashboard";
 import WorksheetPage from "./pages/WorksheetPage";
 import AuthPage from "./pages/AuthPage";
+import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, approved } = useAuth();
   if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
   if (!user) return <Navigate to="/auth" replace />;
+  if (!approved) return <Navigate to="/pending" replace />;
+  return <>{children}</>;
+};
+
+const PendingRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading, approved } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (approved) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -38,6 +48,7 @@ const App = () => (
             <AppHeader />
             <Routes>
               <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+              <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />

@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  approved: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -14,6 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
+  approved: false,
   signOut: async () => {},
 });
 
@@ -22,17 +23,35 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [approved, setApproved] = useState(false);
+
+  const fetchApproval = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("approved")
+      .eq("user_id", userId)
+      .single();
+    setApproved(data?.approved ?? false);
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
+        if (session?.user) {
+          await fetchApproval(session.user.id);
+        } else {
+          setApproved(false);
+        }
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        await fetchApproval(session.user.id);
+      }
       setLoading(false);
     });
 
@@ -44,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, approved, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -13,9 +13,10 @@ import { updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { marked } from "marked";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 

@@ -17,9 +17,10 @@ interface WorksheetEditorProps {
   initialTitle: string;
   initialContent: Json | null;
   onSelectionAI?: (text: string) => void;
+  onContentChange?: (text: string) => void;
 }
 
-const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI }: WorksheetEditorProps) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange }: WorksheetEditorProps) => {
   const [title, setTitle] = useState(initialTitle);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -37,11 +38,13 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectio
       },
     },
     onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const md = turndown.turndown(html);
+      onContentChange?.(md);
+
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        const html = editor.getHTML();
         const json = editor.getJSON();
-        const md = turndown.turndown(html);
         updateWorksheet(worksheetId, {
           content_json: json as unknown as Json,
           content_html: html,

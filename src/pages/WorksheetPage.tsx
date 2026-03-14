@@ -12,6 +12,7 @@ const WorksheetPage = () => {
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
+  const [worksheetContent, setWorksheetContent] = useState("");
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -80,6 +81,7 @@ const WorksheetPage = () => {
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}
             onSelectionAI={handleSelectionAI}
+            onContentChange={setWorksheetContent}
           />
         </div>
       </div>
@@ -88,6 +90,7 @@ const WorksheetPage = () => {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         selectedText={selectedText}
+        worksheetContent={worksheetContent}
       />
     </div>
   );

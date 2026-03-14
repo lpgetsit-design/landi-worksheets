@@ -22,6 +22,7 @@ const WorksheetPage = () => {
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const editorRef = useRef<WorksheetEditorHandle>(null!);
+  const isMobile = useIsMobile();
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -106,7 +107,6 @@ const WorksheetPage = () => {
     );
   }
 
-  const isMobile = useIsMobile();
 
   const chatPanel = (
     <AIChatPanel

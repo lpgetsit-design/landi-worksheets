@@ -107,7 +107,6 @@ const WorksheetPage = () => {
     );
   }
 
-  const isMobile = useIsMobile();
 
   const chatPanel = (
     <AIChatPanel

@@ -126,3 +126,29 @@
 .ProseMirror ul[data-type="taskList"] li label {
   margin-top: 0.25rem;
 }
+
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  position: relative;
+  min-width: 80px;
+}
+
+.ProseMirror table th {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+}
+
+.ProseMirror table .selectedCell {
+  background-color: hsl(var(--accent));
+}

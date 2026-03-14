@@ -3,6 +3,11 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { Link } from "@tiptap/extension-link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
@@ -153,6 +158,11 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Placeholder.configure({ placeholder: "Write something..." }),
         TaskList,
         TaskItem.configure({ nested: true }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableCell,
+        TableHeader,
+        Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         SlashCommandExtension,
       ],

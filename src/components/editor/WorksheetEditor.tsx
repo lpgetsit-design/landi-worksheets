@@ -14,7 +14,7 @@ import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
 import CrmBadgeNode from "./CrmBadgeNode";
 import SlashCommandExtension from "./SlashCommandExtension";
-import { updateWorksheet } from "@/lib/worksheets";
+import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

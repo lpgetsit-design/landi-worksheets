@@ -3,7 +3,7 @@ import { X, Send, RotateCcw, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
+import CrmChatContent from "./CrmChatContent";
 import type { DocumentType } from "@/lib/worksheets";
 
 interface ToolCall {

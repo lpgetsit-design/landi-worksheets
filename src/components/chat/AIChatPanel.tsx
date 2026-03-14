@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Send, MessageSquare, Pencil } from "lucide-react";
+import { X, Send, MessageSquare, Pencil, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";

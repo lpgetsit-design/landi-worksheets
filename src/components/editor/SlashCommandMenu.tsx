@@ -149,18 +149,24 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenuProps>(
 
             {phase === "search" && !loading && results.length > 0 && (
               <CommandGroup heading="Results">
-                {results.map((entity, index) => (
-                  <CommandItem
-                    key={`${entity.entityType}-${entity.id}`}
-                    onSelect={() => selectResult(entity)}
-                    data-selected={index === selectedIndex}
-                    className="flex items-center gap-2"
-                  >
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
-                      {ENTITY_SHORT[entity.entityType] || entity.entityType}
-                    </Badge>
-                    <span className="truncate">{getEntityLabel(entity)}</span>
-                  </CommandItem>
+                {results.map((entity, index) => {
+                  const eid = getEntityId(entity);
+                  return (
+                    <CommandItem
+                      key={`${entity.entityType}-${eid}-${index}`}
+                      onSelect={() => selectResult(entity)}
+                      data-selected={index === selectedIndex}
+                      className="flex items-center gap-2"
+                      value={`${entity.entityType}-${eid}-${getEntityLabel(entity)}`}
+                    >
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
+                        {ENTITY_SHORT[entity.entityType] || entity.entityType}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">[{eid}]</span>
+                      <span className="truncate">{getEntityLabel(entity)}</span>
+                    </CommandItem>
+                  );
+                })}
                 ))}
               </CommandGroup>
             )}

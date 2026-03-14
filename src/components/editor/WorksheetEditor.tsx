@@ -13,7 +13,7 @@ import { updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { marked } from "marked";
@@ -125,118 +125,6 @@ const ENHANCE_PROMPTS: Record<DocumentType, string> = {
   prompt: "Rewrite this prompt in a clear, well-structured format. Ensure instructions are precise, well-ordered, and easy to follow.",
   template: "Rewrite this template in a polished, professional format with clear sections, placeholders, and consistent formatting.",
 };
-
-const EnhanceContentButton = ({
-  worksheetId,
-  documentType,
-  getContent,
-  onContentEnhanced,
-}: {
-  worksheetId: string;
-  documentType: DocumentType;
-  getContent: () => string;
-  onContentEnhanced: (html: string) => void;
-}) => {
-  const [loading, setLoading] = useState(false);
-
-  const enhance = async () => {
-    const content = getContent();
-    if (!content.trim()) {
-      toast.error("No content to enhance");
-      return;
-    }
-    setLoading(true);
-    try {
-      const typeLabel = documentType.charAt(0).toUpperCase() + documentType.slice(1);
-      const prompt = `You are enhancing a "${typeLabel}" worksheet. ${ENHANCE_PROMPTS[documentType]}
-
-IMPORTANT RULES:
-- Do NOT add any new information, facts, or details that are not already present.
-- Keep the exact same content but paraphrase and restructure it for clarity and professionalism.
-- Preserve ALL [[CRM:...]] badges exactly as-is.
-- Use markdown formatting (headings, bold, lists, etc.) for better structure.
-- Return ONLY the enhanced content using the replace_worksheet_content tool.
-
-Here is the content to enhance:
-
-${content}`;
-
-      const resp = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: prompt }],
-          worksheetTitle: "",
-          worksheetContent: content,
-          worksheetType: documentType,
-        }),
-      });
-
-      if (!resp.ok) throw new Error("Failed to enhance content");
-      const choice = await resp.json();
-      let enhanced = "";
-
-      // Check for replace_worksheet_content tool call
-      if (choice.message?.tool_calls?.length) {
-        for (const tc of choice.message.tool_calls) {
-          if (tc.function?.name === "replace_worksheet_content") {
-            try {
-              const args = JSON.parse(tc.function.arguments);
-              enhanced = args.content || "";
-            } catch {}
-          }
-        }
-      }
-
-      // Fallback to plain content
-      if (!enhanced && choice.message?.content) {
-        enhanced = choice.message.content;
-      }
-
-      if (!enhanced.trim()) {
-        toast.error("No enhanced content returned");
-        return;
-      }
-
-      // Convert markdown to HTML, then restore [[CRM:...]] placeholders as badge HTML
-      let html = await marked.parse(enhanced);
-      html = html.replace(
-        /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
-        (_match, entityType, entityId, label) =>
-          `<span data-crm-badge="" data-entity-type="${entityType}" data-entity-id="${entityId}" class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none" contenteditable="false"><span class="text-muted-foreground">[${entityId}] </span><span>${label} </span><span class="text-muted-foreground font-semibold">(${entityType})</span></span>`
-      );
-      onContentEnhanced(html);
-      toast.success("Content enhanced");
-    } catch (e) {
-      console.error("Enhance error:", e);
-      toast.error("Failed to enhance content");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-8 gap-1.5 text-xs text-muted-foreground"
-      onClick={enhance}
-      disabled={loading}
-      title="Enhance content with AI"
-    >
-      {loading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Wand2 className="h-3.5 w-3.5" />
-      )}
-      Enhance
-    </Button>
-  );
-};
-
 export interface WorksheetEditorHandle {
   setContent: (html: string) => void;
   getHTML: () => string;
@@ -367,28 +255,82 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
               <SelectItem value="template">Template</SelectItem>
             </SelectContent>
           </Select>
-          <EnhanceContentButton
-            worksheetId={worksheetId}
-            documentType={documentType}
-            getContent={() => {
-              if (!editor) return "";
-              return turndown.turndown(editor.getHTML());
-            }}
-            onContentEnhanced={(html) => {
-              if (!editor) return;
-              editor.commands.setContent(html);
-              // Trigger save
-              const md = turndown.turndown(html);
-              const json = editor.getJSON();
-              updateWorksheet(worksheetId, {
-                content_json: json as unknown as Json,
-                content_html: html,
-                content_md: md,
-              }).catch(console.error);
-            }}
-          />
         </div>
-        {editor && <EditorToolbar editor={editor} />}
+        {editor && <EditorToolbar editor={editor} onEnhance={async () => {
+          if (!editor) return;
+          const content = turndown.turndown(editor.getHTML());
+          if (!content.trim()) {
+            toast.error("No content to enhance");
+            return;
+          }
+          const typeLabel = documentType.charAt(0).toUpperCase() + documentType.slice(1);
+          const prompt = `You are enhancing a "${typeLabel}" worksheet. ${ENHANCE_PROMPTS[documentType]}
+
+IMPORTANT RULES:
+- Do NOT add any new information, facts, or details that are not already present.
+- Keep the exact same content but paraphrase and restructure it for clarity and professionalism.
+- Preserve ALL [[CRM:...]] badges exactly as-is.
+- Use markdown formatting (headings, bold, lists, etc.) for better structure.
+- Return ONLY the enhanced content using the replace_worksheet_content tool.
+
+Here is the content to enhance:
+
+${content}`;
+
+          const resp = await fetch(CHAT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: prompt }],
+              worksheetTitle: "",
+              worksheetContent: content,
+              worksheetType: documentType,
+            }),
+          });
+
+          if (!resp.ok) throw new Error("Failed to enhance content");
+          const choice = await resp.json();
+          let enhanced = "";
+
+          if (choice.message?.tool_calls?.length) {
+            for (const tc of choice.message.tool_calls) {
+              if (tc.function?.name === "replace_worksheet_content") {
+                try {
+                  const args = JSON.parse(tc.function.arguments);
+                  enhanced = args.content || "";
+                } catch {}
+              }
+            }
+          }
+
+          if (!enhanced && choice.message?.content) {
+            enhanced = choice.message.content;
+          }
+
+          if (!enhanced.trim()) {
+            toast.error("No enhanced content returned");
+            return;
+          }
+
+          let html = await marked.parse(enhanced);
+          html = html.replace(
+            /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
+            (_match, entityType, entityId, label) =>
+              `<span data-crm-badge="" data-entity-type="${entityType}" data-entity-id="${entityId}" class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none" contenteditable="false"><span class="text-muted-foreground">[${entityId}] </span><span>${label} </span><span class="text-muted-foreground font-semibold">(${entityType})</span></span>`
+          );
+          editor.commands.setContent(html);
+          const md = turndown.turndown(html);
+          const json = editor.getJSON();
+          updateWorksheet(worksheetId, {
+            content_json: json as unknown as Json,
+            content_html: html,
+            content_md: md,
+          }).catch(console.error);
+          toast.success("Content enhanced");
+        }} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
           <EditorContent editor={editor} />

@@ -11,6 +11,7 @@ const SlashCommandExtension = Extension.create({
     return {
       suggestion: {
         char: "/",
+        allowSpaces: true,
         startOfLine: false,
         command: ({ editor, range, props }: { editor: any; range: any; props: any }) => {
           // Delete the slash trigger text

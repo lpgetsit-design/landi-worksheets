@@ -38,11 +38,13 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectio
       },
     },
     onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const md = turndown.turndown(html);
+      onContentChange?.(md);
+
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        const html = editor.getHTML();
         const json = editor.getJSON();
-        const md = turndown.turndown(html);
         updateWorksheet(worksheetId, {
           content_json: json as unknown as Json,
           content_html: html,

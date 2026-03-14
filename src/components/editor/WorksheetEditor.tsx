@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import CrmBadgeNode from "./CrmBadgeNode";
+import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";

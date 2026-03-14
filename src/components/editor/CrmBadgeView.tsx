@@ -77,12 +77,12 @@ export default function CrmBadgeView({ node }: NodeViewProps) {
       <HoverCard openDelay={200} closeDelay={100}>
         <HoverCardTrigger asChild>
           <span
-            className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-default"
+            className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-default max-w-full overflow-hidden"
             contentEditable={false}
           >
-            <span className="text-muted-foreground">[{entityId}]</span>
-            <span>{label}</span>
-            <span className="text-muted-foreground font-semibold">({typeLabel})</span>
+            <span className="text-muted-foreground shrink-0">[{entityId}]</span>
+            <span className="truncate">{label}</span>
+            <span className="text-muted-foreground font-semibold shrink-0">({typeLabel})</span>
           </span>
         </HoverCardTrigger>
         <HoverCardContent

@@ -142,6 +142,13 @@
   vertical-align: top;
   position: relative;
   min-width: 80px;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.ProseMirror table [data-node-view-wrapper] {
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .ProseMirror table th {

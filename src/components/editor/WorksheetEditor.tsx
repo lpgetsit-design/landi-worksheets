@@ -116,6 +116,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Placeholder.configure({ placeholder: "Write something..." }),
         TaskList,
         TaskItem.configure({ nested: true }),
+        CrmBadgeNode,
+        SlashCommandExtension,
       ],
       content: (initialContent as any) || "",
       editorProps: {

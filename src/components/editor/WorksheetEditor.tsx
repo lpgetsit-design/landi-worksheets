@@ -78,7 +78,19 @@ const GenerateTitleButton = ({
       });
       if (!resp.ok) throw new Error("Failed to generate title");
       const choice = await resp.json();
-      const title = (choice.message?.content || "Untitled").replace(/^["']|["']$/g, "").trim();
+      let title = choice.message?.content || "";
+      // If the AI used the update_worksheet_title tool, extract the title from it
+      if (!title && choice.message?.tool_calls?.length) {
+        for (const tc of choice.message.tool_calls) {
+          if (tc.function?.name === "update_worksheet_title") {
+            try {
+              const args = JSON.parse(tc.function.arguments);
+              title = args.title || "";
+            } catch {}
+          }
+        }
+      }
+      title = title.replace(/^["']|["']$/g, "").trim();
       onTitleGenerated(title || "Untitled");
     } catch (e) {
       console.error("Title generation error:", e);

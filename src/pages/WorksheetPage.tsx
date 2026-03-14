@@ -15,7 +15,7 @@ const WorksheetPage = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
-  const editorRef = useRef<WorksheetEditorHandle>(null);
+  const editorRef = useRef<WorksheetEditorHandle>(null!);
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -94,7 +94,7 @@ const WorksheetPage = () => {
             </div>
           </div>
           <WorksheetEditor
-            ref={editorRef}
+            editorRef={editorRef}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}

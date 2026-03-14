@@ -3,7 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
@@ -12,21 +12,21 @@ import type { Json } from "@/integrations/supabase/types";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
+export interface WorksheetEditorHandle {
+  setContent: (html: string) => void;
+  getHTML: () => string;
+}
+
 interface WorksheetEditorProps {
   worksheetId: string;
   initialTitle: string;
   initialContent: Json | null;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
+  editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 
-export interface WorksheetEditorHandle {
-  setContent: (html: string) => void;
-  getHTML: () => string;
-}
-
-const WorksheetEditor = forwardRef<WorksheetEditorHandle, WorksheetEditorProps>(
-  ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange }, ref) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
     const [title, setTitle] = useState(initialTitle);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -60,14 +60,15 @@ const WorksheetEditor = forwardRef<WorksheetEditorHandle, WorksheetEditorProps>(
       },
     });
 
-    useImperativeHandle(ref, () => ({
-      setContent: (html: string) => {
-        if (editor) {
-          editor.commands.setContent(html);
-        }
-      },
-      getHTML: () => editor?.getHTML() || "",
-    }), [editor]);
+    // Expose editor handle via callback ref
+    useEffect(() => {
+      if (editorRef && editor) {
+        editorRef.current = {
+          setContent: (html: string) => editor.commands.setContent(html),
+          getHTML: () => editor.getHTML(),
+        };
+      }
+    }, [editor, editorRef]);
 
     // Save title on change with debounce
     useEffect(() => {
@@ -100,9 +101,6 @@ const WorksheetEditor = forwardRef<WorksheetEditorHandle, WorksheetEditorProps>(
         </div>
       </div>
     );
-  }
-);
-
-WorksheetEditor.displayName = "WorksheetEditor";
+};
 
 export default WorksheetEditor;

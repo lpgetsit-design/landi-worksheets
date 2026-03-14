@@ -3,9 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { MessageSquare, Share2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
+import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
 import { useQuery } from "@tanstack/react-query";
 import { getWorksheet } from "@/lib/worksheets";
+import { marked } from "marked";
 
 const WorksheetPage = () => {
   const { id } = useParams();
@@ -13,6 +15,7 @@ const WorksheetPage = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
+  const editorRef = useRef<WorksheetEditorHandle>(null);
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -20,13 +23,27 @@ const WorksheetPage = () => {
     enabled: !!id && id !== "new",
   });
 
+  // Initialize worksheetContent from DB once loaded
+  useEffect(() => {
+    if (worksheet?.content_md) {
+      setWorksheetContent(worksheet.content_md);
+    }
+  }, [worksheet?.content_md]);
+
   const handleSelectionAI = useCallback((text: string) => {
     setSelectedText(text);
     setChatOpen(true);
   }, []);
 
+  const handleApplyEdit = useCallback((content: string) => {
+    if (editorRef.current) {
+      // Convert markdown to HTML for TipTap
+      const html = marked.parse(content, { async: false }) as string;
+      editorRef.current.setContent(html);
+    }
+  }, []);
+
   if (id === "new") {
-    // New worksheet creation is handled by Dashboard's createMutation
     navigate("/");
     return null;
   }
@@ -77,6 +94,7 @@ const WorksheetPage = () => {
             </div>
           </div>
           <WorksheetEditor
+            ref={editorRef}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={worksheet.content_json}
@@ -91,6 +109,7 @@ const WorksheetPage = () => {
         onClose={() => setChatOpen(false)}
         selectedText={selectedText}
         worksheetContent={worksheetContent}
+        onApplyEdit={handleApplyEdit}
       />
     </div>
   );

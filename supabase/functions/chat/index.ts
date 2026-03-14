@@ -18,8 +18,20 @@ serve(async (req) => {
 
     const systemPrompt =
       mode === "edit"
-        ? `You are an expert writing editor. The user will give you instructions to edit their worksheet content. Apply the requested changes and return ONLY the improved text — no explanations unless asked. Current worksheet content:\n\n${worksheetContent || "(empty)"}`
-        : `You are a helpful AI assistant for a worksheet editor. Answer the user's questions clearly and concisely. If they reference their worksheet, here is the current content:\n\n${worksheetContent || "(empty)"}`;
+        ? `You are an expert writing editor integrated into a worksheet app. The user will give you instructions to edit their worksheet content.
+
+RULES:
+1. First, briefly explain what changes you will make (1-2 sentences).
+2. Then, output the FULL revised worksheet content inside a single markdown code block (use triple backticks).
+3. The code block should contain the complete updated text — not just the changed parts.
+4. Do NOT omit any sections. Always return the entire document with changes applied.
+
+Current worksheet content:
+
+${worksheetContent || "(empty)"}`
+        : `You are a helpful AI assistant for a worksheet editor. Answer the user's questions clearly and concisely. If they reference their worksheet, here is the current content:
+
+${worksheetContent || "(empty)"}`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",

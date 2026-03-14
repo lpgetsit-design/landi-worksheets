@@ -12,21 +12,21 @@ import type { Json } from "@/integrations/supabase/types";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
+export interface WorksheetEditorHandle {
+  setContent: (html: string) => void;
+  getHTML: () => string;
+}
+
 interface WorksheetEditorProps {
   worksheetId: string;
   initialTitle: string;
   initialContent: Json | null;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
+  editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 
-export interface WorksheetEditorHandle {
-  setContent: (html: string) => void;
-  getHTML: () => string;
-}
-
-const WorksheetEditor = forwardRef<WorksheetEditorHandle, WorksheetEditorProps>(
-  ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange }, ref) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
     const [title, setTitle] = useState(initialTitle);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
 

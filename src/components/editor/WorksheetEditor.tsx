@@ -252,11 +252,11 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+            className="flex-1 min-w-0 bg-transparent text-xl sm:text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
             placeholder="Untitled"
           />
           <Select value={documentType} onValueChange={handleDocumentTypeChange}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
+            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

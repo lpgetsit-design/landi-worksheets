@@ -105,19 +105,20 @@ const Dashboard = () => {
   const toggleSortDir = () => setSortDir((d) => (d === "desc" ? "asc" : "desc"));
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Worksheets</h1>
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="gap-1.5">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Worksheets</h1>
+        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
           <Plus className="h-4 w-4" />
-          New Worksheet
+          <span className="hidden sm:inline">New Worksheet</span>
+          <span className="sm:hidden">New</span>
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex items-center gap-2 flex-wrap">
+      <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto">
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-          <SelectTrigger className="w-[120px] h-8 text-xs">
+          <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -130,7 +131,7 @@ const Dashboard = () => {
         </Select>
 
         <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[120px] sm:w-[140px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -139,7 +140,7 @@ const Dashboard = () => {
           </SelectContent>
         </Select>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSortDir} title={sortDir === "desc" ? "Newest first" : "Oldest first"}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleSortDir} title={sortDir === "desc" ? "Newest first" : "Oldest first"}>
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
 

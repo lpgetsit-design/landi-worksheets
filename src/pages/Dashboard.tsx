@@ -105,12 +105,13 @@ const Dashboard = () => {
   const toggleSortDir = () => setSortDir((d) => (d === "desc" ? "asc" : "desc"));
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Worksheets</h1>
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="gap-1.5">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Worksheets</h1>
+        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
           <Plus className="h-4 w-4" />
-          New Worksheet
+          <span className="hidden sm:inline">New Worksheet</span>
+          <span className="sm:hidden">New</span>
         </Button>
       </div>
 

@@ -303,6 +303,15 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
       }
     }, [editor, editorRef]);
 
+    // Sync title from props when initialTitle changes (e.g. page reload / query refetch)
+    const prevInitialTitle = useRef(initialTitle);
+    useEffect(() => {
+      if (initialTitle !== prevInitialTitle.current) {
+        prevInitialTitle.current = initialTitle;
+        setTitle(initialTitle);
+      }
+    }, [initialTitle]);
+
     // Save title on change with debounce
     useEffect(() => {
       const t = setTimeout(() => {

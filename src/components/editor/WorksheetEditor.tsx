@@ -3,7 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
@@ -20,71 +20,89 @@ interface WorksheetEditorProps {
   onContentChange?: (text: string) => void;
 }
 
-const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange }: WorksheetEditorProps) => {
-  const [title, setTitle] = useState(initialTitle);
-  const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+export interface WorksheetEditorHandle {
+  setContent: (html: string) => void;
+  getHTML: () => string;
+}
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Placeholder.configure({ placeholder: "Write something..." }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-    ],
-    content: (initialContent as any) || "",
-    editorProps: {
-      attributes: {
-        class: "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-serif",
+const WorksheetEditor = forwardRef<WorksheetEditorHandle, WorksheetEditorProps>(
+  ({ worksheetId, initialTitle, initialContent, onSelectionAI, onContentChange }, ref) => {
+    const [title, setTitle] = useState(initialTitle);
+    const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+    const editor = useEditor({
+      extensions: [
+        StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+        Placeholder.configure({ placeholder: "Write something..." }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+      ],
+      content: (initialContent as any) || "",
+      editorProps: {
+        attributes: {
+          class: "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-serif",
+        },
       },
-    },
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      const md = turndown.turndown(html);
-      onContentChange?.(md);
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        const md = turndown.turndown(html);
+        onContentChange?.(md);
 
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => {
-        const json = editor.getJSON();
-        updateWorksheet(worksheetId, {
-          content_json: json as unknown as Json,
-          content_html: html,
-          content_md: md,
-        }).catch(console.error);
+        if (saveTimeout.current) clearTimeout(saveTimeout.current);
+        saveTimeout.current = setTimeout(() => {
+          const json = editor.getJSON();
+          updateWorksheet(worksheetId, {
+            content_json: json as unknown as Json,
+            content_html: html,
+            content_md: md,
+          }).catch(console.error);
+        }, 500);
+      },
+    });
+
+    useImperativeHandle(ref, () => ({
+      setContent: (html: string) => {
+        if (editor) {
+          editor.commands.setContent(html);
+        }
+      },
+      getHTML: () => editor?.getHTML() || "",
+    }), [editor]);
+
+    // Save title on change with debounce
+    useEffect(() => {
+      const t = setTimeout(() => {
+        if (title !== initialTitle) {
+          updateWorksheet(worksheetId, { title }).catch(console.error);
+        }
       }, 500);
-    },
-  });
+      return () => clearTimeout(t);
+    }, [title, worksheetId, initialTitle]);
 
-  // Save title on change with debounce
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (title !== initialTitle) {
-        updateWorksheet(worksheetId, { title }).catch(console.error);
-      }
-    }, 500);
-    return () => clearTimeout(t);
-  }, [title, worksheetId, initialTitle]);
+    const handleAskAI = useCallback(
+      (text: string) => { onSelectionAI?.(text); },
+      [onSelectionAI]
+    );
 
-  const handleAskAI = useCallback(
-    (text: string) => { onSelectionAI?.(text); },
-    [onSelectionAI]
-  );
-
-  return (
-    <div className="flex flex-col">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="mb-4 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
-        placeholder="Untitled"
-      />
-      {editor && <EditorToolbar editor={editor} />}
-      <div className="relative mt-2">
-        {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
-        <EditorContent editor={editor} />
+    return (
+      <div className="flex flex-col">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="mb-4 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+          placeholder="Untitled"
+        />
+        {editor && <EditorToolbar editor={editor} />}
+        <div className="relative mt-2">
+          {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
+          <EditorContent editor={editor} />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+WorksheetEditor.displayName = "WorksheetEditor";
 
 export default WorksheetEditor;

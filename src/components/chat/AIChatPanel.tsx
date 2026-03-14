@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X, Send, MessageSquare, Pencil, RotateCcw } from "lucide-react";
+import { X, Send, MessageSquare, Pencil, RotateCcw, Check, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -16,20 +16,48 @@ interface AIChatPanelProps {
   onClose: () => void;
   selectedText?: string;
   worksheetContent?: string;
+  onApplyEdit?: (content: string) => void;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-const AIChatPanel = ({ open, onClose, selectedText, worksheetContent }: AIChatPanelProps) => {
+const AIChatPanel = ({ open, onClose, selectedText, worksheetContent, onApplyEdit }: AIChatPanelProps) => {
   const [mode, setMode] = useState<"qa" | "edit">("qa");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [appliedMessageId, setAppliedMessageId] = useState<string | null>(null);
+  const [previousContent, setPreviousContent] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const extractEditContent = (content: string): string => {
+    // Try to extract content from a markdown code block
+    const codeBlockMatch = content.match(/```(?:\w*)\n([\s\S]*?)```/);
+    if (codeBlockMatch) return codeBlockMatch[1].trim();
+    // Otherwise return the full content (the AI was told to return only revised text)
+    return content;
+  };
+
+  const handleApply = (msg: Message, currentContent: string) => {
+    const editContent = extractEditContent(msg.content);
+    setPreviousContent(currentContent);
+    setAppliedMessageId(msg.id);
+    onApplyEdit?.(editContent);
+    toast.success("Edit applied to worksheet");
+  };
+
+  const handleRevert = () => {
+    if (previousContent !== null) {
+      onApplyEdit?.(previousContent);
+      setPreviousContent(null);
+      setAppliedMessageId(null);
+      toast.info("Reverted to previous content");
+    }
   };
 
   const handleSend = async () => {
@@ -75,7 +103,6 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent }: AIChatPa
       let assistantContent = "";
       const assistantId = crypto.randomUUID();
 
-      // Add empty assistant message
       setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
 
       let streamDone = false;
@@ -144,6 +171,8 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent }: AIChatPa
               setMessages([]);
               setInput("");
               setIsStreaming(false);
+              setAppliedMessageId(null);
+              setPreviousContent(null);
             }}
             title="Reset conversation"
           >
@@ -206,21 +235,48 @@ const AIChatPanel = ({ open, onClose, selectedText, worksheetContent }: AIChatPa
         ) : (
           <div className="space-y-3">
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm",
-                  msg.role === "user"
-                    ? "ml-6 bg-primary text-primary-foreground"
-                    : "mr-6 bg-muted text-foreground"
-                )}
-              >
-                {msg.role === "assistant" ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+              <div key={msg.id}>
+                <div
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm",
+                    msg.role === "user"
+                      ? "ml-6 bg-primary text-primary-foreground"
+                      : "mr-6 bg-muted text-foreground"
+                  )}
+                >
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{msg.content || "..."}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+                {/* Apply / Revert buttons for edit-mode assistant messages */}
+                {msg.role === "assistant" && mode === "edit" && msg.content && !isStreaming && (
+                  <div className="mr-6 mt-1.5 flex items-center gap-1.5">
+                    {appliedMessageId === msg.id ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={handleRevert}
+                      >
+                        <Undo2 className="h-3 w-3" />
+                        Revert
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => handleApply(msg, worksheetContent || "")}
+                      >
+                        <Check className="h-3 w-3" />
+                        Apply to worksheet
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  msg.content
                 )}
               </div>
             ))}

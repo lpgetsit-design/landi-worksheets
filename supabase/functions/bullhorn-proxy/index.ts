@@ -13,47 +13,48 @@ async function getAccessToken(): Promise<{ access_token: string; refresh_token: 
   const username = Deno.env.get("BULLHORN_USERNAME")!;
   const password = Deno.env.get("BULLHORN_PASSWORD")!;
 
-  // Step 1: First GET to discover regional auth endpoint
-  const discoverUrl = `https://auth.bullhornstaffing.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&response_type=code`;
+  // Step 1: GET with all params including credentials as query params
+  // Bullhorn's programmatic auth uses GET with action=Login
+  const authUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("action", "Login");
+  authUrl.searchParams.set("username", username);
+  authUrl.searchParams.set("password", password);
 
-  const discoverResp = await fetch(discoverUrl, { redirect: "manual" });
-  let regionalAuthUrl = discoverUrl;
+  // Follow the regional redirect (307) automatically, then get the final redirect with code
+  const authResp = await fetch(authUrl.toString(), { redirect: "follow" });
 
-  // Bullhorn returns 307 redirect to regional endpoint (e.g. auth-west9)
-  const regionalRedirect = discoverResp.headers.get("location");
-  if (regionalRedirect && !regionalRedirect.includes("code=")) {
-    regionalAuthUrl = regionalRedirect;
-    console.log("Regional auth URL:", regionalAuthUrl);
+  // After following redirects, the final URL should contain the code
+  const finalUrl = authResp.url;
+  console.log("Final auth URL:", finalUrl);
+  console.log("Auth status:", authResp.status);
+
+  // Try to get code from the final URL
+  let code: string | null = null;
+  const urlCodeMatch = finalUrl.match(/code=([^&]+)/);
+  if (urlCodeMatch) {
+    code = urlCodeMatch[1];
   }
 
-  // Step 2: POST credentials to the (regional) auth endpoint
-  const authResp = await fetch(regionalAuthUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      action: "Login",
-      username,
-      password,
-    }).toString(),
-    redirect: "manual",
-  });
-
-  console.log("Auth POST status:", authResp.status);
-
-  const location = authResp.headers.get("location");
-  if (!location) {
+  // If not in URL, check if there's a redirect header we need
+  if (!code) {
+    // Read response body to see what Bullhorn returned
     const body = await authResp.text();
-    console.log("Auth response body:", body.slice(0, 500));
-    throw new Error("No redirect from Bullhorn authorize. Status: " + authResp.status);
+    console.log("Auth response body:", body.slice(0, 1000));
+
+    // Try to find code in response body (some flows embed it)
+    const bodyCodeMatch = body.match(/code=([^&"'\s]+)/);
+    if (bodyCodeMatch) {
+      code = bodyCodeMatch[1];
+    }
   }
 
-  console.log("Auth redirect:", location);
-
-  const codeMatch = location.match(/code=([^&]+)/);
-  if (!codeMatch) {
-    throw new Error("No authorization code in redirect: " + location);
+  if (!code) {
+    throw new Error("Could not obtain authorization code. Final URL: " + finalUrl);
   }
-  const code = codeMatch[1];
+
+  console.log("Got auth code:", code.slice(0, 10) + "...");
 
   // Step 2: Exchange code for access token
   const tokenResp = await fetch("https://auth.bullhornstaffing.com/oauth/token", {

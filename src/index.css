@@ -127,7 +127,8 @@
   margin-top: 0.25rem;
 }
 
-.ProseMirror table {
+.ProseMirror table,
+.data-table-nodeview table {
   border-collapse: collapse;
   margin: 1rem 0;
   width: 100%;
@@ -136,7 +137,9 @@
 }
 
 .ProseMirror table td,
-.ProseMirror table th {
+.ProseMirror table th,
+.data-table-nodeview table td,
+.data-table-nodeview table th {
   border: 1px solid hsl(var(--border));
   padding: 0.5rem 0.75rem;
   vertical-align: top;
@@ -146,12 +149,14 @@
   word-break: break-word;
 }
 
-.ProseMirror table [data-node-view-wrapper] {
+.ProseMirror table [data-node-view-wrapper],
+.data-table-nodeview table [data-node-view-wrapper] {
   max-width: 100%;
   overflow: hidden;
 }
 
-.ProseMirror table th {
+.ProseMirror table th,
+.data-table-nodeview table th {
   background-color: hsl(var(--muted));
   font-weight: 600;
 }

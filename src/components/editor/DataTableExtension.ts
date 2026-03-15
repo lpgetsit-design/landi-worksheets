@@ -7,6 +7,7 @@ const DataTableExtension = Table.extend({
     return ReactNodeViewRenderer(DataTableView, {
       as: "div",
       className: "data-table-nodeview",
+      stopEvent: () => false,
     });
   },
 });

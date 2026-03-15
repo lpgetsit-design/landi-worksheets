@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
@@ -342,6 +343,7 @@ ${content}`;
           }).catch(console.error);
           toast.success("Content enhanced");
         }} />}
+        {editor && editor.isActive("table") && <TableControls editor={editor} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
           <EditorContent editor={editor} />

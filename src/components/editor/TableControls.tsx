@@ -212,7 +212,7 @@ const TableControls = ({ editor }: TableControlsProps) => {
     applyFilter(editor, "");
   }, [editor]);
 
-  if (!editor.isActive("table")) return null;
+  if (!isInTable) return null;
 
   const canMerge = editor.can().mergeCells();
   const canSplit = editor.can().splitCell();

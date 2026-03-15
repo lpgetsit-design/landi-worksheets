@@ -55,6 +55,7 @@ const TableControls = ({ editor }: TableControlsProps) => {
   return (
     <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/50 px-1 py-0.5 mb-1 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
       <span className="text-muted-foreground text-[10px] font-medium px-1 select-none">Table</span>
+      <span className="text-muted-foreground/60 text-[9px] px-0.5 select-none hidden sm:inline">⌘↵ add row</span>
 
       <Separator orientation="vertical" className="mx-0.5 h-5" />
 

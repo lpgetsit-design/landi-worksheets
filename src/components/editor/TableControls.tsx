@@ -167,10 +167,23 @@ function applyFilter(editor: Editor, filterText: string) {
 }
 
 const TableControls = ({ editor }: TableControlsProps) => {
+  const [isInTable, setIsInTable] = useState(false);
   const [sortCol, setSortCol] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showFilter, setShowFilter] = useState(false);
   const [filterText, setFilterText] = useState("");
+
+  // Re-render when selection changes so isActive("table") is fresh
+  useEffect(() => {
+    const handler = () => setIsInTable(editor.isActive("table"));
+    editor.on("selectionUpdate", handler);
+    editor.on("transaction", handler);
+    handler();
+    return () => {
+      editor.off("selectionUpdate", handler);
+      editor.off("transaction", handler);
+    };
+  }, [editor]);
 
   const handleSort = useCallback(() => {
     const info = getTableInfo(editor);

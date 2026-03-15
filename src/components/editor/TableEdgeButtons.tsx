@@ -1,15 +1,19 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Editor } from "@tiptap/react";
-import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, X } from "lucide-react";
 
 interface TableEdgeButtonsProps {
   editor: Editor;
 }
 
+interface Positions {
+  tableRect: DOMRect;
+  containerRect: DOMRect;
+  cellRect: DOMRect | null;
+}
+
 const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
-  const [tableRect, setTableRect] = useState<DOMRect | null>(null);
-  const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
+  const [pos, setPos] = useState<Positions | null>(null);
   const [visible, setVisible] = useState(false);
   const rafRef = useRef<number>(0);
 
@@ -20,7 +24,6 @@ const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
     }
 
     const { $from } = editor.state.selection;
-    // Walk up to find table node
     let depth = $from.depth;
     while (depth > 0) {
       const node = $from.node(depth);
@@ -33,7 +36,6 @@ const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
     }
 
     const dom = editor.view.nodeDOM(($from as any).before(depth));
-    // The actual table element might be wrapped in a .tableWrapper div
     const tableEl =
       dom instanceof HTMLTableElement
         ? dom
@@ -52,8 +54,25 @@ const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
       return;
     }
 
-    setTableRect(tableEl.getBoundingClientRect());
-    setContainerRect(container.getBoundingClientRect());
+    // Find the current cell DOM element
+    let cellEl: HTMLElement | null = null;
+    const sel = window.getSelection();
+    if (sel && sel.anchorNode) {
+      let node: Node | null = sel.anchorNode;
+      while (node && node !== tableEl) {
+        if (node instanceof HTMLElement && (node.tagName === "TD" || node.tagName === "TH")) {
+          cellEl = node;
+          break;
+        }
+        node = node.parentNode;
+      }
+    }
+
+    setPos({
+      tableRect: tableEl.getBoundingClientRect(),
+      containerRect: container.getBoundingClientRect(),
+      cellRect: cellEl ? cellEl.getBoundingClientRect() : null,
+    });
     setVisible(true);
   }, [editor]);
 
@@ -65,7 +84,6 @@ const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
 
     editor.on("selectionUpdate", handler);
     editor.on("update", handler);
-    // Also recheck on transaction
     editor.on("transaction", handler);
 
     return () => {
@@ -76,48 +94,78 @@ const TableEdgeButtons = ({ editor }: TableEdgeButtonsProps) => {
     };
   }, [editor, updatePosition]);
 
-  if (!visible || !tableRect || !containerRect) return null;
+  if (!visible || !pos) return null;
 
-  const top = tableRect.bottom - containerRect.top;
-  const left = tableRect.left - containerRect.left;
-  const width = tableRect.width;
-  const height = tableRect.height;
-  const rightEdge = left + width;
-  const tableTop = tableRect.top - containerRect.top;
+  const { tableRect, containerRect, cellRect } = pos;
+  const tTop = tableRect.top - containerRect.top;
+  const tLeft = tableRect.left - containerRect.left;
+  const tWidth = tableRect.width;
+  const tHeight = tableRect.height;
+  const tBottom = tTop + tHeight;
+  const tRight = tLeft + tWidth;
+
+  const btnClass =
+    "absolute z-10 flex items-center justify-center rounded-full border border-border bg-background shadow-sm transition-all duration-150 opacity-0 hover:opacity-100 group-hover/table-area:opacity-60";
 
   return (
     <>
-      {/* Add row button — centered below the table */}
+      {/* Add row — below table */}
       <button
         type="button"
-        className="absolute z-10 flex items-center justify-center rounded-full border border-border bg-background shadow-sm hover:bg-accent hover:border-primary transition-all duration-150 opacity-0 hover:opacity-100 group-hover/table-area:opacity-60"
-        style={{
-          top: `${top + 2}px`,
-          left: `${left + width / 2 - 12}px`,
-          width: 24,
-          height: 24,
-        }}
+        className={`${btnClass} hover:bg-accent hover:border-primary`}
+        style={{ top: `${tBottom + 2}px`, left: `${tLeft + tWidth / 2 - 12}px`, width: 24, height: 24 }}
         onClick={() => editor.chain().focus().addRowAfter().run()}
         title="Add row below"
       >
         <Plus className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
 
-      {/* Add column button — centered on the right edge */}
+      {/* Add column — right of table */}
       <button
         type="button"
-        className="absolute z-10 flex items-center justify-center rounded-full border border-border bg-background shadow-sm hover:bg-accent hover:border-primary transition-all duration-150 opacity-0 hover:opacity-100 group-hover/table-area:opacity-60"
-        style={{
-          top: `${tableTop + height / 2 - 12}px`,
-          left: `${rightEdge + 4}px`,
-          width: 24,
-          height: 24,
-        }}
+        className={`${btnClass} hover:bg-accent hover:border-primary`}
+        style={{ top: `${tTop + tHeight / 2 - 12}px`, left: `${tRight + 4}px`, width: 24, height: 24 }}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
         title="Add column right"
       >
         <Plus className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
+
+      {/* Delete row — left of the current row */}
+      {cellRect && (
+        <button
+          type="button"
+          className={`${btnClass} hover:bg-destructive/10 hover:border-destructive`}
+          style={{
+            top: `${cellRect.top - containerRect.top + cellRect.height / 2 - 10}px`,
+            left: `${tLeft - 28}px`,
+            width: 20,
+            height: 20,
+          }}
+          onClick={() => editor.chain().focus().deleteRow().run()}
+          title="Delete row"
+        >
+          <X className="h-3 w-3 text-muted-foreground" />
+        </button>
+      )}
+
+      {/* Delete column — above the current column */}
+      {cellRect && (
+        <button
+          type="button"
+          className={`${btnClass} hover:bg-destructive/10 hover:border-destructive`}
+          style={{
+            top: `${tTop - 26}px`,
+            left: `${cellRect.left - containerRect.left + cellRect.width / 2 - 10}px`,
+            width: 20,
+            height: 20,
+          }}
+          onClick={() => editor.chain().focus().deleteColumn().run()}
+          title="Delete column"
+        >
+          <X className="h-3 w-3 text-muted-foreground" />
+        </button>
+      )}
     </>
   );
 };

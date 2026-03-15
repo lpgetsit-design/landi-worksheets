@@ -159,3 +159,22 @@
 .ProseMirror table .selectedCell {
   background-color: hsl(var(--accent));
 }
+
+/* Data Table NodeView */
+.data-table-nodeview {
+  display: block;
+}
+
+.data-table-active table {
+  font-family: inherit;
+}
+
+.data-table-active td,
+.data-table-active th {
+  word-break: break-word;
+  vertical-align: top;
+}
+
+.data-table-active tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.3);
+}

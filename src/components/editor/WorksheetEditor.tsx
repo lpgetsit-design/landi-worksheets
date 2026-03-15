@@ -158,7 +158,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Placeholder.configure({ placeholder: "Write something..." }),
         TaskList,
         TaskItem.configure({ nested: true }),
-        Table.configure({ resizable: true }),
+        DataTableExtension.configure({ resizable: true }),
         TableRow,
         TableCell,
         TableHeader,

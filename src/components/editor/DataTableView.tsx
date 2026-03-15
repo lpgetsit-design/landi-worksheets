@@ -307,11 +307,17 @@ const DataTableView: React.FC<{ node: any; editor: any }> = ({ node, editor }) =
         </div>
       ) : (
         /* Edit mode: default TipTap table */
-        <NodeViewContent
-          as="table"
-          ref={(el: HTMLTableElement | null) => setTableRef(el)}
-          className="border-collapse w-full table-fixed overflow-hidden my-0"
-        />
+        <div ref={(el) => {
+          if (el) {
+            const table = el.querySelector("table");
+            setTableRef(table);
+          }
+        }}>
+          <NodeViewContent
+            as="div"
+            className="[&>table]:border-collapse [&>table]:w-full [&>table]:table-fixed [&>table]:overflow-hidden [&>table]:my-0"
+          />
+        </div>
       )}
     </NodeViewWrapper>
   );

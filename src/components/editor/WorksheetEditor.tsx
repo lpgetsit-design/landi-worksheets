@@ -347,8 +347,9 @@ ${content}`;
           toast.success("Content enhanced");
         }} />}
         {editor && editor.isActive("table") && <TableControls editor={editor} />}
-        <div className="relative mt-2">
+        <div className="relative mt-2 group/table-area">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
+          {editor && <TableEdgeButtons editor={editor} />}
           <EditorContent editor={editor} />
         </div>
       </div>

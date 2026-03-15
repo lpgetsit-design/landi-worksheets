@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import TableEdgeButtons from "./TableEdgeButtons";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
@@ -346,8 +347,9 @@ ${content}`;
           toast.success("Content enhanced");
         }} />}
         {editor && editor.isActive("table") && <TableControls editor={editor} />}
-        <div className="relative mt-2">
+        <div className="relative mt-2 group/table-area">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
+          {editor && <TableEdgeButtons editor={editor} />}
           <EditorContent editor={editor} />
         </div>
       </div>

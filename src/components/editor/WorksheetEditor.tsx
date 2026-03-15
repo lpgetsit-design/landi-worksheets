@@ -14,6 +14,7 @@ import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
+import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
@@ -166,6 +167,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         SlashCommandExtension,
+        TableKeyboardShortcuts,
       ],
       content: (initialContent as any) || "",
       editorProps: {

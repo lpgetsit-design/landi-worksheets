@@ -343,6 +343,7 @@ ${content}`;
           }).catch(console.error);
           toast.success("Content enhanced");
         }} />}
+        {editor && editor.isActive("table") && <TableControls editor={editor} />}
         <div className="relative mt-2">
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
           <EditorContent editor={editor} />

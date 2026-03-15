@@ -346,8 +346,8 @@ ${content}`;
           }).catch(console.error);
           toast.success("Content enhanced");
         }} />}
-        {editor && <TableControls editor={editor} />}
         <div className="relative mt-2 group/table-area">
+          {editor && <TableControls editor={editor} />}
           {editor && <SelectionToolbar editor={editor} onAskAI={handleAskAI} />}
           {editor && <TableEdgeButtons editor={editor} />}
           <EditorContent editor={editor} />

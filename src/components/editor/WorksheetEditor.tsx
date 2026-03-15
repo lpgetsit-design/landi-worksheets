@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
 import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
+import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";

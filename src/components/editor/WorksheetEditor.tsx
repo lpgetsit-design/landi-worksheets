@@ -14,6 +14,7 @@ import SelectionToolbar from "./SelectionToolbar";
 import EditorToolbar from "./EditorToolbar";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
+import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";

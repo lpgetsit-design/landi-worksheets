@@ -168,18 +168,56 @@ function applyFilter(editor: Editor, filterText: string) {
 
 const TableControls = ({ editor }: TableControlsProps) => {
   const [isInTable, setIsInTable] = useState(false);
+  const [tableTop, setTableTop] = useState(0);
+  const [tableLeft, setTableLeft] = useState(0);
   const [sortCol, setSortCol] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showFilter, setShowFilter] = useState(false);
   const [filterText, setFilterText] = useState("");
+  const rafRef = useRef<number>(0);
 
-  // Re-render when selection changes so isActive("table") is fresh
   useEffect(() => {
-    const handler = () => setIsInTable(editor.isActive("table"));
+    const handler = () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const active = editor.isActive("table");
+        setIsInTable(active);
+
+        if (!active) return;
+
+        // Find the table DOM element and position toolbar above it
+        const { $from } = editor.state.selection;
+        let depth = $from.depth;
+        while (depth > 0) {
+          if ($from.node(depth).type.name === "table") break;
+          depth--;
+        }
+        if (depth === 0) return;
+
+        const dom = editor.view.nodeDOM(($from as any).before(depth));
+        const tableEl =
+          dom instanceof HTMLTableElement
+            ? dom
+            : dom instanceof HTMLElement
+            ? dom.querySelector("table")
+            : null;
+        if (!tableEl) return;
+
+        const container = tableEl.closest(".ProseMirror") as HTMLElement | null;
+        if (!container) return;
+
+        const tRect = tableEl.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        setTableTop(tRect.top - cRect.top);
+        setTableLeft(tRect.left - cRect.left);
+      });
+    };
+
     editor.on("selectionUpdate", handler);
     editor.on("transaction", handler);
     handler();
     return () => {
+      cancelAnimationFrame(rafRef.current);
       editor.off("selectionUpdate", handler);
       editor.off("transaction", handler);
     };
@@ -218,7 +256,10 @@ const TableControls = ({ editor }: TableControlsProps) => {
   const canSplit = editor.can().splitCell();
 
   return (
-    <div className="flex flex-col gap-1 mb-1 animate-in fade-in slide-in-from-top-1 duration-150">
+    <div
+      className="absolute z-20 flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-150"
+      style={{ top: `${tableTop - 40}px`, left: `${tableLeft}px` }}
+    >
       <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/50 px-1 py-0.5 text-xs">
         <span className="text-muted-foreground text-[10px] font-medium px-1 select-none">Table</span>
         <span className="text-muted-foreground/60 text-[9px] px-0.5 select-none hidden sm:inline">⌘↵ add row</span>

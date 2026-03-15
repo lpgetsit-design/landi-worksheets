@@ -126,10 +126,15 @@
 .ProseMirror ul[data-type="taskList"] li label {
   margin-top: 0.25rem;
 }
+/* Table wrapper for inline add buttons */
+.ProseMirror .tableWrapper {
+  position: relative;
+  margin: 1rem 0;
+  overflow: visible;
+}
 
 .ProseMirror table {
   border-collapse: collapse;
-  margin: 1rem 0;
   width: 100%;
   table-layout: fixed;
   overflow: hidden;
@@ -142,6 +147,7 @@
   vertical-align: top;
   position: relative;
   min-width: 80px;
+  min-height: 2rem;
   overflow: hidden;
   word-break: break-word;
 }
@@ -182,12 +188,6 @@
 
 .ProseMirror.resize-cursor {
   cursor: col-resize;
-}
-
-/* Table row min-height for easier editing */
-.ProseMirror table td,
-.ProseMirror table th {
-  min-height: 2rem;
 }
 
 /* Table hover highlight */

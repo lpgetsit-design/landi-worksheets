@@ -91,7 +91,11 @@ const AIChatPanel = ({
     }
   };
 
-  const callAgent = async (conversationMessages: Message[]): Promise<void> => {
+  const callAgent = async (conversationMessages: Message[], loopCount = 1): Promise<void> => {
+    // Show thinking indicator
+    setThinkingLabel(loopCount === 1 ? "Thinking..." : `Processing (step ${loopCount})...`);
+    scrollToBottom();
+
     const apiMessages = conversationMessages.map((m) => {
       const base: any = { role: m.role, content: m.content };
       if (m.tool_calls) base.tool_calls = m.tool_calls;
@@ -118,6 +122,7 @@ const AIChatPanel = ({
     });
 
     if (!resp.ok) {
+      setThinkingLabel(null);
       const err = await resp.json().catch(() => ({ error: "Request failed" }));
       toast.error(err.error || "AI request failed");
       return;
@@ -137,6 +142,13 @@ const AIChatPanel = ({
 
     // If the AI returned tool calls, execute them and continue the loop
     if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      // Show which tools are being called
+      const toolNames = assistantMsg.tool_calls
+        .map((tc) => toolLabels[tc.function.name] || tc.function.name)
+        .join(", ");
+      setThinkingLabel(`Running: ${toolNames}`);
+      scrollToBottom();
+
       const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
         const result = executeTool(tc.function.name, tc.function.arguments);
         return {
@@ -153,7 +165,9 @@ const AIChatPanel = ({
       scrollToBottom();
 
       // Continue the agentic loop
-      await callAgent(withToolResults);
+      await callAgent(withToolResults, loopCount + 1);
+    } else {
+      setThinkingLabel(null);
     }
   };
 

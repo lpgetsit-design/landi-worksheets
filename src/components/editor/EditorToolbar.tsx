@@ -197,7 +197,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        onClick={() => cmd(editor).toggleBulletList().run()}
         active={editor.isActive("bulletList")}
         title="Bullet List"
       >

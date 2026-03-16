@@ -258,7 +258,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
               <DropdownMenuItem onClick={() => cmd(editor).addColumnAfter().run()}>
                 Add Column Right
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addColumnBefore().run()}>
+              <DropdownMenuItem onClick={() => cmd(editor).addColumnBefore().run()}>
                 Add Column Left
               </DropdownMenuItem>
               <DropdownMenuSeparator />

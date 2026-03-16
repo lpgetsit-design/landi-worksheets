@@ -2,7 +2,7 @@ import { NodeViewWrapper, NodeViewContent } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Plus, GripVertical } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 
 const DEFAULT_STAGES = [
   "backlog", "ready", "in_progress", "blocked", "review", "done",

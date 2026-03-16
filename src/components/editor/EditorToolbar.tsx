@@ -243,7 +243,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[160px]">
-          <DropdownMenuItem onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+          <DropdownMenuItem onClick={() => cmd(editor).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
             <Plus className="h-3.5 w-3.5 mr-2" /> Insert Table
           </DropdownMenuItem>
           {editor.isActive("table") && (

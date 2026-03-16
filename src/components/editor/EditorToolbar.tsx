@@ -225,7 +225,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Quote className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        onClick={() => cmd(editor).setHorizontalRule().run()}
         title="Horizontal Rule"
       >
         <Minus className="h-4 w-4" />

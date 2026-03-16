@@ -279,6 +279,28 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Workflow"
+            type="button"
+          >
+            <LayoutList className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[160px]">
+          <DropdownMenuItem onClick={() => insertWorkflowLane(editor)}>
+            <LayoutList className="h-3.5 w-3.5 mr-2" /> Insert Lane
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertWorkflowCard(editor)}>
+            <CreditCard className="h-3.5 w-3.5 mr-2" /> Insert Card
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton

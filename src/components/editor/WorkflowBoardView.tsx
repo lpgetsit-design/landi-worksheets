@@ -2,7 +2,7 @@ import { NodeViewWrapper, NodeViewContent } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Plus, GripVertical } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 
 const DEFAULT_STAGES = [
   "backlog", "ready", "in_progress", "blocked", "review", "done",
@@ -13,7 +13,6 @@ const DEFAULT_TITLES: Record<string, string> = {
 };
 
 const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewProps) => {
-  const isMobile = useIsMobile();
   const laneCount = node.childCount;
 
   const handleAddLane = () => {
@@ -83,8 +82,8 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
         </Button>
       </div>
 
-      {/* Lanes container — horizontal on desktop, vertical on mobile */}
-      <div className={`p-2 ${isMobile ? "flex flex-col gap-2" : "flex flex-row gap-3 overflow-x-auto"}`}>
+      {/* Lanes container — always horizontal with overflow scroll */}
+      <div className="p-2 flex flex-row gap-2 overflow-x-auto">
         <NodeViewContent className="workflow-board-lanes" />
       </div>
     </NodeViewWrapper>

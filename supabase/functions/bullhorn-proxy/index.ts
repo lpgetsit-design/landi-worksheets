@@ -136,6 +136,37 @@ async function handleGetEntity(entity: string, id: string, fields: string) {
   return await bullhornFetch(`entity/${entity}/${id}`, { fields });
 }
 
+// Batch: fetch multiple entities by type+id in parallel
+async function handleBatchGetEntities(entities: Array<{ entityType: string; entityId: string }>) {
+  const ENTITY_FIELDS: Record<string, string> = {
+    Candidate: "id,firstName,lastName,email,status,occupation,skillSet",
+    ClientContact: "id,firstName,lastName,email,status",
+    ClientCorporation: "id,name,status,address",
+    JobOrder: "id,title,status,employmentType,clientCorporation",
+    Placement: "id,status,candidate,jobOrder,startDate",
+  };
+
+  const results = await Promise.all(
+    entities.map(async ({ entityType, entityId }) => {
+      try {
+        const fields = ENTITY_FIELDS[entityType] || "id";
+        const data = await bullhornFetch(`entity/${entityType}/${entityId}`, { fields });
+        const entity = data?.data || data;
+        const label =
+          entity.title ||
+          [entity.firstName, entity.lastName].filter(Boolean).join(" ") ||
+          entity.name ||
+          entity.companyName ||
+          `${entityType} ${entityId}`;
+        return { entityType, entityId, label, data: entity, found: true };
+      } catch (e) {
+        return { entityType, entityId, label: `${entityType} ${entityId}`, found: false, error: e.message };
+      }
+    })
+  );
+  return { results };
+}
+
 // --- Main handler ---
 
 Deno.serve(async (req) => {
@@ -158,6 +189,11 @@ Deno.serve(async (req) => {
       case "fastfind": {
         if (!body.query || typeof body.query !== "string" || body.query.length < 2) return json({ data: [], meta: {} });
         return json(await handleFastFind(body.query, body.countPerEntity || 5));
+      }
+
+      case "batch_get_entities": {
+        if (!Array.isArray(body.entities) || body.entities.length === 0) return json({ results: [] });
+        return json(await handleBatchGetEntities(body.entities.slice(0, 20)));
       }
 
       case "search_candidates": {
@@ -197,7 +233,7 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return json({ error: "Unsupported action. Use: fastfind, entity_lookup, search_candidates, get_candidate_profile, search_jobs, get_job_summary, search_placements, get_placement_summary." }, 400);
+        return json({ error: "Unsupported action. Use: fastfind, entity_lookup, batch_get_entities, search_candidates, get_candidate_profile, search_jobs, get_job_summary, search_placements, get_placement_summary." }, 400);
     }
   } catch (error) {
     console.error("Bullhorn proxy error:", error);

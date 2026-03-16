@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
 import { Editor } from "@tiptap/react";
+
+// tiptap v2 type augmentation doesn't work with moduleResolution: "bundler"
+// so we cast the chain to any for extension commands
+const cmd = (editor: Editor) => editor.chain().focus() as any;
 import {
   Bold,
   Italic,
@@ -137,28 +141,28 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1">
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBold().run()}
+        onClick={() => cmd(editor).toggleBold().run()}
         active={editor.isActive("bold")}
         title="Bold"
       >
         <Bold className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleItalic().run()}
+        onClick={() => cmd(editor).toggleItalic().run()}
         active={editor.isActive("italic")}
         title="Italic"
       >
         <Italic className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleStrike().run()}
+        onClick={() => cmd(editor).toggleStrike().run()}
         active={editor.isActive("strike")}
         title="Strikethrough"
       >
         <Strikethrough className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleCode().run()}
+        onClick={() => cmd(editor).toggleCode().run()}
         active={editor.isActive("code")}
         title="Code"
       >
@@ -169,21 +173,21 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        onClick={() => cmd(editor).toggleHeading({ level: 1 }).run()}
         active={editor.isActive("heading", { level: 1 })}
         title="Heading 1"
       >
         <Heading1 className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        onClick={() => cmd(editor).toggleHeading({ level: 2 }).run()}
         active={editor.isActive("heading", { level: 2 })}
         title="Heading 2"
       >
         <Heading2 className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        onClick={() => cmd(editor).toggleHeading({ level: 3 }).run()}
         active={editor.isActive("heading", { level: 3 })}
         title="Heading 3"
       >
@@ -193,35 +197,35 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        onClick={() => cmd(editor).toggleBulletList().run()}
         active={editor.isActive("bulletList")}
         title="Bullet List"
       >
         <List className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        onClick={() => cmd(editor).toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
         title="Ordered List"
       >
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        onClick={() => cmd(editor).toggleTaskList().run()}
         active={editor.isActive("taskList")}
         title="Task List"
       >
         <ListChecks className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        onClick={() => cmd(editor).toggleBlockquote().run()}
         active={editor.isActive("blockquote")}
         title="Blockquote"
       >
         <Quote className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        onClick={() => cmd(editor).setHorizontalRule().run()}
         title="Horizontal Rule"
       >
         <Minus className="h-4 w-4" />
@@ -239,32 +243,32 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[160px]">
-          <DropdownMenuItem onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+          <DropdownMenuItem onClick={() => cmd(editor).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
             <Plus className="h-3.5 w-3.5 mr-2" /> Insert Table
           </DropdownMenuItem>
           {editor.isActive("table") && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()}>
+              <DropdownMenuItem onClick={() => cmd(editor).addRowAfter().run()}>
                 Add Row Below
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addRowBefore().run()}>
+              <DropdownMenuItem onClick={() => cmd(editor).addRowBefore().run()}>
                 Add Row Above
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()}>
+              <DropdownMenuItem onClick={() => cmd(editor).addColumnAfter().run()}>
                 Add Column Right
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addColumnBefore().run()}>
+              <DropdownMenuItem onClick={() => cmd(editor).addColumnBefore().run()}>
                 Add Column Left
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => cmd(editor).deleteRow().run()} className="text-destructive focus:text-destructive">
                 Delete Row
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => cmd(editor).deleteColumn().run()} className="text-destructive focus:text-destructive">
                 Delete Column
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteTable().run()} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => cmd(editor).deleteTable().run()} className="text-destructive focus:text-destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Table
               </DropdownMenuItem>
             </>
@@ -275,13 +279,13 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().undo().run()}
+        onClick={() => cmd(editor).undo().run()}
         title="Undo"
       >
         <Undo className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().redo().run()}
+        onClick={() => cmd(editor).redo().run()}
         title="Redo"
       >
         <Redo className="h-4 w-4" />

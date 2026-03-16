@@ -279,7 +279,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().undo().run()}
+        onClick={() => cmd(editor).undo().run()}
         title="Undo"
       >
         <Undo className="h-4 w-4" />

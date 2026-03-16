@@ -268,6 +268,12 @@ async function executeServerTool(name: string, argsJson: string): Promise<string
   }
 }
 
+// ─── SSE helpers ───
+
+function sseEvent(type: string, data: any): string {
+  return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
 // ─── Main handler ───
 
 Deno.serve(async (req) => {
@@ -335,102 +341,143 @@ AGENTIC CRM TASKS:
       ...messages,
     ];
 
-    for (let loop = 0; loop < MAX_LOOPS; loop++) {
-      const response = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-5-mini",
-            messages: apiMessages,
-            tools: ALL_TOOLS,
-            parallel_tool_calls: true,
-            stream: false,
-          }),
+    // Use a ReadableStream to send SSE events
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (type: string, data: any) => {
+          controller.enqueue(new TextEncoder().encode(sseEvent(type, data)));
+        };
+
+        try {
+          for (let loop = 0; loop < MAX_LOOPS; loop++) {
+            send("status", { step: loop + 1, phase: "thinking", message: `AI is thinking (step ${loop + 1})...` });
+
+            const response = await fetch(
+              "https://ai.gateway.lovable.dev/v1/chat/completions",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "openai/gpt-5-mini",
+                  messages: apiMessages,
+                  tools: ALL_TOOLS,
+                  parallel_tool_calls: true,
+                  stream: false,
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              const status = response.status;
+              const t = await response.text();
+              console.error("AI gateway error:", status, t);
+
+              if (status === 429) {
+                send("error", { error: "Rate limit exceeded. Please try again in a moment." });
+              } else if (status === 402) {
+                send("error", { error: "AI credits exhausted. Please add funds in Settings → Workspace → Usage." });
+              } else {
+                send("error", { error: "AI gateway error" });
+              }
+              controller.close();
+              return;
+            }
+
+            const data = await response.json();
+            const choice = data.choices?.[0];
+            const msg = choice?.message;
+
+            if (!msg) {
+              send("error", { error: "No response from AI" });
+              controller.close();
+              return;
+            }
+
+            const toolCalls = msg.tool_calls || [];
+            const serverCalls = toolCalls.filter((tc: any) => SERVER_TOOL_NAMES.has(tc.function.name));
+            const clientCalls = toolCalls.filter((tc: any) => !SERVER_TOOL_NAMES.has(tc.function.name));
+
+            // No server tools — return final message and done
+            if (serverCalls.length === 0) {
+              const finalMessage: any = { role: "assistant", content: msg.content || "" };
+              if (clientCalls.length > 0) finalMessage.tool_calls = clientCalls;
+              send("done", { message: finalMessage });
+              controller.close();
+              return;
+            }
+
+            // We have server tools — stream tool call info
+            const toolCallNames = serverCalls.map((tc: any) => tc.function.name);
+            send("tool_calls", {
+              step: loop + 1,
+              tools: toolCallNames,
+              message: `Calling: ${toolCallNames.join(", ")}`,
+            });
+
+            // Add assistant message to conversation
+            apiMessages.push({
+              role: "assistant",
+              content: msg.content || "",
+              tool_calls: toolCalls,
+            });
+
+            // Execute ALL server tools in parallel
+            const serverResults = await Promise.all(
+              serverCalls.map(async (tc: any) => {
+                const result = await executeServerTool(tc.function.name, tc.function.arguments);
+                return { tool_call_id: tc.id, name: tc.function.name, content: result };
+              })
+            );
+
+            // Stream each tool result
+            for (const result of serverResults) {
+              send("tool_result", {
+                step: loop + 1,
+                tool: result.name,
+                message: `Completed: ${result.name}`,
+              });
+              apiMessages.push({ role: "tool", tool_call_id: result.tool_call_id, content: result.content });
+            }
+
+            // Provide deferred results for client tools
+            for (const tc of clientCalls) {
+              apiMessages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: "Tool execution deferred to client. Continue with your response.",
+              });
+            }
+
+            console.log(`Agentic loop ${loop + 1}: ${serverCalls.length} server tools, ${clientCalls.length} client tools deferred`);
+          }
+
+          // Max loops reached
+          send("done", {
+            message: { role: "assistant", content: "I encountered an issue processing your request. Please try again." },
+          });
+          controller.close();
+        } catch (e) {
+          console.error("SSE stream error:", e);
+          const send = (type: string, data: any) => {
+            try { controller.enqueue(new TextEncoder().encode(sseEvent(type, data))); } catch {}
+          };
+          send("error", { error: e instanceof Error ? e.message : "Unknown error" });
+          try { controller.close(); } catch {}
         }
-      );
+      },
+    });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (response.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings → Workspace → Usage." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const t = await response.text();
-        console.error("AI gateway error:", response.status, t);
-        return new Response(
-          JSON.stringify({ error: "AI gateway error" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const data = await response.json();
-      const choice = data.choices?.[0];
-      const msg = choice?.message;
-
-      if (!msg) {
-        return new Response(
-          JSON.stringify({ error: "No response from AI" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const toolCalls = msg.tool_calls || [];
-      const serverCalls = toolCalls.filter((tc: any) => SERVER_TOOL_NAMES.has(tc.function.name));
-      const clientCalls = toolCalls.filter((tc: any) => !SERVER_TOOL_NAMES.has(tc.function.name));
-
-      if (serverCalls.length === 0) {
-        const finalMessage: any = { role: "assistant", content: msg.content || "" };
-        if (clientCalls.length > 0) finalMessage.tool_calls = clientCalls;
-        return new Response(JSON.stringify({ message: finalMessage }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      apiMessages.push({
-        role: "assistant",
-        content: msg.content || "",
-        tool_calls: toolCalls,
-      });
-
-      // Execute ALL server tools in parallel
-      const serverResults = await Promise.all(
-        serverCalls.map(async (tc: any) => ({
-          tool_call_id: tc.id,
-          content: await executeServerTool(tc.function.name, tc.function.arguments),
-        }))
-      );
-
-      for (const result of serverResults) {
-        apiMessages.push({ role: "tool", tool_call_id: result.tool_call_id, content: result.content });
-      }
-
-      for (const tc of clientCalls) {
-        apiMessages.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: "Tool execution deferred to client. Continue with your response.",
-        });
-      }
-
-      console.log(`Agentic loop ${loop + 1}: ${serverCalls.length} server tools (parallel), ${clientCalls.length} client tools deferred`);
-    }
-
-    return new Response(
-      JSON.stringify({ message: { role: "assistant", content: "I encountered an issue processing your request. Please try again." } }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } catch (e) {
     console.error("chat error:", e);
     return new Response(

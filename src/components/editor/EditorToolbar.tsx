@@ -268,7 +268,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
               <DropdownMenuItem onClick={() => cmd(editor).deleteColumn().run()} className="text-destructive focus:text-destructive">
                 Delete Column
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteTable().run()} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => cmd(editor).deleteTable().run()} className="text-destructive focus:text-destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Table
               </DropdownMenuItem>
             </>

@@ -48,6 +48,24 @@ turndown.addRule("crmBadge", {
   },
 });
 
+// Turndown rule for workflow lanes
+turndown.addRule("workflowLane", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-lane"),
+  replacement: (content) => `\n---\n**[LANE]**\n${content}\n---\n`,
+});
+
+// Turndown rule for workflow cards
+turndown.addRule("workflowCard", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-card"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const title = el.getAttribute("title") || "Untitled";
+    const status = el.getAttribute("status") || "backlog";
+    const id = el.getAttribute("id") || "";
+    return `[[CARD:${id}:${title}:${status}]]`;
+  },
+});
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 const GenerateTitleButton = ({

@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
 import { Editor } from "@tiptap/react";
+
+// tiptap v2 type augmentation doesn't work with moduleResolution: "bundler"
+// so we cast the chain to any for extension commands
+const cmd = (editor: Editor) => editor.chain().focus() as any;
 import {
   Bold,
   Italic,

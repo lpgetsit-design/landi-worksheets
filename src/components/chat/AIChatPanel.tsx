@@ -214,6 +214,7 @@ const AIChatPanel = ({
               setMessages([]);
               setInput("");
               setIsLoading(false);
+              setThinkingLabel(null);
             }}
             title="Reset conversation"
           >

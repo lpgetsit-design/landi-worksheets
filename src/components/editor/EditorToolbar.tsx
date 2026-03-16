@@ -204,7 +204,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <List className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        onClick={() => cmd(editor).toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
         title="Ordered List"
       >

@@ -54,7 +54,7 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
   };
 
   return (
-    <NodeViewWrapper className="my-4 rounded-lg border border-border bg-muted/10" data-drag-handle>
+    <NodeViewWrapper className="workflow-board my-4 rounded-lg border border-border bg-muted/10" data-drag-handle>
       {/* Board header */}
       <div
         className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 rounded-t-lg"
@@ -82,8 +82,8 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
         </Button>
       </div>
 
-      {/* Lanes container — horizontal carousel with overflow scroll */}
-      <div className="p-2 overflow-x-auto overflow-y-hidden">
+      {/* Lanes container — horizontal scroll with no wrapping */}
+      <div className="workflow-board-scroll p-2 overflow-x-auto overflow-y-hidden whitespace-nowrap">
         <NodeViewContent className="workflow-board-lanes" />
       </div>
     </NodeViewWrapper>

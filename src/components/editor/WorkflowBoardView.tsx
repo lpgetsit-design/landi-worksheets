@@ -13,7 +13,6 @@ const DEFAULT_TITLES: Record<string, string> = {
 };
 
 const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewProps) => {
-  const isMobile = useIsMobile();
   const laneCount = node.childCount;
 
   const handleAddLane = () => {

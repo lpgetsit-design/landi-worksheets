@@ -91,25 +91,8 @@ const AIChatPanel = ({
     }
   };
 
-  const callAgent = async (conversationMessages: Message[], loopCount = 1): Promise<void> => {
-    // Build a contextual thinking label
-    if (loopCount === 1) {
-      setThinkingLabel("Thinking about your request...");
-    } else {
-      // Show what tools just finished to give context for the next step
-      const lastToolMsgs = conversationMessages
-        .filter((m) => m.role === "tool")
-        .slice(-5);
-      const recentActions = lastToolMsgs
-        .map((m) => toolLabels[m.name || ""] || m.name)
-        .filter(Boolean);
-      const summary = recentActions.length
-        ? `Step ${loopCount}: reviewing results of ${recentActions.join(", ")}...`
-        : `Processing (step ${loopCount})...`;
-      setThinkingLabel(summary);
-    }
-    scrollToBottom();
-
+  /** Parse SSE stream and handle events. Returns the final assistant message with optional client tool_calls. */
+  const streamChat = async (conversationMessages: Message[]): Promise<Message | null> => {
     const apiMessages = conversationMessages.map((m) => {
       const base: any = { role: m.role, content: m.content };
       if (m.tool_calls) base.tool_calls = m.tool_calls;
@@ -136,53 +119,93 @@ const AIChatPanel = ({
     });
 
     if (!resp.ok) {
-      setThinkingLabel(null);
       const err = await resp.json().catch(() => ({ error: "Request failed" }));
       toast.error(err.error || "AI request failed");
-      return;
+      setThinkingLabel(null);
+      return null;
     }
 
-    const choice = await resp.json();
-    const assistantMsg: Message = {
+    // Read SSE stream
+    const reader = resp.body?.getReader();
+    if (!reader) {
+      toast.error("Failed to read response stream");
+      setThinkingLabel(null);
+      return null;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalMessage: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse complete SSE events from buffer
+      const lines = buffer.split("\n");
+      buffer = "";
+
+      let currentEventType = "";
+      let currentData = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          currentEventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          currentData = line.slice(6);
+          // Process the event
+          try {
+            const parsed = JSON.parse(currentData);
+
+            switch (currentEventType) {
+              case "status":
+                setThinkingLabel(parsed.message);
+                scrollToBottom();
+                break;
+              case "tool_calls":
+                setThinkingLabel(parsed.message);
+                scrollToBottom();
+                break;
+              case "tool_result": {
+                const label = toolLabels[parsed.tool] || parsed.tool;
+                setThinkingLabel(`✓ ${label}`);
+                scrollToBottom();
+                break;
+              }
+              case "done":
+                finalMessage = parsed.message;
+                setThinkingLabel(null);
+                break;
+              case "error":
+                toast.error(parsed.error || "AI request failed");
+                setThinkingLabel(null);
+                return null;
+            }
+          } catch {
+            // incomplete JSON, keep in buffer
+            buffer += line + "\n";
+          }
+          currentEventType = "";
+          currentData = "";
+        } else if (line === "") {
+          // empty line between events — ignore
+        } else {
+          // Incomplete line, put back in buffer
+          buffer += line + "\n";
+        }
+      }
+    }
+
+    if (!finalMessage) return null;
+
+    return {
       id: crypto.randomUUID(),
       role: "assistant",
-      content: choice.message?.content || "",
-      tool_calls: choice.message?.tool_calls,
+      content: finalMessage.content || "",
+      tool_calls: finalMessage.tool_calls,
     };
-
-    const updatedMessages = [...conversationMessages, assistantMsg];
-    setMessages(updatedMessages);
-    scrollToBottom();
-
-    // If the AI returned tool calls, execute them and continue the loop
-    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
-      // Show which tools are being called
-      const toolNames = assistantMsg.tool_calls
-        .map((tc) => toolLabels[tc.function.name] || tc.function.name)
-        .join(", ");
-      setThinkingLabel(`Running: ${toolNames}`);
-      scrollToBottom();
-
-      const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
-        const result = executeTool(tc.function.name, tc.function.arguments);
-        return {
-          id: crypto.randomUUID(),
-          role: "tool" as const,
-          content: result,
-          tool_call_id: tc.id,
-          name: tc.function.name,
-        };
-      });
-
-      const withToolResults = [...updatedMessages, ...toolResultMessages];
-      setMessages(withToolResults);
-      scrollToBottom();
-
-      // Continue the agentic loop
-      await callAgent(withToolResults, loopCount + 1);
-    } else {
-      setThinkingLabel(null);
-    }
   };
 
   const handleSend = async () => {
@@ -190,16 +213,57 @@ const AIChatPanel = ({
     if (!text || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
-    const allMessages = [...messages, userMsg];
+    let allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInput("");
     setIsLoading(true);
+    setThinkingLabel("Thinking about your request...");
+    scrollToBottom();
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      await callAgent(allMessages);
+      // Agentic client loop — only loops when server returns client tool_calls
+      for (let clientLoop = 0; clientLoop < 5; clientLoop++) {
+        const assistantMsg = await streamChat(allMessages);
+        if (!assistantMsg) break;
+
+        allMessages = [...allMessages, assistantMsg];
+        setMessages(allMessages);
+        scrollToBottom();
+
+        // If the AI returned client tool calls, execute them and continue
+        if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+          const toolNames = assistantMsg.tool_calls
+            .map((tc) => toolLabels[tc.function.name] || tc.function.name)
+            .join(", ");
+          setThinkingLabel(`Running: ${toolNames}`);
+          scrollToBottom();
+
+          const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
+            const result = executeTool(tc.function.name, tc.function.arguments);
+            return {
+              id: crypto.randomUUID(),
+              role: "tool" as const,
+              content: result,
+              tool_call_id: tc.id,
+              name: tc.function.name,
+            };
+          });
+
+          allMessages = [...allMessages, ...toolResultMessages];
+          setMessages(allMessages);
+          scrollToBottom();
+
+          // Continue client loop to get the AI's follow-up after tool results
+          setThinkingLabel("Reviewing changes...");
+          continue;
+        }
+
+        // No tool calls — we're done
+        break;
+      }
     } catch (e: any) {
       if (e.name !== "AbortError") {
         console.error("Chat error:", e);
@@ -207,6 +271,7 @@ const AIChatPanel = ({
       }
     } finally {
       setIsLoading(false);
+      setThinkingLabel(null);
       abortRef.current = null;
     }
   };
@@ -275,7 +340,7 @@ const AIChatPanel = ({
               if (msg.role === "assistant" && msg.tool_calls && !msg.content) {
                 return (
                   <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Wrench className="h-3 w-3 animate-spin" />
+                    <Wrench className="h-3 w-3" />
                     <span>Taking action...</span>
                   </div>
                 );

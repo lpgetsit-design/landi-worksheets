@@ -162,7 +162,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Strikethrough className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleCode().run()}
+        onClick={() => cmd(editor).toggleCode().run()}
         active={editor.isActive("code")}
         title="Code"
       >

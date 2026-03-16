@@ -262,7 +262,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
                 Add Column Left
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => cmd(editor).deleteRow().run()} className="text-destructive focus:text-destructive">
                 Delete Row
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()} className="text-destructive focus:text-destructive">

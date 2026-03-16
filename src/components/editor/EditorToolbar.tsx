@@ -285,7 +285,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Undo className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().redo().run()}
+        onClick={() => cmd(editor).redo().run()}
         title="Redo"
       >
         <Redo className="h-4 w-4" />

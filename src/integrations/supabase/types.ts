@@ -44,6 +44,109 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_cards: {
+        Row: {
+          assignee_id: string | null
+          assignee_label: string | null
+          card_node_id: string
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          labels: Json | null
+          lane_stage_key: string | null
+          priority: string | null
+          sort_order: number | null
+          status: string
+          title: string
+          updated_at: string | null
+          worksheet_id: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          assignee_label?: string | null
+          card_node_id: string
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          labels?: Json | null
+          lane_stage_key?: string | null
+          priority?: string | null
+          sort_order?: number | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          worksheet_id: string
+        }
+        Update: {
+          assignee_id?: string | null
+          assignee_label?: string | null
+          card_node_id?: string
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          labels?: Json | null
+          lane_stage_key?: string | null
+          priority?: string | null
+          sort_order?: number | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_cards_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_lanes: {
+        Row: {
+          created_at: string | null
+          id: string
+          lane_node_id: string
+          sort_order: number | null
+          stage_key: string
+          title: string
+          wip_limit: number | null
+          worksheet_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lane_node_id: string
+          sort_order?: number | null
+          stage_key: string
+          title?: string
+          wip_limit?: number | null
+          worksheet_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lane_node_id?: string
+          sort_order?: number | null
+          stage_key?: string
+          title?: string
+          wip_limit?: number | null
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_lanes_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worksheet_access_grants: {
         Row: {
           created_at: string

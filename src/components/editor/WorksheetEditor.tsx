@@ -15,9 +15,11 @@ import EditorToolbar from "./EditorToolbar";
 import TableEdgeButtons from "./TableEdgeButtons";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
+import WorkflowCardNode from "./WorkflowCardNode";
+import WorkflowLaneNode from "./WorkflowLaneNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
-import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
+import { updateWorksheet, syncWorksheetEntities, syncWorkflowProjections } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +45,24 @@ turndown.addRule("crmBadge", {
       label = (spans[1] as HTMLElement).textContent?.trim() || "";
     }
     return `[[CRM:${entityType}:${entityId}:${label}]]`;
+  },
+});
+
+// Turndown rule for workflow lanes
+turndown.addRule("workflowLane", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-lane"),
+  replacement: (content) => `\n---\n**[LANE]**\n${content}\n---\n`,
+});
+
+// Turndown rule for workflow cards
+turndown.addRule("workflowCard", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-card"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const title = el.getAttribute("title") || "Untitled";
+    const status = el.getAttribute("status") || "backlog";
+    const id = el.getAttribute("id") || "";
+    return `[[CARD:${id}:${title}:${status}]]`;
   },
 });
 
@@ -167,6 +187,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         TableHeader,
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
+        WorkflowCardNode,
+        WorkflowLaneNode,
         SlashCommandExtension,
         TableKeyboardShortcuts,
       ],
@@ -190,6 +212,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             content_md: md,
           }).catch(console.error);
           syncWorksheetEntities(worksheetId, json as unknown as Json).catch(console.error);
+          syncWorkflowProjections(worksheetId, json as unknown as Json).catch(console.error);
         }, 500);
       },
     });

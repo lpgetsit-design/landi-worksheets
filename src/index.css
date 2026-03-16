@@ -198,3 +198,12 @@
 .ProseMirror table tr:hover th {
   background-color: hsl(var(--muted));
 }
+
+/* Workflow lane & card styles */
+.ProseMirror [data-workflow-lane] {
+  margin: 1rem 0;
+}
+
+.ProseMirror [data-workflow-card] {
+  margin: 0.25rem 0;
+}

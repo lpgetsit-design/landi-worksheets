@@ -17,6 +17,7 @@ import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import WorkflowCardNode from "./WorkflowCardNode";
 import WorkflowLaneNode from "./WorkflowLaneNode";
+import WorkflowBoardNode from "./WorkflowBoardNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities, syncWorkflowProjections } from "@/lib/worksheets";
@@ -46,6 +47,12 @@ turndown.addRule("crmBadge", {
     }
     return `[[CRM:${entityType}:${entityId}:${label}]]`;
   },
+});
+
+// Turndown rule for workflow boards
+turndown.addRule("workflowBoard", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-board"),
+  replacement: (content) => `\n===BOARD===\n${content}\n===END BOARD===\n`,
 });
 
 // Turndown rule for workflow lanes
@@ -189,6 +196,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         CrmBadgeNode,
         WorkflowCardNode,
         WorkflowLaneNode,
+        WorkflowBoardNode,
         SlashCommandExtension,
         TableKeyboardShortcuts,
       ],

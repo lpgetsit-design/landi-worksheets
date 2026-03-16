@@ -29,7 +29,7 @@ import {
   LayoutList,
   CreditCard,
 } from "lucide-react";
-import { insertWorkflowLane, insertWorkflowCard } from "./workflowCommands";
+import { insertWorkflowBoard, insertWorkflowCard } from "./workflowCommands";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -285,16 +285,26 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            title="Workflow"
+            title="Kanban Board"
             type="button"
           >
             <LayoutList className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[160px]">
-          <DropdownMenuItem onClick={() => insertWorkflowLane(editor)}>
-            <LayoutList className="h-3.5 w-3.5 mr-2" /> Insert Lane
+          <DropdownMenuItem onClick={() => insertWorkflowBoard(editor, 3)}>
+            <LayoutList className="h-3.5 w-3.5 mr-2" /> 3 Lanes
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertWorkflowBoard(editor, 4)}>
+            <LayoutList className="h-3.5 w-3.5 mr-2" /> 4 Lanes
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertWorkflowBoard(editor, 5)}>
+            <LayoutList className="h-3.5 w-3.5 mr-2" /> 5 Lanes
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertWorkflowBoard(editor, 6)}>
+            <LayoutList className="h-3.5 w-3.5 mr-2" /> 6 Lanes
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => insertWorkflowCard(editor)}>
             <CreditCard className="h-3.5 w-3.5 mr-2" /> Insert Card
           </DropdownMenuItem>

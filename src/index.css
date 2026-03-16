@@ -199,9 +199,31 @@
   background-color: hsl(var(--muted));
 }
 
-/* Workflow lane & card styles */
-.ProseMirror [data-workflow-lane] {
+/* Workflow board, lane & card styles */
+.ProseMirror [data-workflow-board] {
   margin: 1rem 0;
+}
+
+.ProseMirror [data-workflow-board] .workflow-board-lanes {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .ProseMirror [data-workflow-board] .workflow-board-lanes {
+    flex-direction: column;
+  }
+}
+
+.ProseMirror [data-workflow-board] .workflow-board-lanes > [data-node-view-wrapper] {
+  flex: 1 1 0%;
+  min-width: 220px;
+}
+
+.ProseMirror [data-workflow-lane] {
+  margin: 0;
 }
 
 .ProseMirror [data-workflow-card] {

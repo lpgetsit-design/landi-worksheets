@@ -196,6 +196,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         CrmBadgeNode,
         WorkflowCardNode,
         WorkflowLaneNode,
+        WorkflowBoardNode,
         SlashCommandExtension,
         TableKeyboardShortcuts,
       ],

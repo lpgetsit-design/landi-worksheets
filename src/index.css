@@ -219,7 +219,7 @@
 
 .ProseMirror [data-workflow-board] .workflow-board-lanes > [data-node-view-wrapper] {
   flex: 1 1 0%;
-  min-width: 220px;
+  min-width: 160px;
 }
 
 .ProseMirror [data-workflow-lane] {

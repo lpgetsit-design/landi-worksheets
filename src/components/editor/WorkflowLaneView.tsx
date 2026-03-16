@@ -48,51 +48,51 @@ const WorkflowLaneView = ({ node, updateAttributes, editor, getPos }: NodeViewPr
   return (
     <NodeViewWrapper
       className={cn(
-        "rounded-lg border border-border bg-muted/30 flex-1 min-w-[220px]",
+        "rounded-lg border border-border bg-muted/30 flex-1 min-w-[160px]",
         "group/lane"
       )}
     >
       {/* Lane header — non-editable */}
       <div
-        className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg"
+        className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-muted/50 rounded-t-lg"
         contentEditable={false}
       >
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/lane:opacity-100 cursor-grab shrink-0" />
+        <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover/lane:opacity-100 cursor-grab shrink-0" />
 
         <input
           type="text"
           value={attrs.title}
           onChange={handleTitleChange}
-          className="text-sm font-semibold text-foreground bg-transparent outline-none flex-1 min-w-0"
+          className="text-xs font-semibold text-foreground bg-transparent outline-none flex-1 min-w-0"
           placeholder="Lane title"
         />
 
-        <span className="text-[10px] text-muted-foreground shrink-0">
+        <span className="text-[9px] text-muted-foreground shrink-0">
           {cardCount}{wipLimit > 0 ? `/${wipLimit}` : ""}
         </span>
 
         {overWip && (
-          <span className="text-[10px] text-destructive font-medium shrink-0">
-            Over limit
+          <span className="text-[9px] text-destructive font-medium shrink-0">
+            Over
           </span>
         )}
       </div>
 
       {/* Cards rendered as nested content */}
-      <div className="px-2 py-1 min-h-[40px]">
+      <div className="px-1 py-1 min-h-[32px]">
         <NodeViewContent />
       </div>
 
       {/* Add card footer */}
-      <div className="px-2 pb-2" contentEditable={false}>
+      <div className="px-1 pb-1" contentEditable={false}>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+          className="w-full h-6 text-[10px] text-muted-foreground hover:text-foreground"
           onClick={handleAddCard}
           type="button"
         >
-          <Plus className="h-3 w-3 mr-1" /> Add Card
+          <Plus className="h-2.5 w-2.5 mr-0.5" /> Add Card
         </Button>
       </div>
     </NodeViewWrapper>

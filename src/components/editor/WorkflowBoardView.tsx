@@ -82,8 +82,8 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
         </Button>
       </div>
 
-      {/* Lanes container — always horizontal with overflow scroll */}
-      <div className="p-2 flex flex-row gap-2 overflow-x-auto">
+      {/* Lanes container — horizontal carousel with overflow scroll */}
+      <div className="p-2 overflow-x-auto overflow-y-hidden">
         <NodeViewContent className="workflow-board-lanes" />
       </div>
     </NodeViewWrapper>

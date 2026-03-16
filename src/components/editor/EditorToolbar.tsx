@@ -180,7 +180,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Heading1 className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        onClick={() => cmd(editor).toggleHeading({ level: 2 }).run()}
         active={editor.isActive("heading", { level: 2 })}
         title="Heading 2"
       >

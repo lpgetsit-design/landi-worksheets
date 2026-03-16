@@ -82,8 +82,8 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
         </Button>
       </div>
 
-      {/* Lanes container — horizontal on desktop, vertical on mobile */}
-      <div className={`p-2 ${isMobile ? "flex flex-col gap-2" : "flex flex-row gap-3 overflow-x-auto"}`}>
+      {/* Lanes container — always horizontal with overflow scroll */}
+      <div className="p-2 flex flex-row gap-2 overflow-x-auto">
         <NodeViewContent className="workflow-board-lanes" />
       </div>
     </NodeViewWrapper>

@@ -62,6 +62,7 @@ const AIChatPanel = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -90,7 +91,11 @@ const AIChatPanel = ({
     }
   };
 
-  const callAgent = async (conversationMessages: Message[]): Promise<void> => {
+  const callAgent = async (conversationMessages: Message[], loopCount = 1): Promise<void> => {
+    // Show thinking indicator
+    setThinkingLabel(loopCount === 1 ? "Thinking..." : `Processing (step ${loopCount})...`);
+    scrollToBottom();
+
     const apiMessages = conversationMessages.map((m) => {
       const base: any = { role: m.role, content: m.content };
       if (m.tool_calls) base.tool_calls = m.tool_calls;
@@ -117,6 +122,7 @@ const AIChatPanel = ({
     });
 
     if (!resp.ok) {
+      setThinkingLabel(null);
       const err = await resp.json().catch(() => ({ error: "Request failed" }));
       toast.error(err.error || "AI request failed");
       return;
@@ -136,6 +142,13 @@ const AIChatPanel = ({
 
     // If the AI returned tool calls, execute them and continue the loop
     if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      // Show which tools are being called
+      const toolNames = assistantMsg.tool_calls
+        .map((tc) => toolLabels[tc.function.name] || tc.function.name)
+        .join(", ");
+      setThinkingLabel(`Running: ${toolNames}`);
+      scrollToBottom();
+
       const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
         const result = executeTool(tc.function.name, tc.function.arguments);
         return {
@@ -152,7 +165,9 @@ const AIChatPanel = ({
       scrollToBottom();
 
       // Continue the agentic loop
-      await callAgent(withToolResults);
+      await callAgent(withToolResults, loopCount + 1);
+    } else {
+      setThinkingLabel(null);
     }
   };
 
@@ -199,6 +214,7 @@ const AIChatPanel = ({
               setMessages([]);
               setInput("");
               setIsLoading(false);
+              setThinkingLabel(null);
             }}
             title="Reset conversation"
           >
@@ -275,6 +291,13 @@ const AIChatPanel = ({
                 </div>
               );
             })}
+            {/* Thinking / tool-call indicator */}
+            {thinkingLabel && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <div className="h-3 w-3 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin" />
+                <span>{thinkingLabel}</span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}

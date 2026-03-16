@@ -29,7 +29,7 @@ import {
   LayoutList,
   CreditCard,
 } from "lucide-react";
-import { insertWorkflowLane, insertWorkflowCard } from "./workflowCommands";
+import { insertWorkflowBoard, insertWorkflowCard } from "./workflowCommands";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

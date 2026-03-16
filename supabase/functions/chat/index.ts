@@ -1,5 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -69,13 +67,40 @@ const SERVER_TOOLS = [
     function: {
       name: "lookup_bullhorn_entity",
       description:
-        "Search the Bullhorn CRM for an entity by name, ID, or partial match. Returns matching entities with their type, ID, and label. Use for creating [[CRM:...]] badges.",
+        "Search the Bullhorn CRM for an entity by name or partial match. Returns matching entities with their type, ID, and label. Use ONLY for name-based searches when you don't know the entity type or ID.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Name, numeric ID, or partial match string" },
+          query: { type: "string", description: "Name or partial match string to search for" },
         },
         required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "batch_resolve_entities",
+      description:
+        "Resolve multiple Bullhorn entities by their type and ID in a single call. Use this when you have specific entity types and IDs (e.g. from existing badges, or numeric IDs mentioned in text). Much faster than calling lookup_bullhorn_entity multiple times. Returns each entity's label and basic data.",
+      parameters: {
+        type: "object",
+        properties: {
+          entities: {
+            type: "array",
+            description: "Array of entities to resolve, each with entityType and entityId",
+            items: {
+              type: "object",
+              properties: {
+                entityType: { type: "string", description: "Bullhorn entity type: Candidate, ClientContact, ClientCorporation, JobOrder, or Placement" },
+                entityId: { type: "string", description: "Numeric Bullhorn entity ID" },
+              },
+              required: ["entityType", "entityId"],
+            },
+          },
+        },
+        required: ["entities"],
         additionalProperties: false,
       },
     },
@@ -221,6 +246,8 @@ async function executeServerTool(name: string, argsJson: string): Promise<string
     switch (name) {
       case "lookup_bullhorn_entity":
         return await callBullhornProxy("entity_lookup", { query: args.query });
+      case "batch_resolve_entities":
+        return await callBullhornProxy("batch_get_entities", { entities: args.entities });
       case "search_bullhorn_candidates":
         return await callBullhornProxy("search_candidates", { query: args.query, count: args.count, fields: args.fields });
       case "get_bullhorn_candidate_profile":
@@ -243,7 +270,7 @@ async function executeServerTool(name: string, argsJson: string): Promise<string
 
 // ─── Main handler ───
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -277,10 +304,13 @@ CRM BADGES:
 - Do NOT modify, reformat, split, merge, or remove badge placeholders unless the user explicitly asks you to.
 - When rewriting or restructuring content, keep every [[CRM:...]] token intact and in context.
 
-BULLHORN ENTITY LOOKUP:
-- Use lookup_bullhorn_entity to search the Bullhorn CRM by name or ID for creating badges.
-- PROACTIVELY use this when you see bare numeric IDs that could be Bullhorn entity references.
-- After a successful lookup, embed the entity using [[CRM:entityType:entityId:label]] format.
+RESOLVING ENTITY REFERENCES — CRITICAL:
+- When you see bare numeric IDs in the worksheet content that could be Bullhorn entity references (e.g. "Candidate 12345", "Job #67890"), you MUST resolve them to proper [[CRM:...]] badges.
+- ALWAYS use batch_resolve_entities when you need to resolve multiple entities at once. This is MUCH faster than calling individual lookup tools.
+- For batch_resolve_entities, you need the entityType and entityId. Common entity types: Candidate, ClientContact, ClientCorporation, JobOrder, Placement.
+- If you're unsure of the entity type for a numeric ID, use lookup_bullhorn_entity for that specific case.
+- NEVER call lookup_bullhorn_entity or individual get tools multiple times in sequence when batch_resolve_entities can handle them all at once.
+- After resolving, embed each entity using [[CRM:entityType:entityId:label]] format.
 
 AGENTIC CRM TASKS:
 - You have powerful tools for searching and retrieving detailed data from the Bullhorn CRM:
@@ -290,11 +320,11 @@ AGENTIC CRM TASKS:
   * get_bullhorn_job_summary — get full details for a specific job
   * search_bullhorn_placements — find placements by status, candidate, job
   * get_bullhorn_placement_summary — get details for a specific placement
+  * batch_resolve_entities — resolve multiple entity type+ID pairs to labels in ONE call
 - When the user gives a complex CRM task, break it into sequential steps using these tools.
 - Chain tool calls: search first, then get details on specific results.
+- IMPORTANT: Call as many tools as possible in PARALLEL in a single response. For example, if you need 3 candidate profiles, call all 3 get_bullhorn_candidate_profile tools at once, don't call them one at a time.
 - If a search returns zero results, try broadening the query or ask the user to refine.
-- If a search returns too many results, suggest filters to narrow down.
-- If an error occurs, explain what happened clearly and ask the user how to proceed.
 - Present results in a clear, formatted summary with bullet points or tables.
 - Use [[CRM:entityType:entityId:label]] badges for all entity references in your responses.
 - These CRM tools are for INFORMATION RETRIEVAL — keep them separate from worksheet editing tools.
@@ -315,9 +345,10 @@ AGENTIC CRM TASKS:
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "openai/gpt-5-mini",
             messages: apiMessages,
             tools: ALL_TOOLS,
+            parallel_tool_calls: true,
             stream: false,
           }),
         }
@@ -373,9 +404,16 @@ AGENTIC CRM TASKS:
         tool_calls: toolCalls,
       });
 
-      for (const tc of serverCalls) {
-        const result = await executeServerTool(tc.function.name, tc.function.arguments);
-        apiMessages.push({ role: "tool", tool_call_id: tc.id, content: result });
+      // Execute ALL server tools in parallel
+      const serverResults = await Promise.all(
+        serverCalls.map(async (tc: any) => ({
+          tool_call_id: tc.id,
+          content: await executeServerTool(tc.function.name, tc.function.arguments),
+        }))
+      );
+
+      for (const result of serverResults) {
+        apiMessages.push({ role: "tool", tool_call_id: result.tool_call_id, content: result.content });
       }
 
       for (const tc of clientCalls) {
@@ -386,7 +424,7 @@ AGENTIC CRM TASKS:
         });
       }
 
-      console.log(`Agentic loop ${loop + 1}: ${serverCalls.length} server tools, ${clientCalls.length} client tools deferred`);
+      console.log(`Agentic loop ${loop + 1}: ${serverCalls.length} server tools (parallel), ${clientCalls.length} client tools deferred`);
     }
 
     return new Response(

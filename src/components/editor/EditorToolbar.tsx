@@ -148,7 +148,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Bold className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleItalic().run()}
+        onClick={() => cmd(editor).toggleItalic().run()}
         active={editor.isActive("italic")}
         title="Italic"
       >

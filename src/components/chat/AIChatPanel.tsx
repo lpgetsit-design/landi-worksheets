@@ -39,6 +39,7 @@ const toolLabels: Record<string, string> = {
   update_worksheet_title: "Changed title",
   update_document_type: "Changed document type",
   lookup_bullhorn_entity: "Looked up CRM entity",
+  batch_resolve_entities: "Resolved CRM entities",
   search_bullhorn_candidates: "Searched candidates",
   get_bullhorn_candidate_profile: "Retrieved candidate profile",
   search_bullhorn_jobs: "Searched jobs",

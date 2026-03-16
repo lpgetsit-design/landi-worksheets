@@ -4,7 +4,7 @@ import WorkflowLaneView from "./WorkflowLaneView";
 
 const WorkflowLaneNode = Node.create({
   name: "workflowLane",
-  group: "block",
+  group: "",
   content: "workflowCard+",
   draggable: true,
   selectable: true,

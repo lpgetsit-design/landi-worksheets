@@ -48,10 +48,9 @@ const WorkflowLaneView = ({ node, updateAttributes, editor, getPos }: NodeViewPr
   return (
     <NodeViewWrapper
       className={cn(
-        "my-4 rounded-lg border border-border bg-muted/30",
+        "rounded-lg border border-border bg-muted/30 flex-1 min-w-[220px]",
         "group/lane"
       )}
-      data-drag-handle
     >
       {/* Lane header — non-editable */}
       <div

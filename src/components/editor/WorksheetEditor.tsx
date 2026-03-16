@@ -49,6 +49,12 @@ turndown.addRule("crmBadge", {
   },
 });
 
+// Turndown rule for workflow boards
+turndown.addRule("workflowBoard", {
+  filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-board"),
+  replacement: (content) => `\n===BOARD===\n${content}\n===END BOARD===\n`,
+});
+
 // Turndown rule for workflow lanes
 turndown.addRule("workflowLane", {
   filter: (node) => node.nodeName === "DIV" && node.hasAttribute("data-workflow-lane"),

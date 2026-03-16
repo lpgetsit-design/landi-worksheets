@@ -17,6 +17,7 @@ import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import WorkflowCardNode from "./WorkflowCardNode";
 import WorkflowLaneNode from "./WorkflowLaneNode";
+import WorkflowBoardNode from "./WorkflowBoardNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import { updateWorksheet, syncWorksheetEntities, syncWorkflowProjections } from "@/lib/worksheets";

@@ -83,7 +83,7 @@ const WorkflowBoardView = ({ node, updateAttributes, editor, getPos }: NodeViewP
       </div>
 
       {/* Lanes container — horizontal scroll with no wrapping */}
-      <div className="workflow-board-scroll p-2 overflow-x-auto overflow-y-hidden whitespace-nowrap">
+      <div className="workflow-board-scroll p-2 overflow-x-auto overflow-y-hidden">
         <NodeViewContent className="workflow-board-lanes" />
       </div>
     </NodeViewWrapper>

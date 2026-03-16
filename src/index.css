@@ -207,11 +207,19 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.ProseMirror .workflow-board-lanes {
-  display: inline-flex;
+.ProseMirror .workflow-board-lanes,
+.ProseMirror .workflow-board-scroll > div {
+  display: flex;
   flex-wrap: nowrap;
   gap: 0.5rem;
+  width: max-content;
   min-width: max-content;
+}
+
+.ProseMirror .workflow-board-lanes > *,
+.ProseMirror .workflow-board-scroll > div > * {
+  flex: 0 0 220px;
+  min-width: 220px;
 }
 
 .ProseMirror .workflow-lane {

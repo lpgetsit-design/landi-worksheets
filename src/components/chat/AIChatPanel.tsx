@@ -92,8 +92,22 @@ const AIChatPanel = ({
   };
 
   const callAgent = async (conversationMessages: Message[], loopCount = 1): Promise<void> => {
-    // Show thinking indicator
-    setThinkingLabel(loopCount === 1 ? "Thinking..." : `Processing (step ${loopCount})...`);
+    // Build a contextual thinking label
+    if (loopCount === 1) {
+      setThinkingLabel("Thinking about your request...");
+    } else {
+      // Show what tools just finished to give context for the next step
+      const lastToolMsgs = conversationMessages
+        .filter((m) => m.role === "tool")
+        .slice(-5);
+      const recentActions = lastToolMsgs
+        .map((m) => toolLabels[m.name || ""] || m.name)
+        .filter(Boolean);
+      const summary = recentActions.length
+        ? `Step ${loopCount}: reviewing results of ${recentActions.join(", ")}...`
+        : `Processing (step ${loopCount})...`;
+      setThinkingLabel(summary);
+    }
     scrollToBottom();
 
     const apiMessages = conversationMessages.map((m) => {

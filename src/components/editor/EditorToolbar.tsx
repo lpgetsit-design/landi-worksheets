@@ -141,7 +141,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1">
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBold().run()}
+        onClick={() => cmd(editor).toggleBold().run()}
         active={editor.isActive("bold")}
         title="Bold"
       >

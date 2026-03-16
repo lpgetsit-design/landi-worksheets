@@ -173,7 +173,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        onClick={() => cmd(editor).toggleHeading({ level: 1 }).run()}
         active={editor.isActive("heading", { level: 1 })}
         title="Heading 1"
       >

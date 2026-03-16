@@ -48,7 +48,7 @@ const WorkflowLaneView = ({ node, updateAttributes, editor, getPos }: NodeViewPr
   return (
     <NodeViewWrapper
       className={cn(
-        "rounded-lg border border-border bg-muted/30 w-[220px] shrink-0",
+        "workflow-lane inline-flex w-[220px] shrink-0 flex-col align-top whitespace-normal mr-2 rounded-lg border border-border bg-muted/30",
         "group/lane"
       )}
     >

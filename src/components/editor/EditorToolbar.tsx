@@ -155,7 +155,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <Italic className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleStrike().run()}
+        onClick={() => cmd(editor).toggleStrike().run()}
         active={editor.isActive("strike")}
         title="Strikethrough"
       >

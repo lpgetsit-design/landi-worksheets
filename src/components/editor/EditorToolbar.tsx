@@ -211,7 +211,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        onClick={() => cmd(editor).toggleTaskList().run()}
         active={editor.isActive("taskList")}
         title="Task List"
       >

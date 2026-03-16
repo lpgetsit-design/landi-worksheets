@@ -198,7 +198,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
     useEffect(() => {
       if (editorRef && editor) {
         editorRef.current = {
-          setContent: (html: string) => editor.commands.setContent(html),
+          setContent: (html: string) => editor.commands.setContent(html, true, { preserveWhitespace: "full" }),
           getHTML: () => editor.getHTML(),
           setTitle: (t: string) => setTitle(t),
           setDocumentType: (dt: DocumentType) => setDocumentType(dt),

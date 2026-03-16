@@ -169,6 +169,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         TableHeader,
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
+        WorkflowCardNode,
+        WorkflowLaneNode,
         SlashCommandExtension,
         TableKeyboardShortcuts,
       ],

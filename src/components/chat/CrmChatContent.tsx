@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import CrmBadgeInline from "./CrmBadgeInline";
+import LinkBadgeInline from "./LinkBadgeInline";
 
 const CRM_TOKEN = /\[\[CRM:(\w+):([^\]:]+):([^\]]+)\]\]/g;
 
@@ -10,7 +11,15 @@ interface CrmChatContentProps {
 export default function CrmChatContent({ content }: CrmChatContentProps) {
   // If no CRM tokens, render plain markdown
   if (!CRM_TOKEN.test(content)) {
-    return <ReactMarkdown>{content}</ReactMarkdown>;
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => href ? <LinkBadgeInline href={href}>{children}</LinkBadgeInline> : <a>{children}</a>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }
   // Reset regex lastIndex after test()
   CRM_TOKEN.lastIndex = 0;
@@ -20,6 +29,12 @@ export default function CrmChatContent({ content }: CrmChatContentProps) {
     <ReactMarkdown
       components={{
         // Override the text renderer to parse CRM tokens inside text nodes
+        a: ({ href, children }) => {
+          if (href) {
+            return <LinkBadgeInline href={href}>{children}</LinkBadgeInline>;
+          }
+          return <a>{children}</a>;
+        },
         p: ({ children, ...props }) => <p {...props}>{processChildren(children)}</p>,
         li: ({ children, ...props }) => <li {...props}>{processChildren(children)}</li>,
         td: ({ children, ...props }) => <td {...props}>{processChildren(children)}</td>,

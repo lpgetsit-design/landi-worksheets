@@ -158,8 +158,9 @@ const WorksheetPage = () => {
     }
   }, [worksheet]);
 
-  const handleSelectionAI = useCallback((text: string) => {
+  const handleSelectionAI = useCallback((text: string, instruction?: string) => {
     setSelectedText(text);
+    setAutoMessage(instruction);
     setChatOpen(true);
   }, []);
 

@@ -198,35 +198,3 @@
 .ProseMirror table tr:hover th {
   background-color: hsl(var(--muted));
 }
-
-.ProseMirror .workflow-board {
-  margin: 1rem 0;
-}
-
-.ProseMirror .workflow-board-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
-.ProseMirror .workflow-board-lanes,
-.ProseMirror .workflow-board-scroll > div {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.5rem;
-  width: max-content;
-  min-width: max-content;
-}
-
-.ProseMirror .workflow-board-lanes > *,
-.ProseMirror .workflow-board-scroll > div > * {
-  flex: 0 0 220px;
-  min-width: 220px;
-}
-
-.ProseMirror .workflow-lane {
-  margin: 0;
-}
-
-
-.ProseMirror [data-workflow-card] {
-  margin: 0.25rem 0;
-}

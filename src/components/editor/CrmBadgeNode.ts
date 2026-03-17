@@ -58,7 +58,7 @@ export const CrmBadgeNode = Node.create({
         "data-entity-type": node.attrs.entityType,
         "data-entity-id": String(node.attrs.entityId),
         class:
-          "inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none",
+          "inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none",
         contenteditable: "false",
       }),
       [

@@ -17,12 +17,12 @@ export default function WorksheetBadgeView({ node }: NodeViewProps) {
       <HoverCard openDelay={200} closeDelay={100}>
         <HoverCardTrigger asChild>
           <span
-            className="inline-flex items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-pointer hover:bg-accent transition-colors"
+            className="inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-pointer hover:bg-accent transition-colors"
             contentEditable={false}
             onClick={() => navigate(`/worksheet/${worksheetId}`)}
           >
             <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="truncate max-w-[200px]">{title}</span>
+            <span className="truncate min-w-0">{title}</span>
           </span>
         </HoverCardTrigger>
         <HoverCardContent side="top" align="start" className="w-60 p-3">

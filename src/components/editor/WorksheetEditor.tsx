@@ -136,31 +136,18 @@ const GenerateTitleButton = ({
       });
       if (!resp.ok) throw new Error("Failed to generate title");
 
-      // Parse SSE response to extract the message event
-      const text = await resp.text();
-      let title = "";
-      for (const line of text.split("\n")) {
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6).trim();
-        if (!jsonStr || jsonStr === "[DONE]") continue;
-        try {
-          const evt = JSON.parse(jsonStr);
-          if (evt.role === "assistant" && evt.content) {
-            title = evt.content;
-          }
-          // Check for tool calls with update_worksheet_title
-          if (evt.tool_calls?.length) {
-            for (const tc of evt.tool_calls) {
-              if (tc.function?.name === "update_worksheet_title") {
-                try {
-                  const args = JSON.parse(tc.function.arguments);
-                  if (args.title) title = args.title;
-                } catch {}
-              }
-            }
-          }
-        } catch {}
+      const { content: generatedContent, toolCalls } = parseChatSseResult(await resp.text());
+      let title = generatedContent;
+
+      for (const tc of toolCalls) {
+        if (tc.function?.name === "update_worksheet_title") {
+          try {
+            const args = JSON.parse(tc.function.arguments ?? "{}");
+            if (args.title) title = args.title;
+          } catch {}
+        }
       }
+
       title = title.replace(/^["']|["']$/g, "").trim();
       onTitleGenerated(title || "Untitled");
     } catch (e) {

@@ -25,6 +25,8 @@ interface AIChatPanelProps {
   open: boolean;
   onClose: () => void;
   selectedText?: string;
+  autoMessage?: string;
+  onAutoMessageConsumed?: () => void;
   worksheetContent?: string;
   worksheetTitle?: string;
   worksheetType?: DocumentType;

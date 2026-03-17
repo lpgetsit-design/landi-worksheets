@@ -41,18 +41,10 @@ const SummaryButton = ({
     return html;
   }, [summary]);
 
-  const handleOpen = async (open: boolean) => {
-    if (!open) return;
-    if (existingSummary && !summary) {
-      setSummary(existingSummary);
-      return;
-    }
-    if (summary) return;
-    if (!worksheetContent.trim()) {
-      setSummary("No content to summarize.");
-      return;
-    }
+  const regenerate = async () => {
+    if (!worksheetContent.trim()) return;
     setLoading(true);
+    setSummary(null);
     try {
       await generateAndSaveSummary(worksheet.id, worksheetTitle, worksheetContent, worksheetType);
       const updated = await getWorksheet(worksheet.id);
@@ -63,6 +55,16 @@ const SummaryButton = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpen = async (open: boolean) => {
+    if (!open) return;
+    if (existingSummary && !summary) {
+      setSummary(existingSummary);
+      return;
+    }
+    if (summary) return;
+    await regenerate();
   };
 
   return (

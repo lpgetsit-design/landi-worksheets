@@ -391,7 +391,12 @@ const Dashboard = () => {
                     </div>
                   </HoverCardTrigger>
                   {summaryHtml && (
-                    <HoverCardContent side="right" align="start" className="w-96 max-h-80 overflow-y-auto p-3">
+                    <HoverCardContent
+                      side="bottom"
+                      align="start"
+                      className="w-[calc(100vw-2rem)] sm:w-96 max-h-60 sm:max-h-80 overflow-y-auto p-3"
+                      collisionPadding={16}
+                    >
                       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Summary</p>
                       <div
                         className="prose prose-sm dark:prose-invert max-w-none text-sm"

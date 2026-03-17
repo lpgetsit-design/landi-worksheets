@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.extract-keywords]
 verify_jwt = false
+
+[functions.search-worksheets]
+verify_jwt = false

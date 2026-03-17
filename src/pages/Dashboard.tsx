@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, Clock, Trash2, ArrowUpDown, X } from "lucide-react";
+import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities } from "@/lib/worksheets";
+import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities, hybridSearchWorksheets } from "@/lib/worksheets";
+import type { HybridSearchResult } from "@/lib/worksheets";
 import { toast } from "sonner";
 
 type SortField = "updated_at" | "created_at";
@@ -31,6 +32,15 @@ const Dashboard = () => {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [entityFilters, setEntityFilters] = useState<EntityOption[]>([]);
   const [entityPopoverOpen, setEntityPopoverOpen] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<HybridSearchResult[] | null>(null);
+  const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchInputRef = useRef<HTMLTextAreaElement>(null);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const { data: worksheets = [], isLoading } = useQuery({
     queryKey: ["worksheets"],
@@ -104,6 +114,67 @@ const Dashboard = () => {
 
   const toggleSortDir = () => setSortDir((d) => (d === "desc" ? "asc" : "desc"));
 
+  // Hybrid search with debounce
+  const executeSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setSearchResults(null);
+      setSearchKeywords([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { results, queryKeywords } = await hybridSearchWorksheets(q);
+      setSearchResults(results);
+      setSearchKeywords(queryKeywords);
+    } catch (e) {
+      console.error("Search error:", e);
+      toast.error("Search failed");
+      setSearchResults(null);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!value.trim()) {
+      setSearchResults(null);
+      setSearchKeywords([]);
+      return;
+    }
+    // Longer debounce for long-form queries (job descriptions etc.)
+    const delay = value.length > 100 ? 1500 : 600;
+    searchTimeout.current = setTimeout(() => executeSearch(value), delay);
+  }, [executeSearch]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setSearchResults(null);
+    setSearchKeywords([]);
+    setSearchExpanded(false);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+  }, []);
+
+  // Auto-expand textarea when content grows
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.style.height = "auto";
+      searchInputRef.current.style.height = Math.min(searchInputRef.current.scrollHeight, 120) + "px";
+    }
+  }, [searchQuery]);
+
+  const isSearchActive = searchResults !== null;
+
+  // Snippet extraction for search results
+  const getSnippet = (content: string | null, maxLen = 120) => {
+    if (!content) return "";
+    return content.length > maxLen ? content.slice(0, maxLen) + "…" : content;
+  };
+
+  const scorePercent = (score: number) => Math.round(score * 100);
+
   return (
     <div className="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
       <div className="mb-6 flex items-center justify-between">
@@ -115,137 +186,265 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto">
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-          <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="note">Note</SelectItem>
-            <SelectItem value="skill">Skill</SelectItem>
-            <SelectItem value="prompt">Prompt</SelectItem>
-            <SelectItem value="template">Template</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-          <SelectTrigger className="w-[120px] sm:w-[140px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="updated_at">Last Updated</SelectItem>
-            <SelectItem value="created_at">Created At</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleSortDir} title={sortDir === "desc" ? "Newest first" : "Oldest first"}>
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-        </Button>
-
-        {/* Entity filter */}
-        {entityOptions.length > 0 && (
-          <>
-            <Popover open={entityPopoverOpen} onOpenChange={setEntityPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  {entityFilters.length > 0 ? `Entities (${entityFilters.length})` : "Filter by Entity"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[250px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search entities..." />
-                  <CommandList>
-                    <CommandEmpty>No entities found.</CommandEmpty>
-                    <CommandGroup>
-                      {entityOptions.map((eo) => {
-                        const key = `${eo.entity_type}:${eo.entity_id}`;
-                        const isSelected = entityFilters.some((f) => `${f.entity_type}:${f.entity_id}` === key);
-                        return (
-                          <CommandItem
-                            key={key}
-                            value={`${eo.label} ${eo.entity_type} ${eo.entity_id}`}
-                            onSelect={() => {
-                              setEntityFilters((prev) =>
-                                isSelected
-                                  ? prev.filter((f) => `${f.entity_type}:${f.entity_id}` !== key)
-                                  : [...prev, eo]
-                              );
-                            }}
-                          >
-                            <span className={`mr-2 h-4 w-4 border rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground"}`}>
-                              {isSelected ? "✓" : ""}
-                            </span>
-                            <span className="truncate">{eo.label}</span>
-                            <span className="ml-auto text-[10px] text-muted-foreground">{eo.entity_type}</span>
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {entityFilters.length > 0 && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEntityFilters([])} title="Clear entity filter">
-                <X className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
+      {/* Search bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <div className="absolute left-3 top-2.5 text-muted-foreground">
+            {isSearching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
             )}
-          </>
+          </div>
+          <textarea
+            ref={searchInputRef}
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => setSearchExpanded(true)}
+            placeholder="Search documents… paste a job description, query, or keywords"
+            rows={1}
+            className="w-full resize-none rounded-lg border border-border bg-background pl-9 pr-9 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-all"
+            style={{ minHeight: "36px" }}
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Search keywords pills */}
+        {searchKeywords.length > 0 && (
+          <div className="mt-2 flex items-center gap-1 flex-wrap">
+            <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[10px] text-muted-foreground mr-1">Matched keywords:</span>
+            {searchKeywords.map((kw) => (
+              <span
+                key={kw}
+                className="inline-block rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-lg border border-border bg-muted" />
-          ))}
+      {/* Filters (hidden during search) */}
+      {!isSearchActive && (
+        <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto">
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+            <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="skill">Skill</SelectItem>
+              <SelectItem value="prompt">Prompt</SelectItem>
+              <SelectItem value="template">Template</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+            <SelectTrigger className="w-[120px] sm:w-[140px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated_at">Last Updated</SelectItem>
+              <SelectItem value="created_at">Created At</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleSortDir} title={sortDir === "desc" ? "Newest first" : "Oldest first"}>
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+
+          {/* Entity filter */}
+          {entityOptions.length > 0 && (
+            <>
+              <Popover open={entityPopoverOpen} onOpenChange={setEntityPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                    {entityFilters.length > 0 ? `Entities (${entityFilters.length})` : "Filter by Entity"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[250px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search entities..." />
+                    <CommandList>
+                      <CommandEmpty>No entities found.</CommandEmpty>
+                      <CommandGroup>
+                        {entityOptions.map((eo) => {
+                          const key = `${eo.entity_type}:${eo.entity_id}`;
+                          const isSelected = entityFilters.some((f) => `${f.entity_type}:${f.entity_id}` === key);
+                          return (
+                            <CommandItem
+                              key={key}
+                              value={`${eo.label} ${eo.entity_type} ${eo.entity_id}`}
+                              onSelect={() => {
+                                setEntityFilters((prev) =>
+                                  isSelected
+                                    ? prev.filter((f) => `${f.entity_type}:${f.entity_id}` !== key)
+                                    : [...prev, eo]
+                                );
+                              }}
+                            >
+                              <span className={`mr-2 h-4 w-4 border rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground"}`}>
+                                {isSelected ? "✓" : ""}
+                              </span>
+                              <span className="truncate">{eo.label}</span>
+                              <span className="ml-auto text-[10px] text-muted-foreground">{eo.entity_type}</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {entityFilters.length > 0 && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEntityFilters([])} title="Clear entity filter">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              )}
+            </>
+          )}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            {worksheets.length === 0 ? "No worksheets yet. Create your first one!" : "No worksheets match the selected filters."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((ws) => (
-            <div
-              key={ws.id}
-              className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent"
-            >
-              <button
-                onClick={() => navigate(`/worksheet/${ws.id}`)}
-                className="flex flex-1 items-center gap-3 text-left"
+      )}
+
+      {/* Search results mode */}
+      {isSearchActive ? (
+        isSearching ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Searching across all documents…</p>
+          </div>
+        ) : searchResults!.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Search className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No documents matched your search.</p>
+            <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={clearSearch}>
+              Clear search
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground mb-2">
+              {searchResults!.length} result{searchResults!.length !== 1 ? "s" : ""} found
+            </p>
+            {searchResults!.map((sr) => (
+              <div
+                key={sr.id}
+                className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent cursor-pointer"
+                onClick={() => navigate(`/worksheet/${sr.id}`)}
               >
-                <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                <FileText className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{ws.title}</p>
-                    <Badge variant="outline" className="text-[10px] capitalize shrink-0">{ws.document_type || "note"}</Badge>
+                    <p className="truncate text-sm font-medium text-foreground">{sr.title}</p>
+                    <Badge variant="outline" className="text-[10px] capitalize shrink-0">{sr.document_type || "note"}</Badge>
                   </div>
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {sortField === "created_at" ? `Created ${formatDate(ws.created_at)}` : formatDate(ws.updated_at)}
-                  </p>
+                  {sr.content_md && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {getSnippet(sr.content_md, 180)}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(sr.updated_at)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Match: {scorePercent(sr.combined_score)}%
+                    </span>
+                    {sr.similarity_score > 0 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Semantic: {scorePercent(sr.similarity_score)}%
+                      </span>
+                    )}
+                    {sr.keyword_score > 0 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Keywords: {scorePercent(sr.keyword_score)}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Show matching keywords from this doc */}
+                  {sr.meta?.keywords && searchKeywords.length > 0 && (() => {
+                    const docKws = sr.meta.keywords as string[];
+                    const matched = searchKeywords.filter((kw) => docKws.includes(kw));
+                    if (matched.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        {matched.map((kw) => (
+                          <span key={kw} className="inline-block rounded-full border border-border bg-accent px-1.5 py-0 text-[10px] text-foreground">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteMutation.mutate(ws.id);
-                }}
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        /* Normal list mode */
+        isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg border border-border bg-muted" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {worksheets.length === 0 ? "No worksheets yet. Create your first one!" : "No worksheets match the selected filters."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((ws) => (
+              <div
+                key={ws.id}
+                className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
+                <button
+                  onClick={() => navigate(`/worksheet/${ws.id}`)}
+                  className="flex flex-1 items-center gap-3 text-left"
+                >
+                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">{ws.title}</p>
+                      <Badge variant="outline" className="text-[10px] capitalize shrink-0">{ws.document_type || "note"}</Badge>
+                    </div>
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {sortField === "created_at" ? `Created ${formatDate(ws.created_at)}` : formatDate(ws.updated_at)}
+                    </p>
+                  </div>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteMutation.mutate(ws.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

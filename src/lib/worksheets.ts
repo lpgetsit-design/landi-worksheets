@@ -293,3 +293,44 @@ export const syncLinkedWorksheets = async (worksheetId: string, contentJson: Jso
     .update({ meta: newMeta as unknown as Json })
     .eq("id", worksheetId);
 };
+
+// --- Hybrid search ---
+
+const SEARCH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-worksheets`;
+
+export interface HybridSearchResult {
+  id: string;
+  title: string;
+  document_type: string;
+  content_md: string | null;
+  meta: Record<string, unknown> | null;
+  updated_at: string;
+  created_at: string;
+  similarity_score: number;
+  keyword_score: number;
+  combined_score: number;
+}
+
+export const hybridSearchWorksheets = async (
+  query: string,
+  matchCount = 20
+): Promise<{ results: HybridSearchResult[]; queryKeywords: string[] }> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const resp = await fetch(SEARCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ query, matchCount }),
+  });
+
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error(`Search failed: ${t}`);
+  }
+
+  return resp.json();
+};

@@ -333,6 +333,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      hybrid_search_worksheets: {
+        Args: {
+          _match_count?: number
+          _query_embedding: string
+          _query_keywords: string[]
+          _user_id: string
+        }
+        Returns: {
+          combined_score: number
+          content_md: string
+          created_at: string
+          document_type: string
+          id: string
+          keyword_score: number
+          meta: Json
+          similarity_score: number
+          title: string
+          updated_at: string
+        }[]
+      }
       is_worksheet_owner: {
         Args: { _user_id: string; _worksheet_id: string }
         Returns: boolean

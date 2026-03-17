@@ -11,7 +11,15 @@ interface CrmChatContentProps {
 export default function CrmChatContent({ content }: CrmChatContentProps) {
   // If no CRM tokens, render plain markdown
   if (!CRM_TOKEN.test(content)) {
-    return <ReactMarkdown>{content}</ReactMarkdown>;
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => href ? <LinkBadgeInline href={href}>{children}</LinkBadgeInline> : <a>{children}</a>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }
   // Reset regex lastIndex after test()
   CRM_TOKEN.lastIndex = 0;

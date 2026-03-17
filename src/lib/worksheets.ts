@@ -202,6 +202,7 @@ export const generateAndSaveSummary = async (
   documentType: string
 ) => {
   try {
+    if (!worksheetId || !content?.trim()) return;
     const resp = await fetch(SUMMARIZE_URL, {
       method: "POST",
       headers: {

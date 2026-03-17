@@ -106,10 +106,20 @@ const AIChatPanel = ({
   const [streamingContent, setStreamingContent] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const autoMessageSentRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
+
+  // Auto-send message when autoMessage prop is set (e.g. Simplify/Expand)
+  useEffect(() => {
+    if (open && autoMessage && autoMessage !== autoMessageSentRef.current && !isLoading) {
+      autoMessageSentRef.current = autoMessage;
+      handleSend(autoMessage);
+      onAutoMessageConsumed?.();
+    }
+  }, [open, autoMessage]);
 
   const executeTool = (name: string, args: string): string => {
     try {

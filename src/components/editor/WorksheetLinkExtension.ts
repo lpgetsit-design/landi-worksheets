@@ -1,8 +1,11 @@
 import { Extension } from "@tiptap/core";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
+import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import tippy, { type Instance as TippyInstance } from "tippy.js";
 import WorksheetLinkMenu, { type WorksheetLinkMenuRef } from "./WorksheetLinkMenu";
+
+const worksheetLinkSuggestionPluginKey = new PluginKey("worksheetLinkSuggestion");
 
 const WorksheetLinkExtension = Extension.create({
   name: "worksheetLink",

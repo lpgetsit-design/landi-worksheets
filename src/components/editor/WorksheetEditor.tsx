@@ -19,7 +19,7 @@ import WorksheetBadgeNode from "./WorksheetBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import WorksheetLinkExtension from "./WorksheetLinkExtension";
-import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets } from "@/lib/worksheets";
+import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -168,6 +168,10 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
     const [title, setTitle] = useState(initialTitle);
     const [documentType, setDocumentType] = useState<DocumentType>(initialDocumentType);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+    const summaryTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+    // Cleanup summary timer on unmount
+    useEffect(() => () => { if (summaryTimeout.current) clearTimeout(summaryTimeout.current); }, []);
 
     const editor = useEditor({
       extensions: [
@@ -208,6 +212,12 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
           syncWorksheetEntities(worksheetId, json as unknown as Json).catch(console.error);
           syncLinkedWorksheets(worksheetId, json as unknown as Json).catch(console.error);
         }, 500);
+
+        // Debounce AI summary generation (5 seconds of inactivity)
+        if (summaryTimeout.current) clearTimeout(summaryTimeout.current);
+        summaryTimeout.current = setTimeout(() => {
+          generateAndSaveSummary(worksheetId, title, md, documentType).catch(console.error);
+        }, 5000);
       },
     });
 

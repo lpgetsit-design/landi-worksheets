@@ -226,8 +226,8 @@ const WorksheetPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      <div className="flex-1 overflow-y-auto">
+    <div ref={containerRef} className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex-1 overflow-y-auto min-w-0">
         <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
           <div className="mb-4 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
@@ -272,7 +272,16 @@ const WorksheetPage = () => {
           </SheetContent>
         </Sheet>
       ) : (
-        chatOpen && chatPanel
+        chatOpen && (
+          <div className="relative flex-shrink-0" style={{ width: chatWidth }}>
+            {/* Drag handle */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
+              onMouseDown={handleDragStart}
+            />
+            {chatPanel}
+          </div>
+        )
       )}
     </div>
   );

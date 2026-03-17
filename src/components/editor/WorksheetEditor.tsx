@@ -295,7 +295,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
     }, [title, worksheetId, initialTitle]);
 
     const handleAskAI = useCallback(
-      (text: string) => { onSelectionAI?.(text); },
+      (text: string, instruction?: string) => { onSelectionAI?.(text, instruction); },
       [onSelectionAI]
     );
 

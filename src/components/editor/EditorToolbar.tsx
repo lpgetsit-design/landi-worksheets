@@ -301,16 +301,16 @@ const EditorToolbar = ({ editor, onEnhance, disabled }: EditorToolbarProps) => {
             size="sm"
             className="h-8 gap-1.5 text-xs text-muted-foreground"
             onClick={handleEnhance}
-            disabled={enhancing}
+            disabled={isDisabled}
             title="Enhance content with AI"
             type="button"
           >
-            {enhancing ? (
+            {isDisabled ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            <span className="hidden sm:inline">Enhance</span>
+            <span className="hidden sm:inline">{isDisabled ? "AI editing..." : "Enhance"}</span>
           </Button>
         </>
       )}

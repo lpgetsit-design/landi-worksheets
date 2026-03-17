@@ -226,6 +226,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         if (summaryTimeout.current) clearTimeout(summaryTimeout.current);
         summaryTimeout.current = setTimeout(() => {
           generateAndSaveSummary(worksheetId, title, md, documentType).catch(console.error);
+          generateAndSaveEmbedding(worksheetId, title, md).catch(console.error);
         }, 5000);
       },
     });

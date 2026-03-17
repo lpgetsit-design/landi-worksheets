@@ -82,7 +82,15 @@ const SummaryButton = ({
             Generating summary...
           </div>
         ) : summary ? (
-          <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
+          <div>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
+            <div className="mt-2 flex justify-end border-t border-border pt-2">
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={regenerate} disabled={loading}>
+                <RefreshCw className="h-3 w-3" />
+                Regenerate
+              </Button>
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No summary available.</p>
         )}

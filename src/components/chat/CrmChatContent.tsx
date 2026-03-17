@@ -21,6 +21,12 @@ export default function CrmChatContent({ content }: CrmChatContentProps) {
     <ReactMarkdown
       components={{
         // Override the text renderer to parse CRM tokens inside text nodes
+        a: ({ href, children }) => {
+          if (href) {
+            return <LinkBadgeInline href={href}>{children}</LinkBadgeInline>;
+          }
+          return <a>{children}</a>;
+        },
         p: ({ children, ...props }) => <p {...props}>{processChildren(children)}</p>,
         li: ({ children, ...props }) => <li {...props}>{processChildren(children)}</li>,
         td: ({ children, ...props }) => <td {...props}>{processChildren(children)}</td>,

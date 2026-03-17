@@ -218,6 +218,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         summaryTimeout.current = setTimeout(() => {
           generateAndSaveSummary(worksheetId, title, md, documentType).catch(console.error);
         }, 5000);
+      },
+    });
 
     // Expose editor handle via callback ref
     useEffect(() => {

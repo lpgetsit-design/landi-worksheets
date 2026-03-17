@@ -62,6 +62,41 @@ turndown.addRule("worksheetBadge", {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+interface ChatToolCall {
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+}
+
+function parseChatSseResult(sseText: string): { content: string; toolCalls: ChatToolCall[] } {
+  let content = "";
+  let toolCalls: ChatToolCall[] = [];
+
+  for (const line of sseText.split("\n")) {
+    if (!line.startsWith("data: ")) continue;
+    const jsonStr = line.slice(6).trim();
+    if (!jsonStr || jsonStr === "[DONE]") continue;
+
+    try {
+      const evt = JSON.parse(jsonStr);
+      const message = evt.message ?? evt;
+
+      if (message.role === "assistant" && typeof message.content === "string") {
+        content = message.content;
+      }
+
+      if (Array.isArray(message.tool_calls)) {
+        toolCalls = message.tool_calls;
+      }
+    } catch {
+      // Ignore non-JSON lines and partial SSE frames.
+    }
+  }
+
+  return { content, toolCalls };
+}
+
 const GenerateTitleButton = ({
   worksheetId,
   getContent,
@@ -101,31 +136,18 @@ const GenerateTitleButton = ({
       });
       if (!resp.ok) throw new Error("Failed to generate title");
 
-      // Parse SSE response to extract the message event
-      const text = await resp.text();
-      let title = "";
-      for (const line of text.split("\n")) {
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6).trim();
-        if (!jsonStr || jsonStr === "[DONE]") continue;
-        try {
-          const evt = JSON.parse(jsonStr);
-          if (evt.role === "assistant" && evt.content) {
-            title = evt.content;
-          }
-          // Check for tool calls with update_worksheet_title
-          if (evt.tool_calls?.length) {
-            for (const tc of evt.tool_calls) {
-              if (tc.function?.name === "update_worksheet_title") {
-                try {
-                  const args = JSON.parse(tc.function.arguments);
-                  if (args.title) title = args.title;
-                } catch {}
-              }
-            }
-          }
-        } catch {}
+      const { content: generatedContent, toolCalls } = parseChatSseResult(await resp.text());
+      let title = generatedContent;
+
+      for (const tc of toolCalls) {
+        if (tc.function?.name === "update_worksheet_title") {
+          try {
+            const args = JSON.parse(tc.function.arguments ?? "{}");
+            if (args.title) title = args.title;
+          } catch {}
+        }
       }
+
       title = title.replace(/^["']|["']$/g, "").trim();
       onTitleGenerated(title || "Untitled");
     } catch (e) {
@@ -348,30 +370,16 @@ ${content}`;
 
           if (!resp.ok) throw new Error("Failed to enhance content");
 
-          // Parse SSE response to extract the message event
-          const sseText = await resp.text();
-          let enhanced = "";
-          for (const line of sseText.split("\n")) {
-            if (!line.startsWith("data: ")) continue;
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr || jsonStr === "[DONE]") continue;
-            try {
-              const evt = JSON.parse(jsonStr);
-              // Check for tool calls with replace_worksheet_content
-              if (evt.tool_calls?.length) {
-                for (const tc of evt.tool_calls) {
-                  if (tc.function?.name === "replace_worksheet_content") {
-                    try {
-                      const args = JSON.parse(tc.function.arguments);
-                      if (args.content) enhanced = args.content;
-                    } catch {}
-                  }
-                }
-              }
-              if (!enhanced && evt.role === "assistant" && evt.content) {
-                enhanced = evt.content;
-              }
-            } catch {}
+          const { content: generatedContent, toolCalls } = parseChatSseResult(await resp.text());
+          let enhanced = generatedContent;
+
+          for (const tc of toolCalls) {
+            if (tc.function?.name === "replace_worksheet_content") {
+              try {
+                const args = JSON.parse(tc.function.arguments ?? "{}");
+                if (args.content) enhanced = args.content;
+              } catch {}
+            }
           }
 
           if (!enhanced.trim()) {

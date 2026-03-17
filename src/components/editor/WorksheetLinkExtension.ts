@@ -83,6 +83,7 @@ const WorksheetLinkExtension = Extension.create({
     return [
       Suggestion({
         editor: this.editor,
+        pluginKey: worksheetLinkSuggestionPluginKey,
         ...this.options.suggestion,
       }),
     ];

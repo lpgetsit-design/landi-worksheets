@@ -93,6 +93,70 @@ const WorksheetPage = () => {
     );
   }
 
+// ─── Summary Button ───
+const SummaryButton = ({
+  worksheet,
+  worksheetContent,
+  worksheetTitle,
+  worksheetType,
+}: {
+  worksheet: any;
+  worksheetContent: string;
+  worksheetTitle: string;
+  worksheetType: DocumentType;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+
+  const existingSummary = (worksheet?.meta as any)?.summary as string | undefined;
+
+  const handleOpen = async (open: boolean) => {
+    if (!open) return;
+    if (existingSummary && !summary) {
+      setSummary(existingSummary);
+      return;
+    }
+    if (summary) return;
+    // Generate on-demand
+    if (!worksheetContent.trim()) {
+      setSummary("No content to summarize.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await generateAndSaveSummary(worksheet.id, worksheetTitle, worksheetContent, worksheetType);
+      // Re-fetch the updated meta
+      const updated = await getWorksheet(worksheet.id);
+      const newSummary = (updated?.meta as any)?.summary;
+      setSummary(newSummary || "Could not generate summary.");
+    } catch {
+      setSummary("Failed to generate summary.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Popover onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <FileText className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Summary</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 max-h-60 overflow-y-auto" align="end">
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generating summary...
+          </div>
+        ) : (
+          <p className="text-sm text-foreground whitespace-pre-wrap">{summary || "No summary available."}</p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
 
   const chatPanel = (
     <AIChatPanel

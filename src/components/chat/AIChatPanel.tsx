@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
-import { X, Send, RotateCcw, Wrench } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { X, Send, RotateCcw, Wrench, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { marked } from "marked";
 import CrmChatContent from "./CrmChatContent";
 import type { DocumentType } from "@/lib/worksheets";
 
@@ -46,6 +47,42 @@ const toolLabels: Record<string, string> = {
   get_bullhorn_job_summary: "Retrieved job details",
   search_bullhorn_placements: "Searched placements",
   get_bullhorn_placement_summary: "Retrieved placement details",
+};
+
+/** Copies AI markdown as rich HTML to clipboard for pasting into the worksheet editor */
+const CopyButton = ({ content }: { content: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      const html = marked.parse(content, { async: false }) as string;
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([content], { type: "text/plain" }),
+        }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Fallback to plain text
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  }, [content]);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="absolute -bottom-1 right-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+      onClick={handleCopy}
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="h-3 w-3 text-muted-foreground" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    </Button>
+  );
 };
 
 const AIChatPanel = ({
@@ -352,7 +389,7 @@ const AIChatPanel = ({
               if (msg.role === "assistant" && !msg.content && !msg.tool_calls) return null;
 
               return (
-                <div key={msg.id}>
+                <div key={msg.id} className="group relative">
                   <div
                     className={cn(
                       "rounded-md px-3 py-2 text-sm",
@@ -369,6 +406,9 @@ const AIChatPanel = ({
                       msg.content
                     )}
                   </div>
+                  {msg.role === "assistant" && msg.content && (
+                    <CopyButton content={msg.content} />
+                  )}
                 </div>
               );
             })}

@@ -196,9 +196,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         WorksheetBadgeNode,
-        SlashCommandExtension,
-        WorksheetLinkExtension.configure({ worksheetId }),
-        TableKeyboardShortcuts,
+        UnifiedMentionExtension.configure({ worksheetId }),
       ],
       content: (initialContent as any) || "",
       editorProps: {

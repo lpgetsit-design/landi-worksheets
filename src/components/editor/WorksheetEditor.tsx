@@ -303,7 +303,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
       const newType = value as DocumentType;
       setDocumentType(newType);
       updateWorksheet(worksheetId, { document_type: newType } as any).catch(console.error);
-    }, [worksheetId]);
+      onDocumentTypeChange?.(newType);
+    }, [worksheetId, onDocumentTypeChange]);
 
     // ─── Streaming Title Generation ───
     const handleGenerateTitle = useCallback(async () => {

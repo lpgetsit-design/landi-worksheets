@@ -94,8 +94,8 @@ const SelectionToolbar = ({ editor, onAskAI }: SelectionToolbarProps) => {
         size="sm"
         className="h-7 gap-1.5 text-xs"
         onClick={() => {
-          // Will trigger AI simplify
-          onAskAI(`Simplify this: ${getSelectedText()}`);
+          const text = getSelectedText();
+          onAskAI(text, `Simplify this text:\n\n${text}`);
         }}
       >
         <Minimize2 className="h-3 w-3" />
@@ -106,8 +106,8 @@ const SelectionToolbar = ({ editor, onAskAI }: SelectionToolbarProps) => {
         size="sm"
         className="h-7 gap-1.5 text-xs"
         onClick={() => {
-          // Will trigger AI expand
-          onAskAI(`Expand on this: ${getSelectedText()}`);
+          const text = getSelectedText();
+          onAskAI(text, `Expand on this text:\n\n${text}`);
         }}
       >
         <Maximize2 className="h-3 w-3" />

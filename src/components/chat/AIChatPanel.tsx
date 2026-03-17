@@ -90,6 +90,8 @@ const AIChatPanel = ({
   open,
   onClose,
   selectedText,
+  autoMessage,
+  onAutoMessageConsumed,
   worksheetContent,
   worksheetTitle,
   worksheetType,

@@ -256,7 +256,7 @@ const AIChatPanel = ({
     setMessages(allMessages);
     setInput("");
     setIsLoading(true);
-    setThinkingLabel("Thinking about your request...");
+    setThinkingLabel("Connecting...");
     scrollToBottom();
 
     const controller = new AbortController();

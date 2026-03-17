@@ -73,17 +73,37 @@ export default function CrmBadgeView({ node, editor, getPos }: NodeViewProps) {
     }
   }
 
+  const isEditable = editor?.isEditable ?? false;
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!editor || typeof getPos !== "function") return;
+    const pos = getPos();
+    editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+  };
+
   return (
     <NodeViewWrapper as="span" className="inline">
       <HoverCard openDelay={200} closeDelay={100}>
         <HoverCardTrigger asChild>
           <span
-            className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-default max-w-full overflow-hidden"
+            className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-default max-w-full overflow-hidden group/badge"
             contentEditable={false}
           >
             <span className="text-muted-foreground shrink-0">[{entityId}]</span>
             <span className="truncate">{label}</span>
             <span className="text-muted-foreground font-semibold shrink-0">({typeLabel})</span>
+            {isEditable && (
+              <button
+                type="button"
+                className="shrink-0 ml-0.5 rounded-sm opacity-0 group-hover/badge:opacity-100 hover:bg-foreground/10 transition-opacity p-0"
+                onClick={handleRemove}
+                aria-label="Remove badge"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
           </span>
         </HoverCardTrigger>
         <HoverCardContent

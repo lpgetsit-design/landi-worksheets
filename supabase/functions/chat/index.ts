@@ -347,27 +347,46 @@ AGENTIC CRM TASKS:
         const send = (type: string, data: any) => {
           controller.enqueue(new TextEncoder().encode(sseEvent(type, data)));
         };
+        // Send a padding comment to flush HTTP buffers immediately
+        controller.enqueue(new TextEncoder().encode(`: connected\n\n`));
 
         try {
           for (let loop = 0; loop < MAX_LOOPS; loop++) {
             send("status", { step: loop + 1, phase: "thinking", message: `AI is thinking (step ${loop + 1})...` });
 
-            const response = await fetch(
-              "https://ai.gateway.lovable.dev/v1/chat/completions",
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: "openai/gpt-5-mini",
-                  messages: apiMessages,
-                  tools: ALL_TOOLS,
-                  parallel_tool_calls: true,
-                  stream: false,
-                }),
+            // Start keepalive pings every 3s while waiting for AI gateway
+            let keepAlive = true;
+            const pingInterval = setInterval(() => {
+              if (keepAlive) {
+                try {
+                  controller.enqueue(new TextEncoder().encode(`: ping\n\n`));
+                } catch { /* stream closed */ }
               }
+            }, 3000);
+
+            let response: Response;
+            try {
+              response = await fetch(
+                "https://ai.gateway.lovable.dev/v1/chat/completions",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "openai/gpt-5-mini",
+                    messages: apiMessages,
+                    tools: ALL_TOOLS,
+                    parallel_tool_calls: true,
+                    stream: false,
+                  }),
+                }
+              );
+            } finally {
+              keepAlive = false;
+              clearInterval(pingInterval);
+            }
             );
 
             if (!response.ok) {

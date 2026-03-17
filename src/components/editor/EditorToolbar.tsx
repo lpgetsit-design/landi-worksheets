@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 interface EditorToolbarProps {
   editor: Editor;
   onEnhance?: () => Promise<void>;
+  disabled?: boolean;
 }
 
 const ToolbarButton = ({
@@ -125,11 +126,12 @@ const LinkButton = ({ editor }: { editor: Editor }) => {
   );
 };
 
-const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
+const EditorToolbar = ({ editor, onEnhance, disabled }: EditorToolbarProps) => {
   const [enhancing, setEnhancing] = useState(false);
+  const isDisabled = disabled || enhancing;
 
   const handleEnhance = async () => {
-    if (!onEnhance || enhancing) return;
+    if (!onEnhance || isDisabled) return;
     setEnhancing(true);
     try {
       await onEnhance();
@@ -139,7 +141,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1">
+    <div className={`flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1 transition-opacity ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
       <ToolbarButton
         onClick={() => cmd(editor).toggleBold().run()}
         active={editor.isActive("bold")}
@@ -299,16 +301,16 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
             size="sm"
             className="h-8 gap-1.5 text-xs text-muted-foreground"
             onClick={handleEnhance}
-            disabled={enhancing}
+            disabled={isDisabled}
             title="Enhance content with AI"
             type="button"
           >
-            {enhancing ? (
+            {isDisabled ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            <span className="hidden sm:inline">Enhance</span>
+            <span className="hidden sm:inline">{isDisabled ? "AI editing..." : "Enhance"}</span>
           </Button>
         </>
       )}

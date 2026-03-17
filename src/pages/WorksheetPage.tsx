@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
@@ -41,18 +41,10 @@ const SummaryButton = ({
     return html;
   }, [summary]);
 
-  const handleOpen = async (open: boolean) => {
-    if (!open) return;
-    if (existingSummary && !summary) {
-      setSummary(existingSummary);
-      return;
-    }
-    if (summary) return;
-    if (!worksheetContent.trim()) {
-      setSummary("No content to summarize.");
-      return;
-    }
+  const regenerate = async () => {
+    if (!worksheetContent.trim()) return;
     setLoading(true);
+    setSummary(null);
     try {
       await generateAndSaveSummary(worksheet.id, worksheetTitle, worksheetContent, worksheetType);
       const updated = await getWorksheet(worksheet.id);
@@ -63,6 +55,16 @@ const SummaryButton = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpen = async (open: boolean) => {
+    if (!open) return;
+    if (existingSummary && !summary) {
+      setSummary(existingSummary);
+      return;
+    }
+    if (summary) return;
+    await regenerate();
   };
 
   return (
@@ -80,7 +82,15 @@ const SummaryButton = ({
             Generating summary...
           </div>
         ) : summary ? (
-          <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
+          <div>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
+            <div className="mt-2 flex justify-end border-t border-border pt-2">
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={regenerate} disabled={loading}>
+                <RefreshCw className="h-3 w-3" />
+                Regenerate
+              </Button>
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No summary available.</p>
         )}

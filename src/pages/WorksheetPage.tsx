@@ -29,7 +29,17 @@ const SummaryButton = ({
   const [summary, setSummary] = useState<string | null>(null);
 
   const existingSummary = (worksheet?.meta as any)?.summary as string | undefined;
-  const summaryHtml = useMemo(() => summary ? marked.parse(summary, { async: false }) as string : "", [summary]);
+  const summaryHtml = useMemo(() => {
+    if (!summary) return "";
+    let html = marked.parse(summary, { async: false }) as string;
+    // Restore CRM badge placeholders into styled inline badges
+    html = html.replace(
+      /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
+      (_m, type, id, label) =>
+        `<span class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5"><span class="text-muted-foreground">[${id}]</span> <span>${label}</span> <span class="text-muted-foreground font-semibold">(${type})</span></span>`
+    );
+    return html;
+  }, [summary]);
 
   const handleOpen = async (open: boolean) => {
     if (!open) return;

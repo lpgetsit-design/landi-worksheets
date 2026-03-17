@@ -50,7 +50,8 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
 
     // Search hooks — only active when in respective mode
     const { data: crmResults, loading: crmLoading } = useBullhornSearch(query, mode === "crm");
-    const { data: wsResults, loading: wsLoading } = useWorksheetSearch(query, mode === "worksheet", excludeWorksheetId);
+    const { data: wsResults, loading: wsLoading, hasMore: wsHasMore, loadMore: wsLoadMore } = useWorksheetSearch(query, mode === "worksheet", excludeWorksheetId);
+    const wsScrollRef = useRef<HTMLDivElement>(null);
 
     // Reset selection when results change
     useEffect(() => { setSelectedIndex(0); }, [crmResults, wsResults, mode]);

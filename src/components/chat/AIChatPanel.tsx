@@ -318,7 +318,7 @@ const AIChatPanel = ({
   if (!open) return null;
 
   return (
-    <div className="flex h-full w-full md:w-[350px] flex-col border-l border-border bg-background">
+    <div className="flex h-full w-full flex-col border-l border-border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <span className="text-sm font-medium text-foreground">AI Assistant</span>

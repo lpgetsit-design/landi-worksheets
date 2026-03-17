@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -111,6 +111,37 @@ const WorksheetPage = () => {
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
 
+  // Resizable chat panel
+  const [chatWidth, setChatWidth] = useState(350);
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (ev: globalThis.MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const maxWidth = containerRect.width * 0.5;
+      const newWidth = Math.max(300, Math.min(maxWidth, containerRect.right - ev.clientX));
+      setChatWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, []);
+
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
     queryFn: () => getWorksheet(id!),
@@ -195,8 +226,8 @@ const WorksheetPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      <div className="flex-1 overflow-y-auto">
+    <div ref={containerRef} className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex-1 overflow-y-auto min-w-0">
         <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
           <div className="mb-4 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
@@ -241,7 +272,16 @@ const WorksheetPage = () => {
           </SheetContent>
         </Sheet>
       ) : (
-        chatOpen && chatPanel
+        chatOpen && (
+          <div className="relative flex-shrink-0" style={{ width: chatWidth }}>
+            {/* Drag handle */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
+              onMouseDown={handleDragStart}
+            />
+            {chatPanel}
+          </div>
+        )
       )}
     </div>
   );

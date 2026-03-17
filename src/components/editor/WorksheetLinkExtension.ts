@@ -15,6 +15,11 @@ const WorksheetLinkExtension = Extension.create({
       worksheetId: "" as string,
       suggestion: {
         char: "@",
+        allow: ({ state, range }: { state: any; range: any }) => {
+          const from = range.from;
+          const textBefore = state.doc.textBetween(Math.max(0, from - 2), from, "\n");
+          return textBefore.length <= 1 || /[\s\n]/.test(textBefore.charAt(textBefore.length - 2));
+        },
         allowSpaces: true,
         startOfLine: false,
         command: ({ editor, range, props }: { editor: any; range: any; props: any }) => {

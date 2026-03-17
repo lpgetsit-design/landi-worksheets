@@ -39,8 +39,6 @@ const Dashboard = () => {
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
-  const searchInputRef = useRef<HTMLTextAreaElement>(null);
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const { data: worksheets = [], isLoading } = useQuery({
     queryKey: ["worksheets"],

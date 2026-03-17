@@ -5,7 +5,7 @@ import {
   HoverCardTrigger,
   HoverCardContent,
 } from "@/components/ui/hover-card";
-import { FileText } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function WorksheetBadgeView({ node }: NodeViewProps) {

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.embed-worksheet]
 verify_jwt = false
+
+[functions.extract-keywords]
+verify_jwt = false

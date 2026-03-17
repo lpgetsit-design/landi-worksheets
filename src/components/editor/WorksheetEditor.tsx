@@ -19,7 +19,7 @@ import WorksheetBadgeNode from "./WorksheetBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import WorksheetLinkExtension from "./WorksheetLinkExtension";
-import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding } from "@/lib/worksheets";
+import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding, generateAndSaveKeywords } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -227,6 +227,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         summaryTimeout.current = setTimeout(() => {
           generateAndSaveSummary(worksheetId, title, md, documentType).catch(console.error);
           generateAndSaveEmbedding(worksheetId, title, md).catch(console.error);
+          generateAndSaveKeywords(worksheetId, title, md, documentType).catch(console.error);
         }, 5000);
       },
     });

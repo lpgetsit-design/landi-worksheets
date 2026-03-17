@@ -236,6 +236,36 @@ export const generateAndSaveSummary = async (
   }
 };
 
+const EXTRACT_KEYWORDS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-keywords`;
+
+/** Call AI to extract keywords and save to meta.keywords */
+export const generateAndSaveKeywords = async (
+  worksheetId: string,
+  title: string,
+  content: string,
+  documentType: string
+) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const resp = await fetch(EXTRACT_KEYWORDS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ worksheetId, title, content, documentType }),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      console.error("Keyword extraction error:", resp.status, t);
+    }
+  } catch (e) {
+    console.error("Keyword extraction failed:", e);
+  }
+};
+
 /** Sync linked_worksheets array in the meta JSON column for quick filtering */
 export const syncLinkedWorksheets = async (worksheetId: string, contentJson: Json | null) => {
   const links = extractWorksheetBadges(contentJson);

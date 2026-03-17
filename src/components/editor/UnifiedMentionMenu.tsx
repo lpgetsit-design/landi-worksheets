@@ -228,14 +228,20 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
           {/* Worksheet results */}
           {mode === "worksheet" && (
             <>
-              {!wsLoading && query.length >= minChars && wsResults.length === 0 && (
+              {!wsLoading && wsResults.length === 0 && query.length > 0 && (
                 <div className="px-3 py-4 text-xs text-muted-foreground text-center">No worksheets found</div>
               )}
-              {!wsLoading && query.length < minChars && (
-                <div className="px-3 py-4 text-xs text-muted-foreground text-center">Type to search your worksheets</div>
-              )}
               {wsResults.length > 0 && (
-                <div className="p-1">
+                <div
+                  className="p-1"
+                  ref={wsScrollRef}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20 && wsHasMore && !wsLoading) {
+                      wsLoadMore();
+                    }
+                  }}
+                >
                   {wsResults.map((ws, index) => {
                     const isSelected = index === selectedIndex;
                     return (
@@ -253,6 +259,16 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
                       </button>
                     );
                   })}
+                  {wsLoading && (
+                    <div className="flex justify-center py-2">
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              )}
+              {wsResults.length === 0 && wsLoading && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </>

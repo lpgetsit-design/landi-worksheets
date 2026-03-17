@@ -460,7 +460,7 @@ const AIChatPanel = ({
             disabled={isLoading}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           />
-          <Button size="icon" className="h-9 w-9" onClick={handleSend} disabled={isLoading}>
+          <Button size="icon" className="h-9 w-9" onClick={() => handleSend()} disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

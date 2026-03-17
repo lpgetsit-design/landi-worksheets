@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { useBullhornSearch, type BullhornEntity } from "@/hooks/useBullhornSearch";
 import { useWorksheetSearch, type WorksheetSearchResult } from "@/hooks/useWorksheetSearch";
 import { Badge } from "@/components/ui/badge";

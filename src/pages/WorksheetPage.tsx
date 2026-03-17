@@ -11,6 +11,7 @@ import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/wor
 import type { DocumentType } from "@/lib/worksheets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { marked } from "marked";
 
 // ─── Summary Button ───
 const SummaryButton = ({

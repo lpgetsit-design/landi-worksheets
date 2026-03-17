@@ -197,6 +197,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         CrmBadgeNode,
         WorksheetBadgeNode,
         UnifiedMentionExtension.configure({ worksheetId }),
+        TableKeyboardShortcuts,
       ],
       content: (initialContent as any) || "",
       editorProps: {

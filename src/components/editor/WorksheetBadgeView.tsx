@@ -17,7 +17,7 @@ export default function WorksheetBadgeView({ node }: NodeViewProps) {
       <HoverCard openDelay={200} closeDelay={100}>
         <HoverCardTrigger asChild>
           <span
-            className="inline-flex items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-pointer hover:bg-accent transition-colors"
+            className="inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none cursor-pointer hover:bg-accent transition-colors"
             contentEditable={false}
             onClick={() => navigate(`/worksheet/${worksheetId}`)}
           >

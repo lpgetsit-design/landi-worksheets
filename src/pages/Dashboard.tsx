@@ -34,6 +34,7 @@ const Dashboard = () => {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [entityFilters, setEntityFilters] = useState<EntityOption[]>([]);
   const [entityPopoverOpen, setEntityPopoverOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");

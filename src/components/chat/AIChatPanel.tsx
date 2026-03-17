@@ -151,6 +151,8 @@ const AIChatPanel = ({
       let currentData = "";
 
       for (const line of lines) {
+        // Ignore SSE comments (keepalive pings, padding)
+        if (line.startsWith(":")) continue;
         if (line.startsWith("event: ")) {
           currentEventType = line.slice(7).trim();
         } else if (line.startsWith("data: ")) {

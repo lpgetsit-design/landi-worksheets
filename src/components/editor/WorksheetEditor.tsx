@@ -347,22 +347,31 @@ ${content}`;
           });
 
           if (!resp.ok) throw new Error("Failed to enhance content");
-          const choice = await resp.json();
+
+          // Parse SSE response to extract the message event
+          const sseText = await resp.text();
           let enhanced = "";
-
-          if (choice.message?.tool_calls?.length) {
-            for (const tc of choice.message.tool_calls) {
-              if (tc.function?.name === "replace_worksheet_content") {
-                try {
-                  const args = JSON.parse(tc.function.arguments);
-                  enhanced = args.content || "";
-                } catch {}
+          for (const line of sseText.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr || jsonStr === "[DONE]") continue;
+            try {
+              const evt = JSON.parse(jsonStr);
+              // Check for tool calls with replace_worksheet_content
+              if (evt.tool_calls?.length) {
+                for (const tc of evt.tool_calls) {
+                  if (tc.function?.name === "replace_worksheet_content") {
+                    try {
+                      const args = JSON.parse(tc.function.arguments);
+                      if (args.content) enhanced = args.content;
+                    } catch {}
+                  }
+                }
               }
-            }
-          }
-
-          if (!enhanced && choice.message?.content) {
-            enhanced = choice.message.content;
+              if (!enhanced && evt.role === "assistant" && evt.content) {
+                enhanced = evt.content;
+              }
+            } catch {}
           }
 
           if (!enhanced.trim()) {

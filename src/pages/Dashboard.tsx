@@ -151,17 +151,8 @@ const Dashboard = () => {
     setSearchQuery("");
     setSearchResults(null);
     setSearchKeywords([]);
-    setSearchExpanded(false);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
   }, []);
-
-  // Auto-expand textarea when content grows
-  useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.style.height = "auto";
-      searchInputRef.current.style.height = Math.min(searchInputRef.current.scrollHeight, 120) + "px";
-    }
-  }, [searchQuery]);
 
   const isSearchActive = searchResults !== null;
 

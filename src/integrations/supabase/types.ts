@@ -337,6 +337,14 @@ export type Database = {
         Args: { _user_id: string; _worksheet_id: string }
         Returns: boolean
       }
+      upsert_worksheet_embedding: {
+        Args: {
+          _content_hash: string
+          _embedding: string
+          _worksheet_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       document_type: "note" | "skill" | "prompt" | "template"

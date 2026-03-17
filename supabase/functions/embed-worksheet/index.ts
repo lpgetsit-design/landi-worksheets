@@ -38,10 +38,9 @@ serve(async (req) => {
       });
     }
 
-    // Build text to embed: title + content
     const textToEmbed = `${title || "Untitled"}\n\n${content}`.slice(0, 8000);
 
-    // Simple content hash to skip re-embedding unchanged content
+    // Content hash to skip re-embedding unchanged content
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(textToEmbed));
     const contentHash = Array.from(new Uint8Array(hashBuffer))
@@ -88,21 +87,16 @@ serve(async (req) => {
     const embedding = embData.data?.[0]?.embedding;
     if (!embedding) throw new Error("No embedding returned");
 
-    // Upsert embedding
-    const { error: upsertError } = await adminClient
-      .from("worksheet_embeddings")
-      .upsert(
-        {
-          worksheet_id: worksheetId,
-          embedding: JSON.stringify(embedding),
-          content_hash: contentHash,
-        },
-        { onConflict: "worksheet_id" }
-      );
+    // Upsert via RPC to avoid large payload issues with PostgREST
+    const { error: rpcError } = await adminClient.rpc("upsert_worksheet_embedding", {
+      _worksheet_id: worksheetId,
+      _embedding: JSON.stringify(embedding),
+      _content_hash: contentHash,
+    });
 
-    if (upsertError) {
-      console.error("Upsert error:", upsertError);
-      throw upsertError;
+    if (rpcError) {
+      console.error("RPC upsert error:", rpcError);
+      throw rpcError;
     }
 
     return new Response(JSON.stringify({ status: "embedded" }), {

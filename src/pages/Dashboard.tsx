@@ -188,28 +188,25 @@ const Dashboard = () => {
 
       {/* Search bar */}
       <div className="mb-4">
-        <div className="relative">
-          <div className="absolute left-3 top-2.5 text-muted-foreground">
+        <div className="relative flex items-center">
+          <div className="absolute left-3 text-muted-foreground pointer-events-none">
             {isSearching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
             )}
           </div>
-          <textarea
-            ref={searchInputRef}
+          <input
+            type="text"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => setSearchExpanded(true)}
             placeholder="Search documents… paste a job description, query, or keywords"
-            rows={1}
-            className="w-full resize-none rounded-lg border border-border bg-background pl-9 pr-9 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-all"
-            style={{ minHeight: "36px" }}
+            className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
           />
           {searchQuery && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>

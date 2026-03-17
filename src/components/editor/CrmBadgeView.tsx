@@ -56,7 +56,7 @@ function resolveValue(meta: Record<string, unknown>, key: string): string | null
   return String(val);
 }
 
-export default function CrmBadgeView({ node }: NodeViewProps) {
+export default function CrmBadgeView({ node, editor, getPos }: NodeViewProps) {
   const { entityType, entityId, label, metadata } = node.attrs;
   const typeLabel = ENTITY_SHORT[entityType] || entityType;
   const meta = (metadata || {}) as Record<string, unknown>;

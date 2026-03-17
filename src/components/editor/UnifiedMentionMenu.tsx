@@ -164,7 +164,17 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
         </div>
 
         {/* Body */}
-        <div className="max-h-[240px] overflow-y-auto">
+        <div
+          className="max-h-[240px] overflow-y-auto"
+          ref={wsScrollRef}
+          onScroll={(e) => {
+            if (mode !== "worksheet") return;
+            const el = e.currentTarget;
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20 && wsHasMore && !wsLoading) {
+              wsLoadMore();
+            }
+          }}
+        >
           {/* Category picker */}
           {mode === "pick" && (
             <div className="p-1">

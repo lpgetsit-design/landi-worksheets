@@ -168,6 +168,10 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
     const [title, setTitle] = useState(initialTitle);
     const [documentType, setDocumentType] = useState<DocumentType>(initialDocumentType);
     const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+    const summaryTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+    // Cleanup summary timer on unmount
+    useEffect(() => () => { if (summaryTimeout.current) clearTimeout(summaryTimeout.current); }, []);
 
     const editor = useEditor({
       extensions: [

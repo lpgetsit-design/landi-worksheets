@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities, hybridSearchWorksheets } from "@/lib/worksheets";
 import type { HybridSearchResult } from "@/lib/worksheets";
 import { toast } from "sonner";
+import { marked } from "marked";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";

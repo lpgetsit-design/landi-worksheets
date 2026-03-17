@@ -173,6 +173,7 @@ export const generateAndSaveEmbedding = async (
   content: string
 ) => {
   try {
+    if (!worksheetId || !content?.trim()) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
@@ -201,6 +202,7 @@ export const generateAndSaveSummary = async (
   documentType: string
 ) => {
   try {
+    if (!worksheetId || !content?.trim()) return;
     const resp = await fetch(SUMMARIZE_URL, {
       method: "POST",
       headers: {

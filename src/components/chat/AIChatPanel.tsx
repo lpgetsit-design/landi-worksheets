@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { X, Send, RotateCcw, Wrench, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ interface AIChatPanelProps {
   open: boolean;
   onClose: () => void;
   selectedText?: string;
+  autoMessage?: string;
+  onAutoMessageConsumed?: () => void;
   worksheetContent?: string;
   worksheetTitle?: string;
   worksheetType?: DocumentType;
@@ -88,6 +90,8 @@ const AIChatPanel = ({
   open,
   onClose,
   selectedText,
+  autoMessage,
+  onAutoMessageConsumed,
   worksheetContent,
   worksheetTitle,
   worksheetType,
@@ -102,10 +106,12 @@ const AIChatPanel = ({
   const [streamingContent, setStreamingContent] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const autoMessageSentRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
+
 
   const executeTool = (name: string, args: string): string => {
     try {
@@ -259,14 +265,14 @@ const AIChatPanel = ({
     };
   };
 
-  const handleSend = async () => {
-    const text = input.trim();
+  const handleSend = async (directText?: string) => {
+    const text = (directText ?? input).trim();
     if (!text || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
     let allMessages = [...messages, userMsg];
     setMessages(allMessages);
-    setInput("");
+    if (!directText) setInput("");
     setIsLoading(true);
     setThinkingLabel("Connecting...");
     setStreamingContent("");
@@ -324,6 +330,15 @@ const AIChatPanel = ({
       abortRef.current = null;
     }
   };
+
+  // Auto-send message when autoMessage prop is set (e.g. Simplify/Expand)
+  useEffect(() => {
+    if (open && autoMessage && autoMessage !== autoMessageSentRef.current && !isLoading) {
+      autoMessageSentRef.current = autoMessage;
+      handleSend(autoMessage);
+      onAutoMessageConsumed?.();
+    }
+  }, [open, autoMessage]);
 
   if (!open) return null;
 
@@ -456,7 +471,7 @@ const AIChatPanel = ({
             disabled={isLoading}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           />
-          <Button size="icon" className="h-9 w-9" onClick={handleSend} disabled={isLoading}>
+          <Button size="icon" className="h-9 w-9" onClick={() => handleSend()} disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

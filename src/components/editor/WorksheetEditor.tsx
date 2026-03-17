@@ -168,7 +168,7 @@ interface WorksheetEditorProps {
   initialTitle: string;
   initialContent: Json | null;
   initialDocumentType: DocumentType;
-  onSelectionAI?: (text: string) => void;
+  onSelectionAI?: (text: string, instruction?: string) => void;
   onContentChange?: (text: string) => void;
   onDocumentTypeChange?: (type: DocumentType) => void;
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
@@ -295,7 +295,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
     }, [title, worksheetId, initialTitle]);
 
     const handleAskAI = useCallback(
-      (text: string) => { onSelectionAI?.(text); },
+      (text: string, instruction?: string) => { onSelectionAI?.(text, instruction); },
       [onSelectionAI]
     );
 

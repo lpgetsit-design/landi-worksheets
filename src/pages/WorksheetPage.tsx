@@ -106,6 +106,7 @@ const WorksheetPage = () => {
   const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
+  const [autoMessage, setAutoMessage] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
@@ -157,8 +158,9 @@ const WorksheetPage = () => {
     }
   }, [worksheet]);
 
-  const handleSelectionAI = useCallback((text: string) => {
+  const handleSelectionAI = useCallback((text: string, instruction?: string) => {
     setSelectedText(text);
+    setAutoMessage(instruction);
     setChatOpen(true);
   }, []);
 
@@ -217,6 +219,8 @@ const WorksheetPage = () => {
       open={chatOpen}
       onClose={() => setChatOpen(false)}
       selectedText={selectedText}
+      autoMessage={autoMessage}
+      onAutoMessageConsumed={() => setAutoMessage(undefined)}
       worksheetContent={worksheetContent}
       worksheetTitle={worksheetTitle}
       worksheetType={worksheetType}

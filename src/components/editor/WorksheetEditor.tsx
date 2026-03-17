@@ -170,6 +170,7 @@ interface WorksheetEditorProps {
   initialDocumentType: DocumentType;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
+  onDocumentTypeChange?: (type: DocumentType) => void;
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 

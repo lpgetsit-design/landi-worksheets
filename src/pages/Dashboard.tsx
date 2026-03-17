@@ -158,10 +158,11 @@ const Dashboard = () => {
   const isSearchActive = searchResults !== null;
 
   // Snippet extraction for search results
-  const getSnippet = (content: string | null, maxLen = 120) => {
+  const getSnippetHtml = useCallback((content: string | null, maxLen = 300) => {
     if (!content) return "";
-    return content.length > maxLen ? content.slice(0, maxLen) + "…" : content;
-  };
+    const trimmed = content.length > maxLen ? content.slice(0, maxLen) + "…" : content;
+    return marked.parse(trimmed, { async: false }) as string;
+  }, []);
 
   const scorePercent = (score: number) => Math.round(score * 100);
 

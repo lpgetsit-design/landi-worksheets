@@ -8,7 +8,7 @@ import AIChatPanel from "@/components/chat/AIChatPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
-import { marked } from "marked";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 

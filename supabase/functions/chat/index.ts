@@ -387,7 +387,6 @@ AGENTIC CRM TASKS:
               keepAlive = false;
               clearInterval(pingInterval);
             }
-            );
 
             if (!response.ok) {
               const status = response.status;

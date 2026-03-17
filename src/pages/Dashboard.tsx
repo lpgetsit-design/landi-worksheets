@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,6 @@ const Dashboard = () => {
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
-  const searchInputRef = useRef<HTMLTextAreaElement>(null);
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const { data: worksheets = [], isLoading } = useQuery({
     queryKey: ["worksheets"],
@@ -153,17 +151,8 @@ const Dashboard = () => {
     setSearchQuery("");
     setSearchResults(null);
     setSearchKeywords([]);
-    setSearchExpanded(false);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
   }, []);
-
-  // Auto-expand textarea when content grows
-  useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.style.height = "auto";
-      searchInputRef.current.style.height = Math.min(searchInputRef.current.scrollHeight, 120) + "px";
-    }
-  }, [searchQuery]);
 
   const isSearchActive = searchResults !== null;
 
@@ -188,28 +177,25 @@ const Dashboard = () => {
 
       {/* Search bar */}
       <div className="mb-4">
-        <div className="relative">
-          <div className="absolute left-3 top-2.5 text-muted-foreground">
+        <div className="relative flex items-center">
+          <div className="absolute left-3 text-muted-foreground pointer-events-none">
             {isSearching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
             )}
           </div>
-          <textarea
-            ref={searchInputRef}
+          <input
+            type="text"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => setSearchExpanded(true)}
             placeholder="Search documents… paste a job description, query, or keywords"
-            rows={1}
-            className="w-full resize-none rounded-lg border border-border bg-background pl-9 pr-9 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring transition-all"
-            style={{ minHeight: "36px" }}
+            className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
           />
           {searchQuery && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>

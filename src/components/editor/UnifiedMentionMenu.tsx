@@ -242,16 +242,7 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
                 <div className="px-3 py-4 text-xs text-muted-foreground text-center">No worksheets found</div>
               )}
               {wsResults.length > 0 && (
-                <div
-                  className="p-1"
-                  ref={wsScrollRef}
-                  onScroll={(e) => {
-                    const el = e.currentTarget;
-                    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20 && wsHasMore && !wsLoading) {
-                      wsLoadMore();
-                    }
-                  }}
-                >
+                <div className="p-1">
                   {wsResults.map((ws, index) => {
                     const isSelected = index === selectedIndex;
                     return (

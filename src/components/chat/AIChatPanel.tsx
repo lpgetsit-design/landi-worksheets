@@ -263,14 +263,14 @@ const AIChatPanel = ({
     };
   };
 
-  const handleSend = async () => {
-    const text = input.trim();
+  const handleSend = async (directText?: string) => {
+    const text = (directText ?? input).trim();
     if (!text || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
     let allMessages = [...messages, userMsg];
     setMessages(allMessages);
-    setInput("");
+    if (!directText) setInput("");
     setIsLoading(true);
     setThinkingLabel("Connecting...");
     setStreamingContent("");

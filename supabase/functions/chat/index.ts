@@ -375,7 +375,7 @@ async function streamAIResponse(
           for (const tc of delta.tool_calls) {
             const idx = tc.index;
             if (!toolCallDeltas[idx]) {
-              toolCallDeltas[idx] = { id: tc.id || "", function: { name: "", arguments: "" } };
+              toolCallDeltas[idx] = { id: tc.id || "", type: "function", function: { name: "", arguments: "" } };
             }
             if (tc.id) toolCallDeltas[idx].id = tc.id;
             if (tc.function?.name) toolCallDeltas[idx].function.name += tc.function.name;

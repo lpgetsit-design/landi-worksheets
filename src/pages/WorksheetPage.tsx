@@ -118,6 +118,12 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <SummaryButton
+                worksheet={worksheet}
+                worksheetContent={worksheetContent}
+                worksheetTitle={worksheetTitle}
+                worksheetType={worksheetType}
+              />
               <Button
                 variant={chatOpen ? "secondary" : "outline"}
                 size="sm"

@@ -162,6 +162,51 @@ function extractWorksheetBadges(node: any): WorksheetLink[] {
   return results;
 }
 
+const SUMMARIZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/summarize-worksheet`;
+
+/** Call AI to summarise the worksheet and save result in meta.summary */
+export const generateAndSaveSummary = async (
+  worksheetId: string,
+  title: string,
+  content: string,
+  documentType: string
+) => {
+  try {
+    const resp = await fetch(SUMMARIZE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ title, content, documentType }),
+    });
+    if (!resp.ok) return; // silently skip on failure
+    const { summary } = await resp.json();
+    if (!summary) return;
+
+    // Merge into existing meta
+    const { data: ws } = await supabase
+      .from("worksheets")
+      .select("meta")
+      .eq("id", worksheetId)
+      .single();
+
+    const currentMeta = (ws?.meta as Record<string, unknown>) || {};
+    const newMeta = {
+      ...currentMeta,
+      summary,
+      summary_updated_at: new Date().toISOString(),
+    };
+
+    await supabase
+      .from("worksheets")
+      .update({ meta: newMeta as unknown as Json })
+      .eq("id", worksheetId);
+  } catch (e) {
+    console.error("Summary generation failed:", e);
+  }
+};
+
 /** Sync linked_worksheets array in the meta JSON column for quick filtering */
 export const syncLinkedWorksheets = async (worksheetId: string, contentJson: Json | null) => {
   const links = extractWorksheetBadges(contentJson);

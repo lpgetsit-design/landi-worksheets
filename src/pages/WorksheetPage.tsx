@@ -106,6 +106,7 @@ const WorksheetPage = () => {
   const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
+  const [autoMessage, setAutoMessage] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");

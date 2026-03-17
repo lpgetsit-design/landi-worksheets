@@ -137,3 +137,55 @@ export const getWorksheetEntities = async () => {
   if (error) throw error;
   return data;
 };
+
+// --- Linked worksheet helpers ---
+
+interface WorksheetLink {
+  id: string;
+  title: string;
+}
+
+function extractWorksheetBadges(node: any): WorksheetLink[] {
+  const results: WorksheetLink[] = [];
+  if (!node) return results;
+  if (node.type === "worksheetBadge" && node.attrs) {
+    results.push({
+      id: node.attrs.worksheetId || "",
+      title: node.attrs.title || "",
+    });
+  }
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      results.push(...extractWorksheetBadges(child));
+    }
+  }
+  return results;
+}
+
+/** Sync linked_worksheets array in the meta JSON column for quick filtering */
+export const syncLinkedWorksheets = async (worksheetId: string, contentJson: Json | null) => {
+  const links = extractWorksheetBadges(contentJson);
+
+  // Deduplicate by id
+  const seen = new Set<string>();
+  const unique = links.filter((l) => {
+    if (seen.has(l.id)) return false;
+    seen.add(l.id);
+    return true;
+  });
+
+  // Read current meta
+  const { data: ws } = await supabase
+    .from("worksheets")
+    .select("meta")
+    .eq("id", worksheetId)
+    .single();
+
+  const currentMeta = (ws?.meta as Record<string, unknown>) || {};
+  const newMeta = { ...currentMeta, linked_worksheets: unique };
+
+  await supabase
+    .from("worksheets")
+    .update({ meta: newMeta as unknown as Json })
+    .eq("id", worksheetId);
+};

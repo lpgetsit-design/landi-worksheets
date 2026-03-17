@@ -15,9 +15,11 @@ import EditorToolbar from "./EditorToolbar";
 import TableEdgeButtons from "./TableEdgeButtons";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
+import WorksheetBadgeNode from "./WorksheetBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
-import { updateWorksheet, syncWorksheetEntities } from "@/lib/worksheets";
+import WorksheetLinkExtension from "./WorksheetLinkExtension";
+import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +45,18 @@ turndown.addRule("crmBadge", {
       label = (spans[1] as HTMLElement).textContent?.trim() || "";
     }
     return `[[CRM:${entityType}:${entityId}:${label}]]`;
+  },
+});
+
+// Custom Turndown rule: serialize worksheet badge spans into [[WS:id:title]] placeholders
+turndown.addRule("worksheetBadge", {
+  filter: (node) =>
+    node.nodeName === "SPAN" && node.hasAttribute("data-worksheet-badge"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const wsId = el.getAttribute("data-worksheet-id") || "";
+    const title = el.getAttribute("data-worksheet-title") || el.textContent?.trim() || "";
+    return `[[WS:${wsId}:${title}]]`;
   },
 });
 
@@ -167,7 +181,9 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         TableHeader,
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
+        WorksheetBadgeNode,
         SlashCommandExtension,
+        WorksheetLinkExtension.configure({ worksheetId }),
         TableKeyboardShortcuts,
       ],
       content: (initialContent as any) || "",
@@ -190,6 +206,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
             content_md: md,
           }).catch(console.error);
           syncWorksheetEntities(worksheetId, json as unknown as Json).catch(console.error);
+          syncLinkedWorksheets(worksheetId, json as unknown as Json).catch(console.error);
         }, 500);
       },
     });

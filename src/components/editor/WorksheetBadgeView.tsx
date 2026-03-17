@@ -22,7 +22,7 @@ export default function WorksheetBadgeView({ node }: NodeViewProps) {
             onClick={() => navigate(`/worksheet/${worksheetId}`)}
           >
             <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="truncate max-w-[200px]">{title}</span>
+            <span className="truncate min-w-0">{title}</span>
           </span>
         </HoverCardTrigger>
         <HoverCardContent side="top" align="start" className="w-60 p-3">

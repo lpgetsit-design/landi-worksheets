@@ -55,9 +55,9 @@ export default function LinkBadgeInline({ href, children }: LinkBadgeInlineProps
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 no-underline hover:bg-accent transition-colors"
+      className="inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 no-underline hover:bg-accent transition-colors"
     >
-      <span className="truncate max-w-[200px]">{title}</span>
+      <span className="truncate min-w-0">{title}</span>
       <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
     </a>
   );

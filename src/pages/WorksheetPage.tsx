@@ -75,7 +75,7 @@ const SummaryButton = ({
           <span className="hidden sm:inline">Summary</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 max-h-60 overflow-y-auto" align="end">
+      <PopoverContent className="w-96 max-h-80 overflow-y-auto" align="end">
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

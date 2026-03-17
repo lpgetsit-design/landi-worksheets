@@ -40,7 +40,7 @@ export const WorksheetBadgeNode = Node.create({
         "data-worksheet-id": node.attrs.worksheetId,
         "data-worksheet-title": node.attrs.title,
         class:
-          "inline-flex items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none",
+          "inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-accent/50 px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5 select-none",
         contenteditable: "false",
       }),
       ["span", { class: "text-muted-foreground" }, "📄"],

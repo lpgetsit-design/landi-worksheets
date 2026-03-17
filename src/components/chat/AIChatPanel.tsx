@@ -65,7 +65,6 @@ const CopyButton = ({ content }: { content: string }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Fallback to plain text
       await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
@@ -100,6 +99,7 @@ const AIChatPanel = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
+  const [streamingContent, setStreamingContent] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -128,7 +128,7 @@ const AIChatPanel = ({
     }
   };
 
-  /** Parse SSE stream and handle events. Returns the final assistant message with optional client tool_calls. */
+  /** Parse SSE stream with token-by-token streaming. Returns the final assistant message. */
   const streamChat = async (conversationMessages: Message[]): Promise<Message | null> => {
     const apiMessages = conversationMessages.map((m) => {
       const base: any = { role: m.role, content: m.content };
@@ -159,20 +159,22 @@ const AIChatPanel = ({
       const err = await resp.json().catch(() => ({ error: "Request failed" }));
       toast.error(err.error || "AI request failed");
       setThinkingLabel(null);
+      setStreamingContent("");
       return null;
     }
 
-    // Read SSE stream
     const reader = resp.body?.getReader();
     if (!reader) {
       toast.error("Failed to read response stream");
       setThinkingLabel(null);
+      setStreamingContent("");
       return null;
     }
 
     const decoder = new TextDecoder();
     let buffer = "";
     let finalMessage: any = null;
+    let streamedText = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -180,31 +182,42 @@ const AIChatPanel = ({
 
       buffer += decoder.decode(value, { stream: true });
 
-      // Parse complete SSE events from buffer
       const lines = buffer.split("\n");
       buffer = "";
 
       let currentEventType = "";
-      let currentData = "";
 
       for (const line of lines) {
-        // Ignore SSE comments (keepalive pings, padding)
         if (line.startsWith(":")) continue;
         if (line.startsWith("event: ")) {
           currentEventType = line.slice(7).trim();
         } else if (line.startsWith("data: ")) {
-          currentData = line.slice(6);
-          // Process the event
+          const currentData = line.slice(6);
           try {
             const parsed = JSON.parse(currentData);
 
             switch (currentEventType) {
               case "status":
                 setThinkingLabel(parsed.message);
+                // Clear streaming content when entering a new thinking phase
+                if (parsed.phase === "thinking") {
+                  streamedText = "";
+                  setStreamingContent("");
+                }
+                scrollToBottom();
+                break;
+              case "token":
+                // Append streamed token content
+                streamedText += parsed.content;
+                setStreamingContent(streamedText);
+                setThinkingLabel(null); // hide thinking label while tokens arrive
                 scrollToBottom();
                 break;
               case "tool_calls":
                 setThinkingLabel(parsed.message);
+                // Clear streaming since AI is now calling tools
+                streamedText = "";
+                setStreamingContent("");
                 scrollToBottom();
                 break;
               case "tool_result": {
@@ -216,22 +229,21 @@ const AIChatPanel = ({
               case "done":
                 finalMessage = parsed.message;
                 setThinkingLabel(null);
+                setStreamingContent("");
                 break;
               case "error":
                 toast.error(parsed.error || "AI request failed");
                 setThinkingLabel(null);
+                setStreamingContent("");
                 return null;
             }
           } catch {
-            // incomplete JSON, keep in buffer
             buffer += line + "\n";
           }
           currentEventType = "";
-          currentData = "";
         } else if (line === "") {
-          // empty line between events — ignore
+          // empty line between events
         } else {
-          // Incomplete line, put back in buffer
           buffer += line + "\n";
         }
       }
@@ -257,13 +269,13 @@ const AIChatPanel = ({
     setInput("");
     setIsLoading(true);
     setThinkingLabel("Connecting...");
+    setStreamingContent("");
     scrollToBottom();
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      // Agentic client loop — only loops when server returns client tool_calls
       for (let clientLoop = 0; clientLoop < 5; clientLoop++) {
         const assistantMsg = await streamChat(allMessages);
         if (!assistantMsg) break;
@@ -272,7 +284,6 @@ const AIChatPanel = ({
         setMessages(allMessages);
         scrollToBottom();
 
-        // If the AI returned client tool calls, execute them and continue
         if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
           const toolNames = assistantMsg.tool_calls
             .map((tc) => toolLabels[tc.function.name] || tc.function.name)
@@ -295,12 +306,10 @@ const AIChatPanel = ({
           setMessages(allMessages);
           scrollToBottom();
 
-          // Continue client loop to get the AI's follow-up after tool results
           setThinkingLabel("Reviewing changes...");
           continue;
         }
 
-        // No tool calls — we're done
         break;
       }
     } catch (e: any) {
@@ -311,6 +320,7 @@ const AIChatPanel = ({
     } finally {
       setIsLoading(false);
       setThinkingLabel(null);
+      setStreamingContent("");
       abortRef.current = null;
     }
   };
@@ -333,6 +343,7 @@ const AIChatPanel = ({
               setInput("");
               setIsLoading(false);
               setThinkingLabel(null);
+              setStreamingContent("");
             }}
             title="Reset conversation"
           >
@@ -356,7 +367,7 @@ const AIChatPanel = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !streamingContent && !thinkingLabel ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-center text-sm text-muted-foreground">
               Ask questions or tell me to edit your worksheet
@@ -365,7 +376,6 @@ const AIChatPanel = ({
         ) : (
           <div className="space-y-3">
             {messages.map((msg) => {
-              // Tool result messages — show as inline action indicators
               if (msg.role === "tool") {
                 return (
                   <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -375,7 +385,6 @@ const AIChatPanel = ({
                 );
               }
 
-              // Assistant messages with tool_calls but no text — show action indicator
               if (msg.role === "assistant" && msg.tool_calls && !msg.content) {
                 return (
                   <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -385,7 +394,6 @@ const AIChatPanel = ({
                 );
               }
 
-              // Skip assistant messages that are just tool-call wrappers with no content
               if (msg.role === "assistant" && !msg.content && !msg.tool_calls) return null;
 
               return (
@@ -412,6 +420,18 @@ const AIChatPanel = ({
                 </div>
               );
             })}
+
+            {/* Live streaming content bubble */}
+            {streamingContent && (
+              <div className="group relative">
+                <div className="mr-6 rounded-md bg-muted px-3 py-2 text-sm text-foreground">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <CrmChatContent content={streamingContent} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Thinking / tool-call indicator */}
             {thinkingLabel && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">

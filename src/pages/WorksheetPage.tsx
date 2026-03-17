@@ -236,6 +236,17 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
+                <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="note">Note</SelectItem>
+                  <SelectItem value="skill">Skill</SelectItem>
+                  <SelectItem value="prompt">Prompt</SelectItem>
+                  <SelectItem value="template">Template</SelectItem>
+                </SelectContent>
+              </Select>
               <SummaryButton
                 worksheet={worksheet}
                 worksheetContent={worksheetContent}

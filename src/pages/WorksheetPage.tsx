@@ -36,7 +36,7 @@ const SummaryButton = ({
     html = html.replace(
       /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
       (_m, type, id, label) =>
-        `<span class="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5"><span class="text-muted-foreground">[${id}]</span> <span>${label}</span> <span class="text-muted-foreground font-semibold">(${type})</span></span>`
+        `<span class="inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5"><span class="text-muted-foreground shrink-0">[${id}]</span> <span class="truncate min-w-0">${label}</span> <span class="text-muted-foreground font-semibold shrink-0">(${type})</span></span>`
     );
     return html;
   }, [summary]);

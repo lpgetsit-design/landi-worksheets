@@ -331,6 +331,15 @@ const AIChatPanel = ({
     }
   };
 
+  // Auto-send message when autoMessage prop is set (e.g. Simplify/Expand)
+  useEffect(() => {
+    if (open && autoMessage && autoMessage !== autoMessageSentRef.current && !isLoading) {
+      autoMessageSentRef.current = autoMessage;
+      handleSend(autoMessage);
+      onAutoMessageConsumed?.();
+    }
+  }, [open, autoMessage]);
+
   if (!open) return null;
 
   return (

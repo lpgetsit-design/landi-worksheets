@@ -353,7 +353,7 @@ const AIChatPanel = ({
               if (msg.role === "assistant" && !msg.content && !msg.tool_calls) return null;
 
               return (
-                <div key={msg.id}>
+                <div key={msg.id} className="group relative">
                   <div
                     className={cn(
                       "rounded-md px-3 py-2 text-sm",
@@ -370,6 +370,9 @@ const AIChatPanel = ({
                       msg.content
                     )}
                   </div>
+                  {msg.role === "assistant" && msg.content && (
+                    <CopyButton content={msg.content} />
+                  )}
                 </div>
               );
             })}

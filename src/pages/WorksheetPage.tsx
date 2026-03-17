@@ -29,6 +29,7 @@ const SummaryButton = ({
   const [summary, setSummary] = useState<string | null>(null);
 
   const existingSummary = (worksheet?.meta as any)?.summary as string | undefined;
+  const summaryHtml = useMemo(() => summary ? marked.parse(summary, { async: false }) as string : "", [summary]);
 
   const handleOpen = async (open: boolean) => {
     if (!open) return;

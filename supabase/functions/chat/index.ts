@@ -83,13 +83,13 @@ const SERVER_TOOLS = [
     function: {
       name: "batch_resolve_entities",
       description:
-        "Resolve multiple Bullhorn entities by their type and ID in a single call. Use this when you have specific entity types and IDs (e.g. from existing badges, or numeric IDs mentioned in text). Much faster than calling lookup_bullhorn_entity multiple times. Returns each entity's label and basic data.",
+        "Resolve multiple Bullhorn entities by their type and ID in a single call. Use this when you have specific entity types and IDs (e.g. from existing badges, or numeric IDs mentioned in text). Much faster than calling individual lookup tools.",
       parameters: {
         type: "object",
         properties: {
           entities: {
             type: "array",
-            description: "Array of entities to resolve, each with entityType and entityId",
+            description: "Array of entities to resolve",
             items: {
               type: "object",
               properties: {
@@ -110,13 +110,13 @@ const SERVER_TOOLS = [
     function: {
       name: "search_bullhorn_candidates",
       description:
-        "Search Bullhorn CRM for candidates using a Lucene query. Use to find candidates by skills, location, experience, name, etc. Always include 'isDeleted:0' in queries. Combine conditions with AND. Examples: 'skillSet:Java AND address.state:\"New York\" AND isDeleted:0', 'firstName:John AND isDeleted:0'.",
+        "Search Bullhorn CRM for candidates using a Lucene query. Always include 'isDeleted:0' in queries.",
       parameters: {
         type: "object",
         properties: {
           query: { type: "string", description: "Lucene search query. Always include isDeleted:0." },
           count: { type: "number", description: "Max results to return (default 10, max 50)" },
-          fields: { type: "string", description: "Comma-separated fields to return. Optional — uses sensible defaults." },
+          fields: { type: "string", description: "Comma-separated fields to return. Optional." },
         },
         required: ["query"],
         additionalProperties: false,
@@ -128,12 +128,12 @@ const SERVER_TOOLS = [
     function: {
       name: "get_bullhorn_candidate_profile",
       description:
-        "Get a detailed candidate profile from Bullhorn by numeric candidate ID. Returns contact info, skills, status, experience, and more.",
+        "Get a detailed candidate profile from Bullhorn by numeric candidate ID.",
       parameters: {
         type: "object",
         properties: {
           id: { type: "number", description: "Numeric Bullhorn Candidate ID" },
-          fields: { type: "string", description: "Comma-separated fields. Optional — uses sensible defaults." },
+          fields: { type: "string", description: "Comma-separated fields. Optional." },
         },
         required: ["id"],
         additionalProperties: false,
@@ -145,7 +145,7 @@ const SERVER_TOOLS = [
     function: {
       name: "search_bullhorn_jobs",
       description:
-        "Search Bullhorn CRM for job orders using a Lucene query. Use to find jobs by title, status, location, client. Always include 'isDeleted:false'. Examples: 'title:Engineer* AND isDeleted:false', 'status:\"Accepting Candidates\" AND isDeleted:false'.",
+        "Search Bullhorn CRM for job orders using a Lucene query. Always include 'isDeleted:false'.",
       parameters: {
         type: "object",
         properties: {
@@ -179,7 +179,7 @@ const SERVER_TOOLS = [
     function: {
       name: "search_bullhorn_placements",
       description:
-        "Search Bullhorn CRM for placements using a Lucene query. Examples: 'status:Approved', 'candidate.id:12345'.",
+        "Search Bullhorn CRM for placements using a Lucene query.",
       parameters: {
         type: "object",
         properties: {
@@ -213,6 +213,21 @@ const SERVER_TOOLS = [
 const ALL_TOOLS = [...CLIENT_TOOLS, ...SERVER_TOOLS];
 const SERVER_TOOL_NAMES = new Set(SERVER_TOOLS.map((t) => t.function.name));
 const MAX_LOOPS = 8;
+
+// ─── Friendly tool labels ───
+const TOOL_LABELS: Record<string, string> = {
+  lookup_bullhorn_entity: "Looking up CRM entity",
+  batch_resolve_entities: "Resolving CRM entities",
+  search_bullhorn_candidates: "Searching candidates",
+  get_bullhorn_candidate_profile: "Retrieving candidate profile",
+  search_bullhorn_jobs: "Searching job orders",
+  get_bullhorn_job_summary: "Retrieving job details",
+  search_bullhorn_placements: "Searching placements",
+  get_bullhorn_placement_summary: "Retrieving placement details",
+  replace_worksheet_content: "Updating worksheet",
+  update_worksheet_title: "Changing title",
+  update_document_type: "Changing document type",
+};
 
 // ─── Server-side tool executors ───
 
@@ -274,6 +289,111 @@ function sseEvent(type: string, data: any): string {
   return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+// ─── Stream AI gateway response, forwarding content tokens and accumulating tool calls ───
+
+interface StreamResult {
+  content: string;
+  toolCalls: any[];
+}
+
+async function streamAIResponse(
+  apiMessages: any[],
+  apiKey: string,
+  send: (type: string, data: any) => void,
+): Promise<StreamResult> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-5-mini",
+      messages: apiMessages,
+      tools: ALL_TOOLS,
+      parallel_tool_calls: true,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const status = response.status;
+    const t = await response.text();
+    console.error("AI gateway error:", status, t);
+    if (status === 429) {
+      throw new Error("RATE_LIMIT");
+    } else if (status === 402) {
+      throw new Error("PAYMENT_REQUIRED");
+    }
+    throw new Error("AI_GATEWAY_ERROR");
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  const toolCallDeltas: Record<number, { id: string; function: { name: string; arguments: string } }> = {};
+  let firstContentSent = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIdx: number;
+    while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, newlineIdx);
+      buffer = buffer.slice(newlineIdx + 1);
+
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") break;
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const delta = parsed.choices?.[0]?.delta;
+        if (!delta) continue;
+
+        // Stream content tokens to client
+        if (delta.content) {
+          if (!firstContentSent) {
+            send("status", { phase: "responding", message: "AI is responding..." });
+            firstContentSent = true;
+          }
+          content += delta.content;
+          send("token", { content: delta.content });
+        }
+
+        // Accumulate tool call deltas
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index;
+            if (!toolCallDeltas[idx]) {
+              toolCallDeltas[idx] = { id: tc.id || "", function: { name: "", arguments: "" } };
+            }
+            if (tc.id) toolCallDeltas[idx].id = tc.id;
+            if (tc.function?.name) toolCallDeltas[idx].function.name += tc.function.name;
+            if (tc.function?.arguments) toolCallDeltas[idx].function.arguments += tc.function.arguments;
+          }
+        }
+      } catch {
+        // Incomplete JSON — put back
+        buffer = line + "\n" + buffer;
+        break;
+      }
+    }
+  }
+
+  const toolCalls = Object.values(toolCallDeltas);
+  return { content, toolCalls };
+}
+
 // ─── Main handler ───
 
 Deno.serve(async (req) => {
@@ -312,7 +432,7 @@ CRM BADGES:
 
 RESOLVING ENTITY REFERENCES — CRITICAL:
 - When you see bare numeric IDs in the worksheet content that could be Bullhorn entity references (e.g. "Candidate 12345", "Job #67890"), you MUST resolve them to proper [[CRM:...]] badges.
-- ALWAYS use batch_resolve_entities when you need to resolve multiple entities at once. This is MUCH faster than calling individual lookup tools.
+- ALWAYS use batch_resolve_entities when you need to resolve multiple entities at once.
 - For batch_resolve_entities, you need the entityType and entityId. Common entity types: Candidate, ClientContact, ClientCorporation, JobOrder, Placement.
 - If you're unsure of the entity type for a numeric ID, use lookup_bullhorn_entity for that specific case.
 - NEVER call lookup_bullhorn_entity or individual get tools multiple times in sequence when batch_resolve_entities can handle them all at once.
@@ -329,7 +449,7 @@ AGENTIC CRM TASKS:
   * batch_resolve_entities — resolve multiple entity type+ID pairs to labels in ONE call
 - When the user gives a complex CRM task, break it into sequential steps using these tools.
 - Chain tool calls: search first, then get details on specific results.
-- IMPORTANT: Call as many tools as possible in PARALLEL in a single response. For example, if you need 3 candidate profiles, call all 3 get_bullhorn_candidate_profile tools at once, don't call them one at a time.
+- IMPORTANT: Call as many tools as possible in PARALLEL in a single response.
 - If a search returns zero results, try broadening the query or ask the user to refine.
 - Present results in a clear, formatted summary with bullet points or tables.
 - Use [[CRM:entityType:entityId:label]] badges for all entity references in your responses.
@@ -347,117 +467,90 @@ AGENTIC CRM TASKS:
         const send = (type: string, data: any) => {
           controller.enqueue(new TextEncoder().encode(sseEvent(type, data)));
         };
-        // Send a padding comment to flush HTTP buffers immediately
+        // Flush HTTP buffers immediately
         controller.enqueue(new TextEncoder().encode(`: connected\n\n`));
 
         try {
           for (let loop = 0; loop < MAX_LOOPS; loop++) {
-            send("status", { step: loop + 1, phase: "thinking", message: `AI is thinking (step ${loop + 1})...` });
+            if (loop === 0) {
+              send("status", { step: 1, phase: "thinking", message: "Reading your worksheet..." });
+            } else {
+              send("status", { step: loop + 1, phase: "thinking", message: "Analyzing results..." });
+            }
 
-            // Start keepalive pings every 3s while waiting for AI gateway
+            // Start keepalive pings every 3s
             let keepAlive = true;
             const pingInterval = setInterval(() => {
               if (keepAlive) {
-                try {
-                  controller.enqueue(new TextEncoder().encode(`: ping\n\n`));
-                } catch { /* stream closed */ }
+                try { controller.enqueue(new TextEncoder().encode(`: ping\n\n`)); } catch { /* closed */ }
               }
             }, 3000);
 
-            let response: Response;
+            let result: StreamResult;
             try {
-              response = await fetch(
-                "https://ai.gateway.lovable.dev/v1/chat/completions",
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    model: "openai/gpt-5-mini",
-                    messages: apiMessages,
-                    tools: ALL_TOOLS,
-                    parallel_tool_calls: true,
-                    stream: false,
-                  }),
-                }
-              );
-            } finally {
+              result = await streamAIResponse(apiMessages, LOVABLE_API_KEY, send);
+            } catch (e: any) {
               keepAlive = false;
               clearInterval(pingInterval);
-            }
-
-            if (!response.ok) {
-              const status = response.status;
-              const t = await response.text();
-              console.error("AI gateway error:", status, t);
-
-              if (status === 429) {
+              if (e.message === "RATE_LIMIT") {
                 send("error", { error: "Rate limit exceeded. Please try again in a moment." });
-              } else if (status === 402) {
+              } else if (e.message === "PAYMENT_REQUIRED") {
                 send("error", { error: "AI credits exhausted. Please add funds in Settings → Workspace → Usage." });
               } else {
                 send("error", { error: "AI gateway error" });
               }
               controller.close();
               return;
+            } finally {
+              keepAlive = false;
+              clearInterval(pingInterval);
             }
 
-            const data = await response.json();
-            const choice = data.choices?.[0];
-            const msg = choice?.message;
-
-            if (!msg) {
-              send("error", { error: "No response from AI" });
-              controller.close();
-              return;
-            }
-
-            const toolCalls = msg.tool_calls || [];
-            const serverCalls = toolCalls.filter((tc: any) => SERVER_TOOL_NAMES.has(tc.function.name));
-            const clientCalls = toolCalls.filter((tc: any) => !SERVER_TOOL_NAMES.has(tc.function.name));
+            const { content, toolCalls } = result;
+            const serverCalls = toolCalls.filter((tc) => SERVER_TOOL_NAMES.has(tc.function.name));
+            const clientCalls = toolCalls.filter((tc) => !SERVER_TOOL_NAMES.has(tc.function.name));
 
             // No server tools — return final message and done
             if (serverCalls.length === 0) {
-              const finalMessage: any = { role: "assistant", content: msg.content || "" };
+              const finalMessage: any = { role: "assistant", content: content || "" };
               if (clientCalls.length > 0) finalMessage.tool_calls = clientCalls;
               send("done", { message: finalMessage });
               controller.close();
               return;
             }
 
-            // We have server tools — stream tool call info
-            const toolCallNames = serverCalls.map((tc: any) => tc.function.name);
+            // We have server tools — stream tool call info with friendly labels
+            const toolCallLabels = serverCalls.map((tc) => TOOL_LABELS[tc.function.name] || tc.function.name);
             send("tool_calls", {
               step: loop + 1,
-              tools: toolCallNames,
-              message: `Calling: ${toolCallNames.join(", ")}`,
+              tools: serverCalls.map((tc) => tc.function.name),
+              message: toolCallLabels.join(", ") + "...",
             });
 
             // Add assistant message to conversation
             apiMessages.push({
               role: "assistant",
-              content: msg.content || "",
+              content: content || "",
               tool_calls: toolCalls,
             });
 
             // Execute ALL server tools in parallel
             const serverResults = await Promise.all(
-              serverCalls.map(async (tc: any) => {
+              serverCalls.map(async (tc) => {
                 const result = await executeServerTool(tc.function.name, tc.function.arguments);
                 return { tool_call_id: tc.id, name: tc.function.name, content: result };
               })
             );
 
             // Stream each tool result
-            for (const result of serverResults) {
+            for (const res of serverResults) {
+              const label = TOOL_LABELS[res.name] || res.name;
               send("tool_result", {
                 step: loop + 1,
-                tool: result.name,
-                message: `Completed: ${result.name}`,
+                tool: res.name,
+                message: `✓ ${label}`,
               });
-              apiMessages.push({ role: "tool", tool_call_id: result.tool_call_id, content: result.content });
+              apiMessages.push({ role: "tool", tool_call_id: res.tool_call_id, content: res.content });
             }
 
             // Provide deferred results for client tools

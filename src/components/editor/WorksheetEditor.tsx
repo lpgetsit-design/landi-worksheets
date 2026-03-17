@@ -17,8 +17,7 @@ import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import WorksheetBadgeNode from "./WorksheetBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
-import SlashCommandExtension from "./SlashCommandExtension";
-import WorksheetLinkExtension from "./WorksheetLinkExtension";
+import UnifiedMentionExtension from "./UnifiedMentionExtension";
 import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding, generateAndSaveKeywords } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
@@ -197,8 +196,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         WorksheetBadgeNode,
-        SlashCommandExtension,
-        WorksheetLinkExtension.configure({ worksheetId }),
+        UnifiedMentionExtension.configure({ worksheetId }),
         TableKeyboardShortcuts,
       ],
       content: (initialContent as any) || "",

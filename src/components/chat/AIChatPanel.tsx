@@ -49,6 +49,42 @@ const toolLabels: Record<string, string> = {
   get_bullhorn_placement_summary: "Retrieved placement details",
 };
 
+/** Copies AI markdown as rich HTML to clipboard for pasting into the worksheet editor */
+const CopyButton = ({ content }: { content: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      const html = marked.parse(content, { async: false }) as string;
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([content], { type: "text/plain" }),
+        }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Fallback to plain text
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  }, [content]);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="absolute -bottom-1 right-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+      onClick={handleCopy}
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="h-3 w-3 text-muted-foreground" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    </Button>
+  );
+};
+
 const AIChatPanel = ({
   open,
   onClose,

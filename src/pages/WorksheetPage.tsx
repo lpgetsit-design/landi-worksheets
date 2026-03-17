@@ -148,6 +148,8 @@ const WorksheetPage = () => {
     queryKey: ["worksheet", id],
     queryFn: () => getWorksheet(id!),
     enabled: !!id && id !== "new",
+    staleTime: 0,
+    gcTime: 0,
   });
 
   useEffect(() => {

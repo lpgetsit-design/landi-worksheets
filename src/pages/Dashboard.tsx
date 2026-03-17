@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -324,61 +325,83 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground mb-2">
               {searchResults!.length} result{searchResults!.length !== 1 ? "s" : ""} found
             </p>
-            {searchResults!.map((sr) => (
-              <div
-                key={sr.id}
-                className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent cursor-pointer"
-                onClick={() => navigate(`/worksheet/${sr.id}`)}
-              >
-                <FileText className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{sr.title}</p>
-                    <Badge variant="outline" className="text-[10px] capitalize shrink-0">{sr.document_type || "note"}</Badge>
-                  </div>
-                  {sr.content_md && (
+            {searchResults!.map((sr) => {
+              const summaryMd = (sr.meta as any)?.summary as string | undefined;
+              const summaryHtml = summaryMd
+                ? (marked.parse(summaryMd, { async: false }) as string).replace(
+                    /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
+                    (_m, type, id, label) =>
+                      `<span class="inline-flex max-w-full overflow-hidden items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground align-baseline mx-0.5"><span class="text-muted-foreground shrink-0">[${id}]</span> <span class="truncate min-w-0">${label}</span> <span class="text-muted-foreground font-semibold shrink-0">(${type})</span></span>`
+                  )
+                : null;
+
+              return (
+                <HoverCard key={sr.id} openDelay={300} closeDelay={100}>
+                  <HoverCardTrigger asChild>
                     <div
-                      className="prose prose-xs dark:prose-invert max-w-none text-xs text-muted-foreground mt-0.5 line-clamp-3 [&>*]:my-0 [&>ul]:pl-4 [&>ol]:pl-4"
-                      dangerouslySetInnerHTML={{ __html: getSnippetHtml(sr.content_md, 300) }}
-                    />
-                  )}
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDate(sr.updated_at)}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      Match: {scorePercent(sr.combined_score)}%
-                    </span>
-                    {sr.similarity_score > 0 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        Semantic: {scorePercent(sr.similarity_score)}%
-                      </span>
-                    )}
-                    {sr.keyword_score > 0 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        Keywords: {scorePercent(sr.keyword_score)}%
-                      </span>
-                    )}
-                  </div>
-                  {/* Show matching keywords from this doc */}
-                  {sr.meta?.keywords && searchKeywords.length > 0 && (() => {
-                    const docKws = sr.meta.keywords as string[];
-                    const matched = searchKeywords.filter((kw) => docKws.includes(kw));
-                    if (matched.length === 0) return null;
-                    return (
-                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                        {matched.map((kw) => (
-                          <span key={kw} className="inline-block rounded-full border border-border bg-accent px-1.5 py-0 text-[10px] text-foreground">
-                            {kw}
+                      className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent cursor-pointer"
+                      onClick={() => navigate(`/worksheet/${sr.id}`)}
+                    >
+                      <FileText className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">{sr.title}</p>
+                          <Badge variant="outline" className="text-[10px] capitalize shrink-0">{sr.document_type || "note"}</Badge>
+                        </div>
+                        {sr.content_md && (
+                          <div
+                            className="prose prose-xs dark:prose-invert max-w-none text-xs text-muted-foreground mt-0.5 line-clamp-3 [&>*]:my-0 [&>ul]:pl-4 [&>ol]:pl-4"
+                            dangerouslySetInnerHTML={{ __html: getSnippetHtml(sr.content_md, 300) }}
+                          />
+                        )}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(sr.updated_at)}
                           </span>
-                        ))}
+                          <span className="text-[10px] text-muted-foreground">
+                            Match: {scorePercent(sr.combined_score)}%
+                          </span>
+                          {sr.similarity_score > 0 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              Semantic: {scorePercent(sr.similarity_score)}%
+                            </span>
+                          )}
+                          {sr.keyword_score > 0 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              Keywords: {scorePercent(sr.keyword_score)}%
+                            </span>
+                          )}
+                        </div>
+                        {sr.meta?.keywords && searchKeywords.length > 0 && (() => {
+                          const docKws = sr.meta.keywords as string[];
+                          const matched = searchKeywords.filter((kw) => docKws.includes(kw));
+                          if (matched.length === 0) return null;
+                          return (
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                              {matched.map((kw) => (
+                                <span key={kw} className="inline-block rounded-full border border-border bg-accent px-1.5 py-0 text-[10px] text-foreground">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            ))}
+                    </div>
+                  </HoverCardTrigger>
+                  {summaryHtml && (
+                    <HoverCardContent side="right" align="start" className="w-96 max-h-80 overflow-y-auto p-3">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Summary</p>
+                      <div
+                        className="prose prose-sm dark:prose-invert max-w-none text-sm"
+                        dangerouslySetInnerHTML={{ __html: summaryHtml }}
+                      />
+                    </HoverCardContent>
+                  )}
+                </HoverCard>
+              );
+            })}
           </div>
         )
       ) : (

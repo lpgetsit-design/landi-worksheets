@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 interface SelectionToolbarProps {
   editor: Editor;
-  onAskAI: (text: string) => void;
+  onAskAI: (text: string, instruction?: string) => void;
 }
 
 const SelectionToolbar = ({ editor, onAskAI }: SelectionToolbarProps) => {

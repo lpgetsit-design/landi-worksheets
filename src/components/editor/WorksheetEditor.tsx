@@ -19,7 +19,7 @@ import WorksheetBadgeNode from "./WorksheetBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import SlashCommandExtension from "./SlashCommandExtension";
 import WorksheetLinkExtension from "./WorksheetLinkExtension";
-import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary } from "@/lib/worksheets";
+import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
 import type { Json } from "@/integrations/supabase/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

@@ -48,6 +48,18 @@ turndown.addRule("crmBadge", {
   },
 });
 
+// Custom Turndown rule: serialize worksheet badge spans into [[WS:id:title]] placeholders
+turndown.addRule("worksheetBadge", {
+  filter: (node) =>
+    node.nodeName === "SPAN" && node.hasAttribute("data-worksheet-badge"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const wsId = el.getAttribute("data-worksheet-id") || "";
+    const title = el.getAttribute("data-worksheet-title") || el.textContent?.trim() || "";
+    return `[[WS:${wsId}:${title}]]`;
+  },
+});
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 const GenerateTitleButton = ({

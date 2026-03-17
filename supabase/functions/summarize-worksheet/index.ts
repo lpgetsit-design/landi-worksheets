@@ -21,13 +21,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are a document summarizer. Given a worksheet's title, type, and content, produce a concise summary (max 500 words) that preserves:
-- The main topic and context
-- Key background information
-- Important details, decisions, or action items
-- Any referenced people, companies, or entities
+    const systemPrompt = `You summarize documents in a casual, easy-to-read style — like you're quickly explaining it to a friend.
 
-Do NOT add information not present in the original. Return ONLY the summary text, no preamble.`;
+Rules:
+- Keep it SHORT: max 3-5 bullet points, each 1-2 sentences tops
+- Use simple, everyday words — no jargon or fancy language
+- Use markdown bullet lists and **bold keywords** for scannability
+- Mention any people, companies, or CRM entities referenced (keep [[CRM:...]] badges exactly as-is)
+- Focus on: what's this about, what matters, what's next
+- Do NOT add anything not in the original
+- Return ONLY the summary, no intro or outro`;
 
     const userPrompt = `Title: ${title || "Untitled"}
 Type: ${documentType || "note"}

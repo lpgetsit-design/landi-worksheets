@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
-import { X, Send, RotateCcw, Wrench } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { X, Send, RotateCcw, Wrench, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { marked } from "marked";
 import CrmChatContent from "./CrmChatContent";
 import type { DocumentType } from "@/lib/worksheets";
 

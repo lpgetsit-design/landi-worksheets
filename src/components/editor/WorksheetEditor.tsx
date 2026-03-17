@@ -170,10 +170,11 @@ interface WorksheetEditorProps {
   initialDocumentType: DocumentType;
   onSelectionAI?: (text: string) => void;
   onContentChange?: (text: string) => void;
+  onDocumentTypeChange?: (type: DocumentType) => void;
   editorRef?: React.MutableRefObject<WorksheetEditorHandle | null>;
 }
 
-const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDocumentType, onSelectionAI, onContentChange, editorRef }: WorksheetEditorProps) => {
+const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDocumentType, onSelectionAI, onContentChange, onDocumentTypeChange, editorRef }: WorksheetEditorProps) => {
     const [title, setTitle] = useState(initialTitle);
     const [documentType, setDocumentType] = useState<DocumentType>(initialDocumentType);
     const [isAIEditing, setIsAIEditing] = useState(false);
@@ -302,7 +303,8 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
       const newType = value as DocumentType;
       setDocumentType(newType);
       updateWorksheet(worksheetId, { document_type: newType } as any).catch(console.error);
-    }, [worksheetId]);
+      onDocumentTypeChange?.(newType);
+    }, [worksheetId, onDocumentTypeChange]);
 
     // ─── Streaming Title Generation ───
     const handleGenerateTitle = useCallback(async () => {
@@ -437,17 +439,6 @@ ${content}`;
             placeholder="Untitled"
             disabled={isAIEditing}
           />
-          <Select value={documentType} onValueChange={handleDocumentTypeChange} disabled={isAIEditing}>
-            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="note">Note</SelectItem>
-              <SelectItem value="skill">Skill</SelectItem>
-              <SelectItem value="prompt">Prompt</SelectItem>
-              <SelectItem value="template">Template</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         {editor && <EditorToolbar editor={editor} onEnhance={handleEnhance} disabled={isAIEditing} />}
         <div className={`relative mt-2 group/table-area transition-opacity ${isAIEditing ? "opacity-70 pointer-events-none" : ""}`}>

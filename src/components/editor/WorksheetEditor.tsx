@@ -212,8 +212,12 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
           syncWorksheetEntities(worksheetId, json as unknown as Json).catch(console.error);
           syncLinkedWorksheets(worksheetId, json as unknown as Json).catch(console.error);
         }, 500);
-      },
-    });
+
+        // Debounce AI summary generation (5 seconds of inactivity)
+        if (summaryTimeout.current) clearTimeout(summaryTimeout.current);
+        summaryTimeout.current = setTimeout(() => {
+          generateAndSaveSummary(worksheetId, title, md, documentType).catch(console.error);
+        }, 5000);
 
     // Expose editor handle via callback ref
     useEffect(() => {

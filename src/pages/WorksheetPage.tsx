@@ -111,6 +111,37 @@ const WorksheetPage = () => {
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
 
+  // Resizable chat panel
+  const [chatWidth, setChatWidth] = useState(350);
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (ev: globalThis.MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const maxWidth = containerRect.width * 0.5;
+      const newWidth = Math.max(300, Math.min(maxWidth, containerRect.right - ev.clientX));
+      setChatWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, []);
+
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
     queryFn: () => getWorksheet(id!),

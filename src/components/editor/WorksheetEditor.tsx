@@ -62,6 +62,41 @@ turndown.addRule("worksheetBadge", {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+interface ChatToolCall {
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+}
+
+function parseChatSseResult(sseText: string): { content: string; toolCalls: ChatToolCall[] } {
+  let content = "";
+  let toolCalls: ChatToolCall[] = [];
+
+  for (const line of sseText.split("\n")) {
+    if (!line.startsWith("data: ")) continue;
+    const jsonStr = line.slice(6).trim();
+    if (!jsonStr || jsonStr === "[DONE]") continue;
+
+    try {
+      const evt = JSON.parse(jsonStr);
+      const message = evt.message ?? evt;
+
+      if (message.role === "assistant" && typeof message.content === "string") {
+        content = message.content;
+      }
+
+      if (Array.isArray(message.tool_calls)) {
+        toolCalls = message.tool_calls;
+      }
+    } catch {
+      // Ignore non-JSON lines and partial SSE frames.
+    }
+  }
+
+  return { content, toolCalls };
+}
+
 const GenerateTitleButton = ({
   worksheetId,
   getContent,

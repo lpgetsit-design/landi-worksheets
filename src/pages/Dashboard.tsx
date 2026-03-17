@@ -337,9 +337,10 @@ const Dashboard = () => {
                     <Badge variant="outline" className="text-[10px] capitalize shrink-0">{sr.document_type || "note"}</Badge>
                   </div>
                   {sr.content_md && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {getSnippet(sr.content_md, 180)}
-                    </p>
+                    <div
+                      className="prose prose-xs dark:prose-invert max-w-none text-xs text-muted-foreground mt-0.5 line-clamp-3 [&>*]:my-0 [&>ul]:pl-4 [&>ol]:pl-4"
+                      dangerouslySetInnerHTML={{ __html: getSnippetHtml(sr.content_md, 300) }}
+                    />
                   )}
                   <div className="flex items-center gap-3 mt-1.5">
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">

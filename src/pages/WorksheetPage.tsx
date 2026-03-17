@@ -1,16 +1,79 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getWorksheet, updateWorksheet } from "@/lib/worksheets";
+import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
-
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+
+// ─── Summary Button ───
+const SummaryButton = ({
+  worksheet,
+  worksheetContent,
+  worksheetTitle,
+  worksheetType,
+}: {
+  worksheet: any;
+  worksheetContent: string;
+  worksheetTitle: string;
+  worksheetType: DocumentType;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+
+  const existingSummary = (worksheet?.meta as any)?.summary as string | undefined;
+
+  const handleOpen = async (open: boolean) => {
+    if (!open) return;
+    if (existingSummary && !summary) {
+      setSummary(existingSummary);
+      return;
+    }
+    if (summary) return;
+    if (!worksheetContent.trim()) {
+      setSummary("No content to summarize.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await generateAndSaveSummary(worksheet.id, worksheetTitle, worksheetContent, worksheetType);
+      const updated = await getWorksheet(worksheet.id);
+      const newSummary = (updated?.meta as any)?.summary;
+      setSummary(newSummary || "Could not generate summary.");
+    } catch {
+      setSummary("Failed to generate summary.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Popover onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <FileText className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Summary</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 max-h-60 overflow-y-auto" align="end">
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generating summary...
+          </div>
+        ) : (
+          <p className="text-sm text-foreground whitespace-pre-wrap">{summary || "No summary available."}</p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const WorksheetPage = () => {
   const { id } = useParams();
@@ -93,7 +156,6 @@ const WorksheetPage = () => {
     );
   }
 
-
   const chatPanel = (
     <AIChatPanel
       open={chatOpen}
@@ -118,6 +180,12 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <SummaryButton
+                worksheet={worksheet}
+                worksheetContent={worksheetContent}
+                worksheetTitle={worksheetTitle}
+                worksheetType={worksheetType}
+              />
               <Button
                 variant={chatOpen ? "secondary" : "outline"}
                 size="sm"

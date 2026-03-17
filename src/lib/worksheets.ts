@@ -164,6 +164,35 @@ function extractWorksheetBadges(node: any): WorksheetLink[] {
 
 const SUMMARIZE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/summarize-worksheet`;
 
+const EMBED_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/embed-worksheet`;
+
+/** Call OpenAI to generate and store vector embedding for the worksheet */
+export const generateAndSaveEmbedding = async (
+  worksheetId: string,
+  title: string,
+  content: string
+) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const resp = await fetch(EMBED_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ worksheetId, title, content }),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      console.error("Embedding error:", resp.status, t);
+    }
+  } catch (e) {
+    console.error("Embedding generation failed:", e);
+  }
+};
+
 /** Call AI to summarise the worksheet and save result in meta.summary */
 export const generateAndSaveSummary = async (
   worksheetId: string,

@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.stream-ai]
 verify_jwt = false
+
+[functions.embed-worksheet]
+verify_jwt = false

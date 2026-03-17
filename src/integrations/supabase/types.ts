@@ -179,6 +179,38 @@ export type Database = {
           },
         ]
       }
+      worksheet_embeddings: {
+        Row: {
+          content_hash: string
+          created_at: string
+          embedding: string
+          id: string
+          worksheet_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          embedding: string
+          id?: string
+          worksheet_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheet_embeddings_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: true
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worksheet_entities: {
         Row: {
           created_at: string

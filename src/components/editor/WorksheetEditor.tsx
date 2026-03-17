@@ -95,16 +95,16 @@ async function streamFromAI(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-      let line = buffer.slice(0, newlineIndex);
-      buffer = buffer.slice(newlineIndex + 1);
+    const lines = buffer.split("\n");
+    // Keep the last (possibly incomplete) line in the buffer
+    buffer = lines.pop() || "";
 
-      if (line.endsWith("\r")) line = line.slice(0, -1);
-      if (line.startsWith(":") || line.trim() === "") continue;
-      if (!line.startsWith("data: ")) continue;
+    for (const line of lines) {
+      const trimmed = line.replace(/\r$/, "");
+      if (trimmed.startsWith(":") || trimmed.trim() === "") continue;
+      if (!trimmed.startsWith("data: ")) continue;
 
-      const jsonStr = line.slice(6).trim();
+      const jsonStr = trimmed.slice(6).trim();
       if (jsonStr === "[DONE]") { onDone(); return; }
 
       try {
@@ -112,8 +112,8 @@ async function streamFromAI(
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
         if (content) onDelta(content);
       } catch {
-        buffer = line + "\n" + buffer;
-        break;
+        // Incomplete JSON line — put it back for next iteration
+        buffer = trimmed + "\n" + buffer;
       }
     }
   }

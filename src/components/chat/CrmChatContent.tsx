@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import CrmBadgeInline from "./CrmBadgeInline";
+import LinkBadgeInline from "./LinkBadgeInline";
 
 const CRM_TOKEN = /\[\[CRM:(\w+):([^\]:]+):([^\]]+)\]\]/g;
 

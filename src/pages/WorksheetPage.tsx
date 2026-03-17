@@ -272,6 +272,7 @@ const WorksheetPage = () => {
             initialDocumentType={(worksheet.document_type as DocumentType) || "note"}
             onSelectionAI={handleSelectionAI}
             onContentChange={setWorksheetContent}
+            onDocumentTypeChange={handleUpdateDocumentType}
           />
         </div>
       </div>

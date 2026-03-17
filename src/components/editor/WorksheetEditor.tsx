@@ -439,17 +439,6 @@ ${content}`;
             placeholder="Untitled"
             disabled={isAIEditing}
           />
-          <Select value={documentType} onValueChange={handleDocumentTypeChange} disabled={isAIEditing}>
-            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="note">Note</SelectItem>
-              <SelectItem value="skill">Skill</SelectItem>
-              <SelectItem value="prompt">Prompt</SelectItem>
-              <SelectItem value="template">Template</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         {editor && <EditorToolbar editor={editor} onEnhance={handleEnhance} disabled={isAIEditing} />}
         <div className={`relative mt-2 group/table-area transition-opacity ${isAIEditing ? "opacity-70 pointer-events-none" : ""}`}>

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";

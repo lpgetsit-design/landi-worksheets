@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities, hybridSearchWorksheets } from "@/lib/worksheets";
 import type { HybridSearchResult } from "@/lib/worksheets";
 import { toast } from "sonner";
+import { marked } from "marked";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";
@@ -157,10 +158,11 @@ const Dashboard = () => {
   const isSearchActive = searchResults !== null;
 
   // Snippet extraction for search results
-  const getSnippet = (content: string | null, maxLen = 120) => {
+  const getSnippetHtml = useCallback((content: string | null, maxLen = 300) => {
     if (!content) return "";
-    return content.length > maxLen ? content.slice(0, maxLen) + "…" : content;
-  };
+    const trimmed = content.length > maxLen ? content.slice(0, maxLen) + "…" : content;
+    return marked.parse(trimmed, { async: false }) as string;
+  }, []);
 
   const scorePercent = (score: number) => Math.round(score * 100);
 
@@ -335,9 +337,10 @@ const Dashboard = () => {
                     <Badge variant="outline" className="text-[10px] capitalize shrink-0">{sr.document_type || "note"}</Badge>
                   </div>
                   {sr.content_md && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {getSnippet(sr.content_md, 180)}
-                    </p>
+                    <div
+                      className="prose prose-xs dark:prose-invert max-w-none text-xs text-muted-foreground mt-0.5 line-clamp-3 [&>*]:my-0 [&>ul]:pl-4 [&>ol]:pl-4"
+                      dangerouslySetInnerHTML={{ __html: getSnippetHtml(sr.content_md, 300) }}
+                    />
                   )}
                   <div className="flex items-center gap-3 mt-1.5">
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">

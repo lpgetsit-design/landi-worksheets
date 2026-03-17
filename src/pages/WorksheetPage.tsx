@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MessageSquare, ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/wor
 import type { DocumentType } from "@/lib/worksheets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { marked } from "marked";
 
 // ─── Summary Button ───
 const SummaryButton = ({
@@ -28,6 +29,7 @@ const SummaryButton = ({
   const [summary, setSummary] = useState<string | null>(null);
 
   const existingSummary = (worksheet?.meta as any)?.summary as string | undefined;
+  const summaryHtml = useMemo(() => summary ? marked.parse(summary, { async: false }) as string : "", [summary]);
 
   const handleOpen = async (open: boolean) => {
     if (!open) return;
@@ -67,8 +69,10 @@ const SummaryButton = ({
             <Loader2 className="h-4 w-4 animate-spin" />
             Generating summary...
           </div>
+        ) : summary ? (
+          <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
         ) : (
-          <p className="text-sm text-foreground whitespace-pre-wrap">{summary || "No summary available."}</p>
+          <p className="text-sm text-muted-foreground">No summary available.</p>
         )}
       </PopoverContent>
     </Popover>

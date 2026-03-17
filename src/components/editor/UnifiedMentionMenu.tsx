@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { useBullhornSearch, type BullhornEntity } from "@/hooks/useBullhornSearch";
 import { useWorksheetSearch, type WorksheetSearchResult } from "@/hooks/useWorksheetSearch";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,8 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
 
     // Search hooks — only active when in respective mode
     const { data: crmResults, loading: crmLoading } = useBullhornSearch(query, mode === "crm");
-    const { data: wsResults, loading: wsLoading } = useWorksheetSearch(query, mode === "worksheet", excludeWorksheetId);
+    const { data: wsResults, loading: wsLoading, hasMore: wsHasMore, loadMore: wsLoadMore } = useWorksheetSearch(query, mode === "worksheet", excludeWorksheetId);
+    const wsScrollRef = useRef<HTMLDivElement>(null);
 
     // Reset selection when results change
     useEffect(() => { setSelectedIndex(0); }, [crmResults, wsResults, mode]);
@@ -163,7 +164,17 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
         </div>
 
         {/* Body */}
-        <div className="max-h-[240px] overflow-y-auto">
+        <div
+          className="max-h-[240px] overflow-y-auto"
+          ref={wsScrollRef}
+          onScroll={(e) => {
+            if (mode !== "worksheet") return;
+            const el = e.currentTarget;
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20 && wsHasMore && !wsLoading) {
+              wsLoadMore();
+            }
+          }}
+        >
           {/* Category picker */}
           {mode === "pick" && (
             <div className="p-1">
@@ -227,11 +238,8 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
           {/* Worksheet results */}
           {mode === "worksheet" && (
             <>
-              {!wsLoading && query.length >= minChars && wsResults.length === 0 && (
+              {!wsLoading && wsResults.length === 0 && query.length > 0 && (
                 <div className="px-3 py-4 text-xs text-muted-foreground text-center">No worksheets found</div>
-              )}
-              {!wsLoading && query.length < minChars && (
-                <div className="px-3 py-4 text-xs text-muted-foreground text-center">Type to search your worksheets</div>
               )}
               {wsResults.length > 0 && (
                 <div className="p-1">
@@ -252,6 +260,16 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
                       </button>
                     );
                   })}
+                  {wsLoading && (
+                    <div className="flex justify-center py-2">
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              )}
+              {wsResults.length === 0 && wsLoading && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </>

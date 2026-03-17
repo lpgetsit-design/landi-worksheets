@@ -126,11 +126,12 @@ const LinkButton = ({ editor }: { editor: Editor }) => {
   );
 };
 
-const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
+const EditorToolbar = ({ editor, onEnhance, disabled }: EditorToolbarProps) => {
   const [enhancing, setEnhancing] = useState(false);
+  const isDisabled = disabled || enhancing;
 
   const handleEnhance = async () => {
-    if (!onEnhance || enhancing) return;
+    if (!onEnhance || isDisabled) return;
     setEnhancing(true);
     try {
       await onEnhance();
@@ -140,7 +141,7 @@ const EditorToolbar = ({ editor, onEnhance }: EditorToolbarProps) => {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1">
+    <div className={`flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-background p-1 transition-opacity ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
       <ToolbarButton
         onClick={() => cmd(editor).toggleBold().run()}
         active={editor.isActive("bold")}

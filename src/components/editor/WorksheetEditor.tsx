@@ -100,18 +100,31 @@ const GenerateTitleButton = ({
         }),
       });
       if (!resp.ok) throw new Error("Failed to generate title");
-      const choice = await resp.json();
-      let title = choice.message?.content || "";
-      // If the AI used the update_worksheet_title tool, extract the title from it
-      if (!title && choice.message?.tool_calls?.length) {
-        for (const tc of choice.message.tool_calls) {
-          if (tc.function?.name === "update_worksheet_title") {
-            try {
-              const args = JSON.parse(tc.function.arguments);
-              title = args.title || "";
-            } catch {}
+
+      // Parse SSE response to extract the message event
+      const text = await resp.text();
+      let title = "";
+      for (const line of text.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr || jsonStr === "[DONE]") continue;
+        try {
+          const evt = JSON.parse(jsonStr);
+          if (evt.role === "assistant" && evt.content) {
+            title = evt.content;
           }
-        }
+          // Check for tool calls with update_worksheet_title
+          if (evt.tool_calls?.length) {
+            for (const tc of evt.tool_calls) {
+              if (tc.function?.name === "update_worksheet_title") {
+                try {
+                  const args = JSON.parse(tc.function.arguments);
+                  if (args.title) title = args.title;
+                } catch {}
+              }
+            }
+          }
+        } catch {}
       }
       title = title.replace(/^["']|["']$/g, "").trim();
       onTitleGenerated(title || "Untitled");

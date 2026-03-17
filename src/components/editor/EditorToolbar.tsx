@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 interface EditorToolbarProps {
   editor: Editor;
   onEnhance?: () => Promise<void>;
+  disabled?: boolean;
 }
 
 const ToolbarButton = ({

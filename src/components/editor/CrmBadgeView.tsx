@@ -1,5 +1,6 @@
 import { NodeViewWrapper } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
+import { X } from "lucide-react";
 import {
   HoverCard,
   HoverCardTrigger,

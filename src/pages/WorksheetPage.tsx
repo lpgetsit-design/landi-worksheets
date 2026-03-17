@@ -219,6 +219,8 @@ const WorksheetPage = () => {
       open={chatOpen}
       onClose={() => setChatOpen(false)}
       selectedText={selectedText}
+      autoMessage={autoMessage}
+      onAutoMessageConsumed={() => setAutoMessage(undefined)}
       worksheetContent={worksheetContent}
       worksheetTitle={worksheetTitle}
       worksheetType={worksheetType}

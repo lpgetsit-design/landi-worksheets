@@ -152,6 +152,7 @@ const ENHANCE_PROMPTS: Record<DocumentType, string> = {
   skill: "Rewrite this skill document in a professional format suitable for a knowledge base. Use clear sections, concise language, and structured formatting.",
   prompt: "Rewrite this prompt in a clear, well-structured format. Ensure instructions are precise, well-ordered, and easy to follow.",
   template: "Rewrite this template in a polished, professional format with clear sections, placeholders, and consistent formatting.",
+  design: "Rewrite this design document in a structured format with clear sections for goals, requirements, specifications, and visual references.",
 };
 
 export interface WorksheetEditorHandle {

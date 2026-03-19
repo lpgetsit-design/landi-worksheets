@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-export type DocumentType = "note" | "skill" | "prompt" | "template";
+export type DocumentType = "note" | "skill" | "prompt" | "template" | "design";
 
 export interface Worksheet {
   id: string;

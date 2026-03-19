@@ -73,6 +73,15 @@ serve(async (req) => {
 
     let userContent: any;
 
+    // Generate signed URL for the file (private bucket)
+    let fileUrl: string | null = null;
+    if (filePath) {
+      const { data: signedData } = await supabaseAdmin.storage
+        .from("attachments")
+        .createSignedUrl(filePath, 600); // 10 min
+      fileUrl = signedData?.signedUrl ?? null;
+    }
+
     if (isImage && fileUrl) {
       userContent = [
         {

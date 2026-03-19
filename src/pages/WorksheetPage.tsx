@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine, Paperclip } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,6 +17,9 @@ import type { DocumentType } from "@/lib/worksheets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { marked } from "marked";
+import AttachmentPanel from "@/components/attachments/AttachmentPanel";
+import { useAuth } from "@/components/AuthProvider";
+import type { Attachment } from "@/lib/attachments";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {
@@ -163,6 +166,18 @@ const WorksheetPage = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+
+  const handleInsertFileBadge = useCallback((attachment: Attachment) => {
+    if (!editorRef.current) return;
+    const editor = (editorRef.current as any);
+    // Use setContent approach — insert at cursor via the underlying tiptap editor
+    // We need access to the tiptap editor instance; for now we use a workaround
+    // by exposing insertFileBadge on the handle
+    if (typeof editor.insertFileBadge === "function") {
+      editor.insertFileBadge(attachment);
+    }
+  }, []);
 
   // Toggle logic: at least one of editor/design must stay visible
   const toggleEditor = useCallback(() => {
@@ -410,6 +425,15 @@ const WorksheetPage = () => {
                     onDocumentTypeChange={handleUpdateDocumentType}
                   />
                 </div>
+                {user && (
+                  <div className="mx-auto max-w-[800px] px-3 sm:px-6 pb-4">
+                    <AttachmentPanel
+                      worksheetId={worksheet.id}
+                      userId={user.id}
+                      onInsertBadge={handleInsertFileBadge}
+                    />
+                  </div>
+                )}
               </div>
             </ResizablePanel>
           )}

@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import { useBullhornSearch, type BullhornEntity } from "@/hooks/useBullhornSearch";
 import { useWorksheetSearch, type WorksheetSearchResult } from "@/hooks/useWorksheetSearch";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Briefcase, Loader2, ArrowLeft } from "lucide-react";
+import { FileText, Briefcase, Loader2, ArrowLeft, Paperclip, Music, Video, Image, File } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Attachment } from "@/lib/attachments";
 
 export interface UnifiedMentionMenuRef {
   onKeyDown: (event: KeyboardEvent) => boolean;
@@ -14,11 +16,12 @@ interface UnifiedMentionMenuProps {
   excludeWorksheetId?: string;
 }
 
-type Mode = "pick" | "crm" | "worksheet";
+type Mode = "pick" | "crm" | "worksheet" | "file";
 
 const CATEGORY_ITEMS = [
   { key: "crm" as const, label: "Search CRM", icon: Briefcase, description: "Find candidates, contacts, jobs…" },
   { key: "worksheet" as const, label: "Link Worksheet", icon: FileText, description: "Link to another worksheet" },
+  { key: "file" as const, label: "Attach File", icon: Paperclip, description: "Insert an uploaded file" },
 ];
 
 function getEntityLabel(entity: BullhornEntity): string {
@@ -43,18 +46,60 @@ const TYPE_LABELS: Record<string, string> = {
   template: "Template",
 };
 
+function getFileIcon(fileType: string) {
+  if (fileType?.startsWith("image/")) return Image;
+  if (fileType?.startsWith("audio/")) return Music;
+  if (fileType?.startsWith("video/")) return Video;
+  if (fileType?.includes("pdf") || fileType?.includes("word") || fileType?.includes("text")) return FileText;
+  return File;
+}
+
+function getFileExtLabel(fileType: string) {
+  const ext = fileType?.split("/")?.[1]?.toUpperCase();
+  return ext || "FILE";
+}
+
 const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuProps>(
   ({ query, command, excludeWorksheetId }, ref) => {
     const [mode, setMode] = useState<Mode>("pick");
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    // Search hooks — only active when in respective mode
+    // Search hooks
     const { data: crmResults, loading: crmLoading } = useBullhornSearch(query, mode === "crm");
     const { data: wsResults, loading: wsLoading, hasMore: wsHasMore, loadMore: wsLoadMore } = useWorksheetSearch(query, mode === "worksheet", excludeWorksheetId);
     const wsScrollRef = useRef<HTMLDivElement>(null);
 
+    // File attachments for current worksheet
+    const [fileResults, setFileResults] = useState<Attachment[]>([]);
+    const [fileLoading, setFileLoading] = useState(false);
+
+    useEffect(() => {
+      if (mode !== "file") return;
+      setFileLoading(true);
+      const fetchFiles = async () => {
+        try {
+          let q = supabase
+            .from("worksheet_attachments")
+            .select("*")
+            .eq("worksheet_id", excludeWorksheetId || "")
+            .order("created_at", { ascending: false })
+            .limit(20);
+          if (query.trim()) {
+            q = q.or(`file_name.ilike.%${query}%,title.ilike.%${query}%`);
+          }
+          const { data } = await q;
+          setFileResults((data ?? []) as unknown as Attachment[]);
+        } catch {
+          setFileResults([]);
+        } finally {
+          setFileLoading(false);
+        }
+      };
+      fetchFiles();
+    }, [mode, query, excludeWorksheetId]);
+
     // Reset selection when results change
-    useEffect(() => { setSelectedIndex(0); }, [crmResults, wsResults, mode]);
+    useEffect(() => { setSelectedIndex(0); }, [crmResults, wsResults, fileResults, mode]);
 
     const selectCrm = useCallback((entity: BullhornEntity) => {
       command({
@@ -74,6 +119,16 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
       });
     }, [command]);
 
+    const selectFile = useCallback((attachment: Attachment) => {
+      command({
+        _type: "file",
+        attachmentId: attachment.id,
+        fileName: attachment.file_name,
+        fileType: attachment.file_type,
+        title: attachment.title || attachment.file_name,
+      });
+    }, [command]);
+
     useImperativeHandle(ref, () => ({
       onKeyDown: (event: KeyboardEvent) => {
         if (event.key === "Escape") {
@@ -82,7 +137,7 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
             setSelectedIndex(0);
             return true;
           }
-          return false; // let extension handle dismiss
+          return false;
         }
 
         if (event.key === "ArrowUp") {
@@ -105,7 +160,6 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
           return true;
         }
 
-        // Backspace in search mode with empty query goes back to picker
         if (event.key === "Backspace" && mode !== "pick" && query === "") {
           setMode("pick");
           setSelectedIndex(0);
@@ -119,6 +173,7 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
     function currentListLength() {
       if (mode === "pick") return CATEGORY_ITEMS.length;
       if (mode === "crm") return crmResults.length;
+      if (mode === "file") return fileResults.length;
       return wsResults.length;
     }
 
@@ -133,12 +188,17 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
         if (entity) selectCrm(entity);
         return;
       }
+      if (mode === "file") {
+        const file = fileResults[index];
+        if (file) selectFile(file);
+        return;
+      }
       const ws = wsResults[index];
       if (ws) selectWorksheet(ws);
     }
 
-    const loading = mode === "crm" ? crmLoading : mode === "worksheet" ? wsLoading : false;
-    const minChars = mode === "crm" ? 2 : 1;
+    const loading = mode === "crm" ? crmLoading : mode === "worksheet" ? wsLoading : mode === "file" ? fileLoading : false;
+    const minChars = mode === "crm" ? 2 : mode === "file" ? 0 : 1;
 
     return (
       <div className="z-50 w-80 rounded-md border border-border bg-popover shadow-md overflow-hidden">
@@ -153,7 +213,7 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
             </button>
           )}
           <span className="text-xs text-muted-foreground">
-            {mode === "pick" ? "Mention:" : mode === "crm" ? "Search CRM:" : "Link worksheet:"}
+            {mode === "pick" ? "Mention:" : mode === "crm" ? "Search CRM:" : mode === "file" ? "Attach file:" : "Link worksheet:"}
           </span>
           {mode !== "pick" && (
             <span className="text-sm text-foreground font-medium">
@@ -268,6 +328,45 @@ const UnifiedMentionMenu = forwardRef<UnifiedMentionMenuRef, UnifiedMentionMenuP
                 </div>
               )}
               {wsResults.length === 0 && wsLoading && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* File results */}
+          {mode === "file" && (
+            <>
+              {!fileLoading && fileResults.length === 0 && (
+                <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                  {query ? "No files found" : "No files uploaded to this worksheet"}
+                </div>
+              )}
+              {fileResults.length > 0 && (
+                <div className="p-1">
+                  {fileResults.map((file, index) => {
+                    const isSelected = index === selectedIndex;
+                    const FileIcon = getFileIcon(file.file_type);
+                    return (
+                      <button
+                        key={file.id}
+                        onClick={() => selectFile(file)}
+                        className={`w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left outline-none cursor-default ${
+                          isSelected ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50"
+                        }`}
+                      >
+                        <FileIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 shrink-0">
+                          {getFileExtLabel(file.file_type)}
+                        </Badge>
+                        <span className="truncate">{file.title || file.file_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {fileLoading && fileResults.length === 0 && (
                 <div className="flex justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>

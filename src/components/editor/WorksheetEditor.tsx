@@ -16,6 +16,7 @@ import TableEdgeButtons from "./TableEdgeButtons";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import WorksheetBadgeNode from "./WorksheetBadgeNode";
+import FileBadgeNode from "./FileBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import UnifiedMentionExtension from "./UnifiedMentionExtension";
 import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding, generateAndSaveKeywords } from "@/lib/worksheets";
@@ -55,6 +56,18 @@ turndown.addRule("worksheetBadge", {
     const wsId = el.getAttribute("data-worksheet-id") || "";
     const title = el.getAttribute("data-worksheet-title") || el.textContent?.trim() || "";
     return `[[WS:${wsId}:${title}]]`;
+  },
+});
+
+// Custom Turndown rule: serialize file badge spans into [[FILE:id:title]] placeholders
+turndown.addRule("fileBadge", {
+  filter: (node) =>
+    node.nodeName === "SPAN" && node.hasAttribute("data-file-badge"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const attachmentId = el.getAttribute("data-attachment-id") || "";
+    const title = el.getAttribute("data-file-title") || el.textContent?.trim() || "";
+    return `[[FILE:${attachmentId}:${title}]]`;
   },
 });
 
@@ -161,6 +174,7 @@ export interface WorksheetEditorHandle {
   setTitle: (title: string) => void;
   setDocumentType: (type: DocumentType) => void;
   progressiveReveal: (markdown: string) => Promise<void>;
+  insertFileBadge: (attachment: { id: string; file_name: string; file_type: string; title: string }) => void;
 }
 
 interface WorksheetEditorProps {
@@ -197,6 +211,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         WorksheetBadgeNode,
+        FileBadgeNode,
         UnifiedMentionExtension.configure({ worksheetId }),
         TableKeyboardShortcuts,
       ],
@@ -270,6 +285,17 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
           setTitle: (t: string) => setTitle(t),
           setDocumentType: (dt: DocumentType) => setDocumentType(dt),
           progressiveReveal,
+          insertFileBadge: (attachment) => {
+            editor.chain().focus().insertContent({
+              type: "fileBadge",
+              attrs: {
+                attachmentId: attachment.id,
+                fileName: attachment.file_name,
+                fileType: attachment.file_type,
+                title: attachment.title || attachment.file_name,
+              },
+            }).run();
+          },
         };
       }
     }, [editor, editorRef, progressiveReveal]);

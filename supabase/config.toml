@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.public-share]
 verify_jwt = false
+
+[functions.attachment-metadata]
+verify_jwt = false

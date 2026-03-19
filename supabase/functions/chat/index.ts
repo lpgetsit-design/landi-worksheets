@@ -402,9 +402,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, worksheetContent, worksheetType } = await req.json();
+    const { messages, worksheetTitle, worksheetContent, worksheetType, designHtml } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const designContext = designHtml
+      ? `\n\nDESIGN PANEL (READ-ONLY REFERENCE):
+This worksheet also has a design/webpage panel. You can reference this content to answer questions, but you CANNOT modify it from editor mode. Here is the current design HTML:
+\`\`\`html
+${designHtml}
+\`\`\``
+      : "";
 
     const systemPrompt = `You are an expert AI assistant embedded in a worksheet editor app. You can both answer questions AND take actions using the tools available to you.
 
@@ -412,7 +420,7 @@ Current worksheet state:
 - Title: "${worksheetTitle || "Untitled"}"
 - Document type: ${worksheetType || "note"}
 - Content:
-${worksheetContent || "(empty)"}
+${worksheetContent || "(empty)"}${designContext}
 
 WORKSHEET EDITING:
 - When the user asks you to edit, fix, rewrite, or change the worksheet, use the replace_worksheet_content tool with the FULL updated markdown content.

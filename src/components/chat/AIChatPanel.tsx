@@ -212,12 +212,14 @@ const AIChatPanel = ({
           messages: apiMessages,
           worksheetTitle: worksheetTitle || "",
           currentHtml: designHtmlRef.current || "",
+          worksheetContent: worksheetContent || "",
         }
       : {
           messages: apiMessages,
           worksheetTitle: worksheetTitle || "",
           worksheetContent: worksheetContent || "",
           worksheetType: worksheetType || "note",
+          designHtml: designHtmlRef.current || "",
         };
 
     const resp = await fetch(url, {

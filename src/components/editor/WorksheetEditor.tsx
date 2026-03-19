@@ -198,6 +198,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
         Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline cursor-pointer" } }),
         CrmBadgeNode,
         WorksheetBadgeNode,
+        FileBadgeNode,
         UnifiedMentionExtension.configure({ worksheetId }),
         TableKeyboardShortcuts,
       ],

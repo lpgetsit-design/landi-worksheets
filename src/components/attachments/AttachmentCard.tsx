@@ -68,8 +68,8 @@ export default function AttachmentCard({
     <div className="flex gap-3 p-3 rounded-md border border-border bg-card hover:bg-accent/30 transition-colors">
       {/* Thumbnail / icon */}
       <div className="shrink-0 w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
-        {isImage ? (
-          <img src={publicUrl} alt={attachment.file_name} className="w-full h-full object-cover" />
+        {isImage && signedUrl ? (
+          <img src={signedUrl} alt={attachment.file_name} className="w-full h-full object-cover" />
         ) : (
           <Icon className="h-5 w-5 text-muted-foreground" />
         )}

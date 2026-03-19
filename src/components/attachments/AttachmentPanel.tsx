@@ -107,15 +107,16 @@ export default function AttachmentPanel({
         </div>
       </div>
 
-      <CollapsibleContent>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
+      {/* File input outside CollapsibleContent so it's always in the DOM */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
 
+      <CollapsibleContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

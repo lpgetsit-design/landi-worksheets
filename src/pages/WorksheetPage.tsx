@@ -276,20 +276,6 @@ const WorksheetPage = () => {
   const canDownloadDesign = designHtml.length > 0;
   const canDownload = canDownloadEditor || canDownloadDesign;
 
-  const { attachments } = useWorksheetAttachments(worksheet.id, user?.id);
-
-  const attachmentInfos = useMemo(() => {
-    return attachments.map((a) => ({
-      id: a.id,
-      file_name: a.file_name,
-      file_type: a.file_type,
-      file_size: a.file_size,
-      title: a.title,
-      description: a.description,
-      public_url: getPublicUrl(a.file_path),
-    }));
-  }, [attachments]);
-
   const chatPanel = (
     <AIChatPanel
       open={chatOpen}

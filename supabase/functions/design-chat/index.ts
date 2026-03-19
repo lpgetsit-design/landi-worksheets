@@ -141,6 +141,64 @@ const TOOLS = [
       },
     },
   },
+  // Server-side: Tavily Extract
+  {
+    type: "function",
+    function: {
+      name: "tavily_extract",
+      description: "Extract content from one or more specific URLs. Use when you need to read the full content of a webpage, company website, job posting URL, LinkedIn page, etc. Returns the raw text content of each URL.",
+      parameters: {
+        type: "object",
+        properties: {
+          urls: {
+            type: "array",
+            items: { type: "string" },
+            description: "One or more URLs to extract content from",
+          },
+          query: { type: "string", description: "Optional: focus extraction on content relevant to this query" },
+          extract_depth: { type: "string", description: "'basic' (default) or 'advanced' (tables & embedded content)" },
+        },
+        required: ["urls"],
+        additionalProperties: false,
+      },
+    },
+  },
+  // Server-side: Tavily Crawl
+  {
+    type: "function",
+    function: {
+      name: "tavily_crawl",
+      description: "Crawl a website starting from a base URL to discover and extract content from multiple pages. Use for comprehensive website analysis, gathering all content from a company site, documentation, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "The root URL to begin crawling" },
+          instructions: { type: "string", description: "Natural language instructions to guide the crawler (e.g. 'Find all pages about careers')" },
+          max_depth: { type: "number", description: "Max crawl depth 1-5 (default 1)" },
+          limit: { type: "number", description: "Max pages to process (default 10, keep low to avoid timeout)" },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  // Server-side: Tavily Research
+  {
+    type: "function",
+    function: {
+      name: "tavily_research",
+      description: "Perform comprehensive, multi-step research on a topic. Tavily's research agent conducts multiple searches, analyzes sources, and produces a detailed research report. Use for deep-dive market analysis, competitive intelligence, industry reports, compensation studies, etc. This is slower but much more thorough than a simple search.",
+      parameters: {
+        type: "object",
+        properties: {
+          input: { type: "string", description: "The research question or topic to investigate" },
+          model: { type: "string", description: "'mini' (fast, focused), 'pro' (comprehensive), or 'auto' (default)" },
+        },
+        required: ["input"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -151,7 +209,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_job_details: "Loading job details",
   search_candidates: "Searching candidates",
   search_jobs: "Searching jobs",
-  tavily_search: "Researching the web",
+  tavily_search: "Searching the web",
+  tavily_extract: "Extracting web content",
+  tavily_crawl: "Crawling website",
+  tavily_research: "Deep researching",
 };
 
 const MAX_LOOPS = 8;
@@ -233,25 +294,75 @@ async function bullhornFetch(path: string, params: Record<string, string> = {}, 
   return resp.json();
 }
 
-// ─── Tavily Search ───
+// ─── Tavily APIs ───
 
-async function tavilySearch(query: string, maxResults = 5, searchDepth = "basic", includeAnswer = true): Promise<any> {
+function getTavilyHeaders(): { Authorization: string; "Content-Type": string } {
   const apiKey = Deno.env.get("TAVILY_API_KEY");
   if (!apiKey) throw new Error("TAVILY_API_KEY is not configured");
+  return { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
+}
 
+async function tavilySearch(query: string, maxResults = 5, searchDepth = "basic", includeAnswer = true): Promise<any> {
   const resp = await fetch("https://api.tavily.com/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: apiKey,
-      query,
-      max_results: Math.min(maxResults, 10),
-      search_depth: searchDepth,
-      include_answer: includeAnswer,
-    }),
+    headers: getTavilyHeaders(),
+    body: JSON.stringify({ query, max_results: Math.min(maxResults, 10), search_depth: searchDepth, include_answer: includeAnswer }),
   });
-  if (!resp.ok) throw new Error(`Tavily API error (${resp.status}): ${await resp.text()}`);
+  if (!resp.ok) throw new Error(`Tavily Search error (${resp.status}): ${await resp.text()}`);
   return resp.json();
+}
+
+async function tavilyExtract(urls: string[], query?: string, extractDepth = "basic"): Promise<any> {
+  const body: any = { urls, extract_depth: extractDepth };
+  if (query) body.query = query;
+  const resp = await fetch("https://api.tavily.com/extract", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Tavily Extract error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+async function tavilyCrawl(url: string, instructions?: string, maxDepth = 1, limit = 10): Promise<any> {
+  const body: any = { url, max_depth: Math.min(maxDepth, 3), limit: Math.min(limit, 20) };
+  if (instructions) body.instructions = instructions;
+  const resp = await fetch("https://api.tavily.com/crawl", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Tavily Crawl error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+async function tavilyResearch(input: string, model = "auto"): Promise<any> {
+  // Step 1: Create research task
+  const createResp = await fetch("https://api.tavily.com/research", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify({ input, model }),
+  });
+  if (!createResp.ok) throw new Error(`Tavily Research error (${createResp.status}): ${await createResp.text()}`);
+  const task = await createResp.json();
+  const requestId = task.request_id;
+  if (!requestId) throw new Error("No request_id returned from Tavily Research");
+
+  // Step 2: Poll for completion (max ~90 seconds)
+  const headers = getTavilyHeaders();
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const pollResp = await fetch(`https://api.tavily.com/research/${requestId}`, {
+      method: "GET",
+      headers,
+    });
+    if (pollResp.status === 202) continue; // still processing
+    if (!pollResp.ok) throw new Error(`Tavily Research poll error (${pollResp.status}): ${await pollResp.text()}`);
+    const result = await pollResp.json();
+    if (result.status === "completed") return result;
+    if (result.status === "failed") throw new Error("Tavily Research task failed");
+  }
+  throw new Error("Tavily Research timed out after 90 seconds");
 }
 
 // ─── Server-Side Tool Execution ───
@@ -316,6 +427,51 @@ async function executeServerTool(name: string, argsStr: string): Promise<string>
             title: r.title,
             url: r.url,
             content: (r.content || "").slice(0, 500),
+          })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_extract": {
+        const data = await tavilyExtract(
+          args.urls,
+          args.query,
+          args.extract_depth || "basic",
+        );
+        const trimmed = {
+          results: (data.results || []).map((r: any) => ({
+            url: r.url,
+            content: (r.raw_content || "").slice(0, 2000),
+          })),
+          failed: data.failed_results || [],
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_crawl": {
+        const data = await tavilyCrawl(
+          args.url,
+          args.instructions,
+          args.max_depth || 1,
+          args.limit || 10,
+        );
+        const trimmed = {
+          base_url: data.base_url,
+          results: (data.results || []).slice(0, 10).map((r: any) => ({
+            url: r.url,
+            content: (r.raw_content || "").slice(0, 1000),
+          })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_research": {
+        const data = await tavilyResearch(
+          args.input,
+          args.model || "auto",
+        );
+        const trimmed = {
+          content: (data.content || "").slice(0, 5000),
+          sources: (data.sources || []).slice(0, 10).map((s: any) => ({
+            title: s.title,
+            url: s.url,
           })),
         };
         return JSON.stringify(trimmed, null, 2);

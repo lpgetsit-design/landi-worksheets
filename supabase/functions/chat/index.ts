@@ -581,7 +581,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, worksheetContent, worksheetType, designHtml } = await req.json();
+    const { messages, worksheetTitle, worksheetContent, worksheetType, designHtml, attachments } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -593,13 +593,22 @@ ${designHtml}
 \`\`\``
       : "";
 
+    const attachmentsContext = attachments && attachments.length > 0
+      ? `\n\nWORKSHEET ATTACHMENTS:
+This worksheet has ${attachments.length} attached file(s). You can reference them in your responses and use them in designs (e.g. as image sources, download links). Here are the details:
+${attachments.map((a: any, i: number) => `${i + 1}. **${a.title || a.file_name}** (ID: ${a.id})
+   - File: ${a.file_name} | Type: ${a.file_type} | Size: ${a.file_size} bytes
+   - Description: ${a.description || "(none)"}
+   - Public URL: ${a.public_url}`).join("\n")}`
+      : "";
+
     const systemPrompt = `You are an expert AI assistant embedded in a worksheet editor app. You can both answer questions AND take actions using the tools available to you.
 
 Current worksheet state:
 - Title: "${worksheetTitle || "Untitled"}"
 - Document type: ${worksheetType || "note"}
 - Content:
-${worksheetContent || "(empty)"}${designContext}
+${worksheetContent || "(empty)"}${designContext}${attachmentsContext}
 
 WORKSHEET EDITING:
 - When the user asks you to edit, fix, rewrite, or change the worksheet, use the replace_worksheet_content tool with the FULL updated markdown content.

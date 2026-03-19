@@ -20,6 +20,8 @@ import { marked } from "marked";
 import AttachmentPanel from "@/components/attachments/AttachmentPanel";
 import { useAuth } from "@/components/AuthProvider";
 import type { Attachment } from "@/lib/attachments";
+import { getPublicUrl } from "@/lib/attachments";
+import { useWorksheetAttachments } from "@/hooks/useWorksheetAttachments";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {
@@ -198,6 +200,20 @@ const WorksheetPage = () => {
     gcTime: 0,
   });
 
+  const { attachments: rawAttachments } = useWorksheetAttachments(id || "", user?.id);
+
+  const attachmentInfos = useMemo(() => {
+    return rawAttachments.map((a) => ({
+      id: a.id,
+      file_name: a.file_name,
+      file_type: a.file_type,
+      file_size: a.file_size,
+      title: a.title,
+      description: a.description,
+      public_url: getPublicUrl(a.file_path),
+    }));
+  }, [rawAttachments]);
+
   useEffect(() => {
     if (worksheet) {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
@@ -291,6 +307,7 @@ const WorksheetPage = () => {
       onApplyEdit={handleApplyEdit}
       onUpdateTitle={handleUpdateTitle}
       onUpdateDocumentType={handleUpdateDocumentType}
+      attachments={attachmentInfos}
     />
   );
 

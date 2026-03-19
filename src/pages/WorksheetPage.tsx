@@ -361,8 +361,10 @@ const WorksheetPage = () => {
             worksheetTitle={worksheetTitle}
             worksheetType={worksheetType}
           />
+          </div>
           {/* Editor toggle */}
           <Button
+            data-tour="editor-toggle"
             variant={editorOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"

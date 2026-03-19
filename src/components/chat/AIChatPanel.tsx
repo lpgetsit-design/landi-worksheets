@@ -135,6 +135,7 @@ const AIChatPanel = ({
   onApplyEdit,
   onUpdateTitle,
   onUpdateDocumentType,
+  attachments,
 }: AIChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);

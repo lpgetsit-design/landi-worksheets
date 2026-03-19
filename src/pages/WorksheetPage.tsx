@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine, Paperclip } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine, Paperclip, HelpCircle } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +22,9 @@ import { useAuth } from "@/components/AuthProvider";
 import type { Attachment } from "@/lib/attachments";
 import { getSignedUrl } from "@/lib/attachments";
 import { useWorksheetAttachments } from "@/hooks/useWorksheetAttachments";
+import TourOverlay from "@/components/tour/TourOverlay";
+import { worksheetSteps } from "@/components/tour/tourSteps";
+import { useTour } from "@/hooks/useTour";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {
@@ -169,6 +172,7 @@ const WorksheetPage = () => {
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const tour = useTour("worksheet");
 
   const handleInsertFileBadge = useCallback((attachment: Attachment) => {
     if (!editorRef.current) return;
@@ -339,8 +343,8 @@ const WorksheetPage = () => {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
-            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
+          <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)} data-tour="doc-type">
+            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0" data-tour="doc-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -350,14 +354,17 @@ const WorksheetPage = () => {
               <SelectItem value="template">Template</SelectItem>
             </SelectContent>
           </Select>
+          <div data-tour="summary-btn">
           <SummaryButton
             worksheet={worksheet}
             worksheetContent={worksheetContent}
             worksheetTitle={worksheetTitle}
             worksheetType={worksheetType}
           />
+          </div>
           {/* Editor toggle */}
           <Button
+            data-tour="editor-toggle"
             variant={editorOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"
@@ -370,6 +377,7 @@ const WorksheetPage = () => {
           </Button>
           {/* Design toggle */}
           <Button
+            data-tour="design-toggle"
             variant={designActive ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"
@@ -417,11 +425,12 @@ const WorksheetPage = () => {
               </Button>
             )
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+          <Button data-tour="share-btn" variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
             <Share2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Share</span>
           </Button>
           <Button
+            data-tour="chat-toggle"
             variant={chatOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"
@@ -457,7 +466,7 @@ const WorksheetPage = () => {
                   />
                 </div>
                 {user && (
-                  <div className="mx-auto max-w-[800px] px-3 sm:px-6 pb-4">
+                  <div className="mx-auto max-w-[800px] px-3 sm:px-6 pb-4" data-tour="attachments-toggle">
                     <AttachmentPanel
                       worksheetId={worksheet.id}
                       userId={user.id}
@@ -516,6 +525,26 @@ const WorksheetPage = () => {
         worksheetId={worksheet.id}
         worksheetTitle={worksheetTitle}
       />
+
+      {/* Tour */}
+      <TourOverlay
+        steps={worksheetSteps}
+        step={tour.step}
+        active={tour.active}
+        onNext={tour.next}
+        onPrev={tour.prev}
+        onEnd={tour.end}
+      />
+
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 h-9 w-9 rounded-full shadow-md z-50"
+        onClick={tour.start}
+        title="Take a tour"
+      >
+        <HelpCircle className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

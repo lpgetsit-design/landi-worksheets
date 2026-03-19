@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles, Check } from "lucide-react";
+import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles, Check, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,9 @@ import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities, 
 import type { HybridSearchResult } from "@/lib/worksheets";
 import { toast } from "sonner";
 import { marked } from "marked";
+import TourOverlay from "@/components/tour/TourOverlay";
+import { dashboardSteps } from "@/components/tour/tourSteps";
+import { useTour } from "@/hooks/useTour";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";
@@ -28,6 +31,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const tour = useTour("dashboard");
 
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -172,7 +176,7 @@ const Dashboard = () => {
     <div className="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground">Worksheets</h1>
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
+        <Button data-tour="new-worksheet" onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">New Worksheet</span>
           <span className="sm:hidden">New</span>
@@ -180,7 +184,7 @@ const Dashboard = () => {
       </div>
 
       {/* Search bar */}
-      <div className="mb-4">
+      <div className="mb-4" data-tour="search-bar">
         <div className="relative flex items-center">
           <div className="absolute left-3 text-muted-foreground pointer-events-none">
             {isSearching ? (
@@ -225,7 +229,7 @@ const Dashboard = () => {
 
       {/* Filters (hidden during search) */}
       {!isSearchActive && (
-        <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto">
+        <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto" data-tour="type-filter">
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
             <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
               <SelectValue placeholder="Type" />
@@ -427,7 +431,7 @@ const Dashboard = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="worksheet-list">
             {filtered.map((ws) => (
               <div
                 key={ws.id}
@@ -493,6 +497,27 @@ const Dashboard = () => {
           </div>
         )
       )}
+
+      {/* Tour */}
+      <TourOverlay
+        steps={dashboardSteps}
+        step={tour.step}
+        active={tour.active}
+        onNext={tour.next}
+        onPrev={tour.prev}
+        onEnd={tour.end}
+      />
+
+      {/* Tour trigger */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 h-9 w-9 rounded-full shadow-md z-50"
+        onClick={tour.start}
+        title="Take a tour"
+      >
+        <HelpCircle className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

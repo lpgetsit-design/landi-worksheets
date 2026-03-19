@@ -166,6 +166,18 @@ const WorksheetPage = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+
+  const handleInsertFileBadge = useCallback((attachment: Attachment) => {
+    if (!editorRef.current) return;
+    const editor = (editorRef.current as any);
+    // Use setContent approach — insert at cursor via the underlying tiptap editor
+    // We need access to the tiptap editor instance; for now we use a workaround
+    // by exposing insertFileBadge on the handle
+    if (typeof editor.insertFileBadge === "function") {
+      editor.insertFileBadge(attachment);
+    }
+  }, []);
 
   // Toggle logic: at least one of editor/design must stay visible
   const toggleEditor = useCallback(() => {

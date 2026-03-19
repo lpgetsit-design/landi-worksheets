@@ -159,7 +159,7 @@ export default function AttachmentCard({
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => window.open(publicUrl, "_blank")}
+          onClick={() => { if (signedUrl) window.open(signedUrl, "_blank"); }}
           title="Open file"
         >
           <Paperclip className="h-3 w-3" />

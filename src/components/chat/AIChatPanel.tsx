@@ -127,7 +127,6 @@ const AIChatPanel = ({
 }: AIChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string>("");
   const [chatDesignMode, setChatDesignMode] = useState(false);

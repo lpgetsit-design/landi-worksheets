@@ -430,6 +430,7 @@ const WorksheetPage = () => {
             <span className="hidden sm:inline">Share</span>
           </Button>
           <Button
+            data-tour="chat-toggle"
             variant={chatOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"

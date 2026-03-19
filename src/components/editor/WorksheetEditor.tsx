@@ -285,6 +285,17 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
           setTitle: (t: string) => setTitle(t),
           setDocumentType: (dt: DocumentType) => setDocumentType(dt),
           progressiveReveal,
+          insertFileBadge: (attachment) => {
+            editor.chain().focus().insertContent({
+              type: "fileBadge",
+              attrs: {
+                attachmentId: attachment.id,
+                fileName: attachment.file_name,
+                fileType: attachment.file_type,
+                title: attachment.title || attachment.file_name,
+              },
+            }).run();
+          },
         };
       }
     }, [editor, editorRef, progressiveReveal]);

@@ -450,7 +450,6 @@ const AIChatPanel = ({
             onClick={() => {
               abortRef.current?.abort();
               setMessages([]);
-              setInput("");
               setIsLoading(false);
               setThinkingLabel(null);
               setStreamingContent("");

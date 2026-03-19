@@ -232,12 +232,16 @@ const DesignChatPanel = ({
 
     if (!finalMessage) return null;
 
-    return {
+    const msg: any = {
       id: crypto.randomUUID(),
       role: "assistant",
       content: finalMessage.content || "",
       tool_calls: finalMessage.tool_calls,
     };
+    if (finalMessage._server_tool_results) {
+      msg._server_tool_results = finalMessage._server_tool_results;
+    }
+    return msg;
   };
 
   const handleSend = async (directText?: string) => {

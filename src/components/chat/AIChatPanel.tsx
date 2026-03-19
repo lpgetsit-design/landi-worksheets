@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { marked } from "marked";
 import CrmChatContent from "./CrmChatContent";
+import ChatInput, { type ChatMention } from "./ChatInput";
 import type { DocumentType } from "@/lib/worksheets";
 
 interface ToolCall {

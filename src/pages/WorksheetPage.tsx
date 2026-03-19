@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2 } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,7 +9,6 @@ import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
 import DesignPreview from "@/components/design/DesignPreview";
-import DesignChatPanel from "@/components/design/DesignChatPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
@@ -113,6 +112,7 @@ const WorksheetPage = () => {
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const [designHtml, setDesignHtml] = useState("");
+  const [designActive, setDesignActive] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
@@ -121,8 +121,6 @@ const WorksheetPage = () => {
   const [chatWidth, setChatWidth] = useState(350);
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const isDesignMode = worksheetType === "design";
 
   const handleDragStart = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
@@ -163,10 +161,17 @@ const WorksheetPage = () => {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
       const docType = (worksheet.document_type as DocumentType) || "note";
-      setWorksheetType(docType);
+      // For backward compat: treat "design" type as "note" but activate design panel
+      if (docType === "design") {
+        setWorksheetType("note");
+      } else {
+        setWorksheetType(docType);
+      }
       const meta = worksheet.meta as Record<string, any> | null;
-      if (meta?.design_html) setDesignHtml(meta.design_html);
-      if (docType === "design") setChatOpen(true);
+      if (meta?.design_html) {
+        setDesignHtml(meta.design_html);
+        setDesignActive(true);
+      }
     }
   }, [worksheet]);
 
@@ -184,21 +189,25 @@ const WorksheetPage = () => {
 
   const handleUpdateTitle = useCallback((title: string) => {
     setWorksheetTitle(title);
-    if (!isDesignMode) editorRef.current?.setTitle(title);
+    editorRef.current?.setTitle(title);
     if (id) {
       updateWorksheet(id, { title }).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
     }
-  }, [id, queryClient, isDesignMode]);
+  }, [id, queryClient]);
 
   const handleUpdateDocumentType = useCallback((type: DocumentType) => {
     setWorksheetType(type);
-    if (type !== "design") editorRef.current?.setDocumentType(type);
+    editorRef.current?.setDocumentType(type);
     if (id) {
       updateWorksheet(id, { document_type: type } as any).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
     }
   }, [id, queryClient]);
+
+  const handleDesignHtmlChange = useCallback((html: string) => {
+    setDesignHtml(html);
+  }, []);
 
   if (id === "new") {
     navigate("/");
@@ -225,18 +234,7 @@ const WorksheetPage = () => {
     );
   }
 
-
-  const chatPanel = isDesignMode ? (
-    <DesignChatPanel
-      open={true}
-      onClose={() => setChatOpen(false)}
-      worksheetId={worksheet.id}
-      worksheetTitle={worksheetTitle}
-      currentHtml={designHtml}
-      onHtmlChange={setDesignHtml}
-      onUpdateTitle={handleUpdateTitle}
-    />
-  ) : (
+  const chatPanel = (
     <AIChatPanel
       open={chatOpen}
       onClose={() => setChatOpen(false)}
@@ -246,6 +244,10 @@ const WorksheetPage = () => {
       worksheetContent={worksheetContent}
       worksheetTitle={worksheetTitle}
       worksheetType={worksheetType}
+      worksheetId={worksheet.id}
+      designActive={designActive}
+      designHtml={designHtml}
+      onDesignHtmlChange={handleDesignHtmlChange}
       onApplyEdit={handleApplyEdit}
       onUpdateTitle={handleUpdateTitle}
       onUpdateDocumentType={handleUpdateDocumentType}
@@ -263,25 +265,9 @@ const WorksheetPage = () => {
               <ArrowLeft className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Back</span>
             </Button>
-            {isDesignMode && (
-              <input
-                type="text"
-                value={worksheetTitle}
-                onChange={(e) => setWorksheetTitle(e.target.value)}
-                onBlur={() => {
-                  if (id) {
-                    updateWorksheet(id, { title: worksheetTitle }).catch(console.error);
-                    queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
-                  }
-                }}
-                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground border-none outline-none focus:ring-0 placeholder:text-muted-foreground truncate"
-                placeholder="Untitled"
-              />
-            )}
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)} disabled={worksheetType === "design" && !!designHtml}>
+            <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
               <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
                 <SelectValue />
               </SelectTrigger>
@@ -290,18 +276,24 @@ const WorksheetPage = () => {
                 <SelectItem value="skill">Skill</SelectItem>
                 <SelectItem value="prompt">Prompt</SelectItem>
                 <SelectItem value="template">Template</SelectItem>
-                <SelectItem value="design">Design</SelectItem>
               </SelectContent>
             </Select>
-            {!isDesignMode && (
-              <SummaryButton
-                worksheet={worksheet}
-                worksheetContent={worksheetContent}
-                worksheetTitle={worksheetTitle}
-                worksheetType={worksheetType}
-              />
-            )}
-            {isDesignMode && designHtml && (
+            <SummaryButton
+              worksheet={worksheet}
+              worksheetContent={worksheetContent}
+              worksheetTitle={worksheetTitle}
+              worksheetType={worksheetType}
+            />
+            <Button
+              variant={designActive ? "secondary" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setDesignActive(!designActive)}
+            >
+              <Paintbrush className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Design</span>
+            </Button>
+            {designActive && designHtml && (
               <Button
                 variant="outline"
                 size="sm"
@@ -312,59 +304,20 @@ const WorksheetPage = () => {
                     alert('Please allow popups to download as PDF');
                     return;
                   }
-                  // Strict @page rules for consistent sizing/margins across browsers
                   const printCss = `
-                    @page {
-                      size: A4;
-                      margin: 0;
-                    }
+                    @page { size: A4; margin: 0; }
                     @media print {
-                      html, body {
-                        width: 210mm;
-                        min-height: 297mm;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                      }
-                      /* Remove any box-shadow that creates weird edges */
-                      * {
-                        box-shadow: none !important;
-                      }
-                      /* Ensure container fills the page cleanly */
-                      .container, [class*="container"] {
-                        max-width: 100% !important;
-                        margin: 0 !important;
-                        border-radius: 0 !important;
-                        box-shadow: none !important;
-                      }
+                      html, body { width: 210mm; min-height: 297mm; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+                      * { box-shadow: none !important; }
+                      .container, [class*="container"] { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
                     }
                     @media screen {
-                      body::before {
-                        content: "Close this tab after saving your PDF";
-                        display: block;
-                        background: #0e363c;
-                        color: #f9f9f9;
-                        text-align: center;
-                        padding: 8px;
-                        font-family: system-ui, sans-serif;
-                        font-size: 13px;
-                      }
+                      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
                     }
                   `;
                   const printHtml = designHtml.replace(
                     '</head>',
-                    `<style>${printCss}</style>
-                    <script>
-                      window.onload = function() {
-                        // Wait for fonts to load before printing
-                        document.fonts.ready.then(function() {
-                          setTimeout(function() { window.print(); }, 300);
-                        });
-                      };
-                    </script>
-                    </head>`
+                    `<style>${printCss}</style><script>window.onload=function(){document.fonts.ready.then(function(){setTimeout(function(){window.print();},300);});};${'<'}/script></head>`
                   );
                   printWindow.document.open();
                   printWindow.document.write(printHtml);
@@ -386,7 +339,7 @@ const WorksheetPage = () => {
               <span className="hidden sm:inline">Share</span>
             </Button>
             <Button
-              variant={chatOpen || isDesignMode ? "secondary" : "outline"}
+              variant={chatOpen ? "secondary" : "outline"}
               size="sm"
               className="gap-1.5"
               onClick={() => setChatOpen(!chatOpen)}
@@ -397,27 +350,28 @@ const WorksheetPage = () => {
           </div>
         </div>
 
-        {/* Content */}
-        {isDesignMode ? (
-          <div className="flex-1 overflow-hidden p-2">
-            <DesignPreview html={designHtml} />
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto">
+        {/* Content: side-by-side when design is active */}
+        <div className="flex-1 overflow-hidden flex">
+          <div className={designActive ? "w-1/2 overflow-y-auto border-r border-border" : "flex-1 overflow-y-auto"}>
             <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
               <WorksheetEditor
                 editorRef={editorRef}
                 worksheetId={worksheet.id}
                 initialTitle={worksheet.title}
                 initialContent={worksheet.content_json}
-                initialDocumentType={(worksheet.document_type as DocumentType) || "note"}
+                initialDocumentType={(worksheet.document_type as DocumentType) === "design" ? "note" : (worksheet.document_type as DocumentType) || "note"}
                 onSelectionAI={handleSelectionAI}
                 onContentChange={setWorksheetContent}
                 onDocumentTypeChange={handleUpdateDocumentType}
               />
             </div>
           </div>
-        )}
+          {designActive && (
+            <div className="w-1/2 overflow-hidden p-2">
+              <DesignPreview html={designHtml} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chat panel */}

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Send, RotateCcw, Wrench, Copy, Check } from "lucide-react";
+import { X, Send, RotateCcw, Wrench, Copy, Check, Paintbrush, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -30,14 +30,19 @@ interface AIChatPanelProps {
   worksheetContent?: string;
   worksheetTitle?: string;
   worksheetType?: DocumentType;
+  worksheetId?: string;
+  designActive?: boolean;
+  designHtml?: string;
+  onDesignHtmlChange?: (html: string) => void;
   onApplyEdit?: (content: string) => void;
   onUpdateTitle?: (title: string) => void;
   onUpdateDocumentType?: (type: DocumentType) => void;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const DESIGN_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/design-chat`;
 
-const toolLabels: Record<string, string> = {
+const editorToolLabels: Record<string, string> = {
   replace_worksheet_content: "Updated worksheet content",
   update_worksheet_title: "Changed title",
   update_document_type: "Changed document type",
@@ -51,7 +56,23 @@ const toolLabels: Record<string, string> = {
   get_bullhorn_placement_summary: "Retrieved placement details",
 };
 
-/** Copies AI markdown as rich HTML to clipboard for pasting into the worksheet editor */
+const designToolLabels: Record<string, string> = {
+  replace_design_html: "Built webpage",
+  update_worksheet_title: "Changed title",
+  search_bullhorn: "Searched CRM",
+  get_candidate_profile: "Loaded candidate",
+  get_job_details: "Loaded job details",
+  search_candidates: "Searched candidates",
+  search_jobs: "Searched jobs",
+  tavily_search: "Searched the web",
+  tavily_extract: "Extracted web content",
+  tavily_crawl: "Crawled website",
+  tavily_research: "Completed deep research",
+};
+
+const allToolLabels: Record<string, string> = { ...editorToolLabels, ...designToolLabels };
+
+/** Copies AI markdown as rich HTML to clipboard */
 const CopyButton = ({ content }: { content: string }) => {
   const [copied, setCopied] = useState(false);
 
@@ -95,6 +116,10 @@ const AIChatPanel = ({
   worksheetContent,
   worksheetTitle,
   worksheetType,
+  worksheetId,
+  designActive,
+  designHtml,
+  onDesignHtmlChange,
   onApplyEdit,
   onUpdateTitle,
   onUpdateDocumentType,
@@ -104,16 +129,29 @@ const AIChatPanel = ({
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string>("");
+  const [chatDesignMode, setChatDesignMode] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const autoMessageSentRef = useRef<string | null>(null);
+  const designHtmlRef = useRef(designHtml || "");
+
+  // Keep ref in sync
+  useEffect(() => {
+    designHtmlRef.current = designHtml || "";
+  }, [designHtml]);
+
+  // Auto-enable design mode in chat when design panel is activated
+  useEffect(() => {
+    if (designActive) {
+      setChatDesignMode(true);
+    }
+  }, [designActive]);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-
-  const executeTool = (name: string, args: string): string => {
+  const executeTool = async (name: string, args: string): Promise<string> => {
     try {
       const parsed = JSON.parse(args);
       switch (name) {
@@ -126,6 +164,27 @@ const AIChatPanel = ({
         case "update_document_type":
           onUpdateDocumentType?.(parsed.document_type as DocumentType);
           return `Document type changed to "${parsed.document_type}".`;
+        case "replace_design_html":
+          onDesignHtmlChange?.(parsed.html);
+          // Persist to meta.design_html
+          if (worksheetId) {
+            try {
+              const { supabase } = await import("@/integrations/supabase/client");
+              const { data: current } = await supabase
+                .from("worksheets")
+                .select("meta")
+                .eq("id", worksheetId)
+                .single();
+              const existingMeta = (current?.meta as Record<string, any>) || {};
+              await supabase
+                .from("worksheets")
+                .update({ meta: { ...existingMeta, design_html: parsed.html } })
+                .eq("id", worksheetId);
+            } catch (e) {
+              console.error("Failed to save design HTML:", e);
+            }
+          }
+          return "Webpage updated successfully.";
         default:
           return `Unknown tool: ${name}`;
       }
@@ -134,7 +193,7 @@ const AIChatPanel = ({
     }
   };
 
-  /** Parse SSE stream with token-by-token streaming. Returns the final assistant message. */
+  /** Parse SSE stream with token-by-token streaming */
   const streamChat = async (conversationMessages: Message[]): Promise<Message | null> => {
     const apiMessages = conversationMessages.map((m) => {
       const base: any = { role: m.role, content: m.content };
@@ -146,18 +205,28 @@ const AIChatPanel = ({
       return base;
     });
 
-    const resp = await fetch(CHAT_URL, {
+    const isDesign = chatDesignMode;
+    const url = isDesign ? DESIGN_CHAT_URL : CHAT_URL;
+    const body = isDesign
+      ? {
+          messages: apiMessages,
+          worksheetTitle: worksheetTitle || "",
+          currentHtml: designHtmlRef.current || "",
+        }
+      : {
+          messages: apiMessages,
+          worksheetTitle: worksheetTitle || "",
+          worksheetContent: worksheetContent || "",
+          worksheetType: worksheetType || "note",
+        };
+
+    const resp = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({
-        messages: apiMessages,
-        worksheetTitle: worksheetTitle || "",
-        worksheetContent: worksheetContent || "",
-        worksheetType: worksheetType || "note",
-      }),
+      body: JSON.stringify(body),
       signal: abortRef.current?.signal,
     });
 
@@ -181,23 +250,23 @@ const AIChatPanel = ({
     let buffer = "";
     let finalMessage: any = null;
     let streamedText = "";
+    let currentEventType = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
       const lines = buffer.split("\n");
-      buffer = "";
-
-      let currentEventType = "";
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith(":")) continue;
+        if (line.startsWith(":") || line === "") continue;
         if (line.startsWith("event: ")) {
           currentEventType = line.slice(7).trim();
-        } else if (line.startsWith("data: ")) {
+          continue;
+        }
+        if (line.startsWith("data: ")) {
           const currentData = line.slice(6);
           try {
             const parsed = JSON.parse(currentData);
@@ -205,7 +274,6 @@ const AIChatPanel = ({
             switch (currentEventType) {
               case "status":
                 setThinkingLabel(parsed.message);
-                // Clear streaming content when entering a new thinking phase
                 if (parsed.phase === "thinking") {
                   streamedText = "";
                   setStreamingContent("");
@@ -213,21 +281,19 @@ const AIChatPanel = ({
                 scrollToBottom();
                 break;
               case "token":
-                // Append streamed token content
                 streamedText += parsed.content;
                 setStreamingContent(streamedText);
-                setThinkingLabel(null); // hide thinking label while tokens arrive
+                setThinkingLabel(null);
                 scrollToBottom();
                 break;
               case "tool_calls":
                 setThinkingLabel(parsed.message);
-                // Clear streaming since AI is now calling tools
                 streamedText = "";
                 setStreamingContent("");
                 scrollToBottom();
                 break;
               case "tool_result": {
-                const label = toolLabels[parsed.tool] || parsed.tool;
+                const label = allToolLabels[parsed.tool] || parsed.tool;
                 setThinkingLabel(`✓ ${label}`);
                 scrollToBottom();
                 break;
@@ -243,26 +309,27 @@ const AIChatPanel = ({
                 setStreamingContent("");
                 return null;
             }
+            currentEventType = "";
           } catch {
-            buffer += line + "\n";
+            buffer = `event: ${currentEventType}\n${line}\n` + buffer;
+            currentEventType = "";
           }
-          currentEventType = "";
-        } else if (line === "") {
-          // empty line between events
-        } else {
-          buffer += line + "\n";
         }
       }
     }
 
     if (!finalMessage) return null;
 
-    return {
+    const msg: any = {
       id: crypto.randomUUID(),
       role: "assistant",
       content: finalMessage.content || "",
       tool_calls: finalMessage.tool_calls,
     };
+    if (finalMessage._server_tool_results) {
+      msg._server_tool_results = finalMessage._server_tool_results;
+    }
+    return msg;
   };
 
   const handleSend = async (directText?: string) => {
@@ -291,28 +358,40 @@ const AIChatPanel = ({
         scrollToBottom();
 
         if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
-          const toolNames = assistantMsg.tool_calls
-            .map((tc) => toolLabels[tc.function.name] || tc.function.name)
-            .join(", ");
-          setThinkingLabel(`Running: ${toolNames}`);
-          scrollToBottom();
+          const toolResultMessages: Message[] = [];
 
-          const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
-            const result = executeTool(tc.function.name, tc.function.arguments);
-            return {
+          // Handle server-side tool results
+          const serverResults = (assistantMsg as any)._server_tool_results as Array<{ tool_call_id: string; name: string; content: string }> | undefined;
+          const serverResultIds = new Set((serverResults || []).map(r => r.tool_call_id));
+
+          if (serverResults) {
+            for (const sr of serverResults) {
+              toolResultMessages.push({
+                id: crypto.randomUUID(),
+                role: "tool",
+                content: sr.content,
+                tool_call_id: sr.tool_call_id,
+                name: sr.name,
+              });
+            }
+          }
+
+          // Execute client-side tools
+          for (const tc of assistantMsg.tool_calls) {
+            if (serverResultIds.has(tc.id)) continue;
+            const result = await executeTool(tc.function.name, tc.function.arguments);
+            toolResultMessages.push({
               id: crypto.randomUUID(),
               role: "tool" as const,
               content: result,
               tool_call_id: tc.id,
               name: tc.function.name,
-            };
-          });
+            });
+          }
 
           allMessages = [...allMessages, ...toolResultMessages];
           setMessages(allMessages);
           scrollToBottom();
-
-          setThinkingLabel("Reviewing changes...");
           continue;
         }
 
@@ -331,7 +410,7 @@ const AIChatPanel = ({
     }
   };
 
-  // Auto-send message when autoMessage prop is set (e.g. Simplify/Expand)
+  // Auto-send message when autoMessage prop is set
   useEffect(() => {
     if (open && autoMessage && autoMessage !== autoMessageSentRef.current && !isLoading) {
       autoMessageSentRef.current = autoMessage;
@@ -385,7 +464,9 @@ const AIChatPanel = ({
         {messages.length === 0 && !streamingContent && !thinkingLabel ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-center text-sm text-muted-foreground">
-              Ask questions or tell me to edit your worksheet
+              {chatDesignMode
+                ? "Describe the webpage you want to build"
+                : "Ask questions or tell me to edit your worksheet"}
             </p>
           </div>
         ) : (
@@ -395,7 +476,7 @@ const AIChatPanel = ({
                 return (
                   <div key={msg.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Wrench className="h-3 w-3" />
-                    <span>{toolLabels[msg.name || ""] || msg.name}: {msg.content}</span>
+                    <span>{allToolLabels[msg.name || ""] || msg.name}: {msg.content}</span>
                   </div>
                 );
               }
@@ -459,15 +540,44 @@ const AIChatPanel = ({
         )}
       </div>
 
-      {/* Input */}
+      {/* Input area with mode toggle */}
       <div className="border-t border-border p-3">
+        {/* Mode toggle - only show when design panel is available */}
+        {designActive && (
+          <div className="flex items-center gap-1 mb-2">
+            <button
+              onClick={() => setChatDesignMode(false)}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                !chatDesignMode
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <PenLine className="h-3 w-3" />
+              Editor
+            </button>
+            <button
+              onClick={() => setChatDesignMode(true)}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                chatDesignMode
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Paintbrush className="h-3 w-3" />
+              Design
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Ask or instruct..."
+            placeholder={chatDesignMode ? "Describe your webpage..." : "Ask or instruct..."}
             disabled={isLoading}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           />

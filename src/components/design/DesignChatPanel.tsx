@@ -170,6 +170,7 @@ const DesignChatPanel = ({
     let buffer = "";
     let finalMessage: any = null;
     let streamedText = "";
+    let currentEventType = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -180,13 +181,13 @@ const DesignChatPanel = ({
       // Keep the last element — it may be an incomplete line split across chunks
       buffer = lines.pop() || "";
 
-      let currentEventType = "";
-
       for (const line of lines) {
-        if (line.startsWith(":")) continue;
+        if (line.startsWith(":") || line === "") continue;
         if (line.startsWith("event: ")) {
           currentEventType = line.slice(7).trim();
-        } else if (line.startsWith("data: ")) {
+          continue;
+        }
+        if (line.startsWith("data: ")) {
           const currentData = line.slice(6);
           try {
             const parsed = JSON.parse(currentData);
@@ -222,16 +223,13 @@ const DesignChatPanel = ({
                 setStreamingContent("");
                 return null;
             }
+            // Only reset event type after successful parse
+            currentEventType = "";
           } catch {
-            // JSON parse failed — likely an incomplete line, put it back
-            buffer = line + "\n" + buffer;
+            // JSON parse failed — incomplete line, put it back with its event context
+            buffer = `event: ${currentEventType}\n${line}\n` + buffer;
+            currentEventType = "";
           }
-          currentEventType = "";
-        } else if (line === "") {
-          // empty line (SSE delimiter)
-        } else {
-          // Unknown line — could be continuation, preserve event type
-          buffer = line + "\n" + buffer;
         }
       }
     }

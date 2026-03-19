@@ -439,6 +439,13 @@ const WorksheetPage = () => {
           </div>
         )
       )}
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        worksheetId={worksheet.id}
+        worksheetTitle={worksheetTitle}
+      />
     </div>
   );
 };

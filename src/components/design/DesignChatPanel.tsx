@@ -35,6 +35,12 @@ const DESIGN_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/desig
 const toolLabels: Record<string, string> = {
   replace_design_html: "Built webpage",
   update_worksheet_title: "Changed title",
+  search_bullhorn: "Searched CRM",
+  get_candidate_profile: "Loaded candidate",
+  get_job_details: "Loaded job details",
+  search_candidates: "Searched candidates",
+  search_jobs: "Searched jobs",
+  tavily_search: "Researched the web",
 };
 
 const CopyButton = ({ content }: { content: string }) => {
@@ -226,12 +232,16 @@ const DesignChatPanel = ({
 
     if (!finalMessage) return null;
 
-    return {
+    const msg: any = {
       id: crypto.randomUUID(),
       role: "assistant",
       content: finalMessage.content || "",
       tool_calls: finalMessage.tool_calls,
     };
+    if (finalMessage._server_tool_results) {
+      msg._server_tool_results = finalMessage._server_tool_results;
+    }
+    return msg;
   };
 
   const handleSend = async (directText?: string) => {
@@ -260,16 +270,36 @@ const DesignChatPanel = ({
         scrollToBottom();
 
         if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
-          const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
+          const toolResultMessages: Message[] = [];
+
+          // Add server-side tool results that were already executed
+          const serverResults = (assistantMsg as any)._server_tool_results as Array<{ tool_call_id: string; name: string; content: string }> | undefined;
+          const serverResultIds = new Set((serverResults || []).map(r => r.tool_call_id));
+
+          if (serverResults) {
+            for (const sr of serverResults) {
+              toolResultMessages.push({
+                id: crypto.randomUUID(),
+                role: "tool",
+                content: sr.content,
+                tool_call_id: sr.tool_call_id,
+                name: sr.name,
+              });
+            }
+          }
+
+          // Execute client-side tools
+          for (const tc of assistantMsg.tool_calls) {
+            if (serverResultIds.has(tc.id)) continue; // already handled server-side
             const result = executeTool(tc.function.name, tc.function.arguments);
-            return {
+            toolResultMessages.push({
               id: crypto.randomUUID(),
               role: "tool" as const,
               content: result,
               tool_call_id: tc.id,
               name: tc.function.name,
-            };
-          });
+            });
+          }
 
           allMessages = [...allMessages, ...toolResultMessages];
           setMessages(allMessages);

@@ -7,18 +7,9 @@ const TOUR_SEEN_KEY = "worksheets_tour_completed";
 export const useTour = (tourId: string) => {
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
+  const [dbLoaded, setDbLoaded] = useState(false);
   const { user } = useAuth();
   const loadedRef = useRef(false);
-
-  // Read from localStorage as fast fallback
-  const hasSeenLocal = useCallback(() => {
-    try {
-      const seen = JSON.parse(localStorage.getItem(TOUR_SEEN_KEY) || "{}");
-      return !!seen[tourId];
-    } catch {
-      return false;
-    }
-  }, [tourId]);
 
   const markSeenLocal = useCallback((id: string) => {
     try {
@@ -28,44 +19,46 @@ export const useTour = (tourId: string) => {
     } catch {}
   }, []);
 
-  // Sync from DB on mount
+  const hasSeenLocal = useCallback(() => {
+    try {
+      const seen = JSON.parse(localStorage.getItem(TOUR_SEEN_KEY) || "{}");
+      return !!seen[tourId];
+    } catch {
+      return false;
+    }
+  }, [tourId]);
+
+  // Load from DB and sync — DB is source of truth for logged-in users
   useEffect(() => {
     if (!user || loadedRef.current) return;
     loadedRef.current = true;
 
-    const load = async () => {
+    (async () => {
       const { data } = await supabase
         .from("profiles")
         .select("tour_completed")
         .eq("user_id", user.id)
         .single();
 
-      if (data?.tour_completed) {
-        const dbSeen = data.tour_completed as Record<string, boolean>;
-        // Merge DB state into localStorage
-        const local = JSON.parse(localStorage.getItem(TOUR_SEEN_KEY) || "{}");
-        const merged = { ...local, ...dbSeen };
-        localStorage.setItem(TOUR_SEEN_KEY, JSON.stringify(merged));
+      const dbSeen = (data?.tour_completed as Record<string, boolean>) || {};
 
-        if (!dbSeen[tourId] && !local[tourId]) {
-          const timer = setTimeout(() => start(), 800);
-          return () => clearTimeout(timer);
-        }
-      } else if (!hasSeenLocal()) {
-        const timer = setTimeout(() => start(), 800);
-        return () => clearTimeout(timer);
+      // Overwrite localStorage with DB truth
+      localStorage.setItem(TOUR_SEEN_KEY, JSON.stringify(dbSeen));
+      setDbLoaded(true);
+
+      if (!dbSeen[tourId]) {
+        setTimeout(() => start(), 800);
       }
-    };
-    load();
+    })();
   }, [user, tourId]);
 
-  // Fallback auto-start if no user (shouldn't happen but safe)
+  // Fallback for non-logged-in users (shouldn't normally happen)
   useEffect(() => {
     if (!user && !hasSeenLocal()) {
       const timer = setTimeout(() => start(), 800);
       return () => clearTimeout(timer);
     }
-  }, [user, hasSeenLocal]);
+  }, [user]);
 
   const start = useCallback(() => {
     setStep(0);
@@ -80,7 +73,6 @@ export const useTour = (tourId: string) => {
     setStep(0);
     markSeenLocal(tourId);
 
-    // Persist to DB
     if (user) {
       (async () => {
         const { data } = await supabase

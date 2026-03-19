@@ -546,6 +546,35 @@ async function executeServerTool(name: string, argsStr: string): Promise<string>
         });
         return JSON.stringify(data, null, 2);
       }
+      case "batch_resolve_entities": {
+        const results = [];
+        for (const entity of (args.entities || [])) {
+          try {
+            const data = await bullhornFetch(`entity/${entity.entityType}/${entity.entityId}`, { fields: "id,firstName,lastName,name,title,companyName" });
+            const d = data.data || data;
+            const label = [d.firstName, d.lastName].filter(Boolean).join(" ") || d.name || d.title || d.companyName || `${entity.entityType} ${entity.entityId}`;
+            results.push({ entityType: entity.entityType, entityId: entity.entityId, label });
+          } catch {
+            results.push({ entityType: entity.entityType, entityId: entity.entityId, label: `${entity.entityType} ${entity.entityId}`, error: "Not found" });
+          }
+        }
+        return JSON.stringify({ results }, null, 2);
+      }
+      case "search_placements": {
+        const fields = "id,status,candidate,jobOrder,dateBegin,dateEnd,salary,payRate,clientBillRate";
+        const data = await bullhornFetch("search/Placement", {
+          query: args.query,
+          fields,
+          count: String(args.count || 10),
+          sort: args.sort || "-dateAdded",
+        });
+        return JSON.stringify(data, null, 2);
+      }
+      case "get_placement_details": {
+        const fields = "id,status,candidate,jobOrder,dateBegin,dateEnd,salary,payRate,clientBillRate,employeeType,employmentType,comments,customText1";
+        const data = await bullhornFetch(`entity/Placement/${args.id}`, { fields });
+        return JSON.stringify(data.data || data, null, 2);
+      }
       case "tavily_search": {
         const data = await tavilySearch(
           args.query,

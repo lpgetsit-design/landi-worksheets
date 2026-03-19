@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

@@ -35,6 +35,12 @@ const DESIGN_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/desig
 const toolLabels: Record<string, string> = {
   replace_design_html: "Built webpage",
   update_worksheet_title: "Changed title",
+  search_bullhorn: "Searched CRM",
+  get_candidate_profile: "Loaded candidate",
+  get_job_details: "Loaded job details",
+  search_candidates: "Searched candidates",
+  search_jobs: "Searched jobs",
+  tavily_search: "Researched the web",
 };
 
 const CopyButton = ({ content }: { content: string }) => {

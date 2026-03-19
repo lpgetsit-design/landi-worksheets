@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
+import DesignPreview from "@/components/design/DesignPreview";
+import DesignChatPanel from "@/components/design/DesignChatPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
@@ -33,7 +35,6 @@ const SummaryButton = ({
   const summaryHtml = useMemo(() => {
     if (!summary) return "";
     let html = marked.parse(summary, { async: false }) as string;
-    // Restore CRM badge placeholders into styled inline badges
     html = html.replace(
       /\[\[CRM:([^:]*):([^:]*):([^\]]*)\]\]/g,
       (_m, type, id, label) =>
@@ -110,6 +111,7 @@ const WorksheetPage = () => {
   const [worksheetContent, setWorksheetContent] = useState("");
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
+  const [designHtml, setDesignHtml] = useState("");
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
 
@@ -117,6 +119,8 @@ const WorksheetPage = () => {
   const [chatWidth, setChatWidth] = useState(350);
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isDesignMode = worksheetType === "design";
 
   const handleDragStart = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
@@ -157,6 +161,7 @@ const WorksheetPage = () => {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
       setWorksheetType((worksheet.document_type as DocumentType) || "note");
+      if (worksheet.content_html) setDesignHtml(worksheet.content_html);
     }
   }, [worksheet]);
 
@@ -168,23 +173,22 @@ const WorksheetPage = () => {
 
   const handleApplyEdit = useCallback((content: string) => {
     if (editorRef.current) {
-      // Use progressive reveal for a typing effect
       editorRef.current.progressiveReveal(content);
     }
   }, []);
 
   const handleUpdateTitle = useCallback((title: string) => {
     setWorksheetTitle(title);
-    editorRef.current?.setTitle(title);
+    if (!isDesignMode) editorRef.current?.setTitle(title);
     if (id) {
       updateWorksheet(id, { title }).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, isDesignMode]);
 
   const handleUpdateDocumentType = useCallback((type: DocumentType) => {
     setWorksheetType(type);
-    editorRef.current?.setDocumentType(type);
+    if (type !== "design") editorRef.current?.setDocumentType(type);
     if (id) {
       updateWorksheet(id, { document_type: type } as any).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
@@ -216,7 +220,20 @@ const WorksheetPage = () => {
     );
   }
 
-  const chatPanel = (
+  // Design mode: chat is always open, auto-open on first visit
+  const designChatOpen = isDesignMode ? (chatOpen || true) : false;
+
+  const chatPanel = isDesignMode ? (
+    <DesignChatPanel
+      open={true}
+      onClose={() => setChatOpen(false)}
+      worksheetId={worksheet.id}
+      worksheetTitle={worksheetTitle}
+      currentHtml={designHtml}
+      onHtmlChange={setDesignHtml}
+      onUpdateTitle={handleUpdateTitle}
+    />
+  ) : (
     <AIChatPanel
       open={chatOpen}
       onClose={() => setChatOpen(false)}
@@ -234,67 +251,81 @@ const WorksheetPage = () => {
 
   return (
     <div ref={containerRef} className="flex h-[calc(100vh-3.5rem)]">
-      <div className="flex-1 overflow-y-auto min-w-0">
-        <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
-          <div className="mb-4 flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Back</span>
-            </Button>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
-                <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="note">Note</SelectItem>
-                  <SelectItem value="skill">Skill</SelectItem>
-                  <SelectItem value="prompt">Prompt</SelectItem>
-                  <SelectItem value="template">Template</SelectItem>
-                  <SelectItem value="design">Design</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Main content area */}
+      <div className="flex-1 overflow-hidden min-w-0 flex flex-col">
+        {/* Header bar */}
+        <div className="px-3 sm:px-6 py-3 flex items-center justify-between border-b border-border shrink-0">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Back</span>
+          </Button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
+              <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="note">Note</SelectItem>
+                <SelectItem value="skill">Skill</SelectItem>
+                <SelectItem value="prompt">Prompt</SelectItem>
+                <SelectItem value="template">Template</SelectItem>
+                <SelectItem value="design">Design</SelectItem>
+              </SelectContent>
+            </Select>
+            {!isDesignMode && (
               <SummaryButton
                 worksheet={worksheet}
                 worksheetContent={worksheetContent}
                 worksheetTitle={worksheetTitle}
                 worksheetType={worksheetType}
               />
-              <Button
-                variant={chatOpen ? "secondary" : "outline"}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setChatOpen(!chatOpen)}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">AI</span>
-              </Button>
+            )}
+            <Button
+              variant={chatOpen || isDesignMode ? "secondary" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setChatOpen(!chatOpen)}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">AI</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Content */}
+        {isDesignMode ? (
+          <div className="flex-1 overflow-hidden p-2">
+            <DesignPreview html={designHtml} />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
+              <WorksheetEditor
+                editorRef={editorRef}
+                worksheetId={worksheet.id}
+                initialTitle={worksheet.title}
+                initialContent={worksheet.content_json}
+                initialDocumentType={(worksheet.document_type as DocumentType) || "note"}
+                onSelectionAI={handleSelectionAI}
+                onContentChange={setWorksheetContent}
+                onDocumentTypeChange={handleUpdateDocumentType}
+              />
             </div>
           </div>
-          <WorksheetEditor
-            editorRef={editorRef}
-            worksheetId={worksheet.id}
-            initialTitle={worksheet.title}
-            initialContent={worksheet.content_json}
-            initialDocumentType={(worksheet.document_type as DocumentType) || "note"}
-            onSelectionAI={handleSelectionAI}
-            onContentChange={setWorksheetContent}
-            onDocumentTypeChange={handleUpdateDocumentType}
-          />
-        </div>
+        )}
       </div>
 
+      {/* Chat panel */}
       {isMobile ? (
-        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <Sheet open={chatOpen || isDesignMode} onOpenChange={setChatOpen}>
           <SheetContent side="bottom" className="h-[85vh] p-0">
             <SheetTitle className="sr-only">AI Assistant</SheetTitle>
             {chatPanel}
           </SheetContent>
         </Sheet>
       ) : (
-        chatOpen && (
+        (chatOpen || isDesignMode) && (
           <div className="relative flex-shrink-0" style={{ width: chatWidth }}>
-            {/* Drag handle */}
             <div
               className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
               onMouseDown={handleDragStart}

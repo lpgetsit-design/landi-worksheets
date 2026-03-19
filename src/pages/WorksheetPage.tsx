@@ -161,7 +161,8 @@ const WorksheetPage = () => {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
       setWorksheetType((worksheet.document_type as DocumentType) || "note");
-      if (worksheet.content_html) setDesignHtml(worksheet.content_html);
+      const meta = worksheet.meta as Record<string, any> | null;
+      if (meta?.design_html) setDesignHtml(meta.design_html);
     }
   }, [worksheet]);
 

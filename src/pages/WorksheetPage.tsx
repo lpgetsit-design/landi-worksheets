@@ -422,7 +422,7 @@ const WorksheetPage = () => {
 
       {/* Chat panel */}
       {isMobile ? (
-        <Sheet open={chatOpen || isDesignMode} onOpenChange={setChatOpen}>
+        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
           <SheetContent side="bottom" className="h-[85vh] p-0">
             <SheetTitle className="sr-only">AI Assistant</SheetTitle>
             {chatPanel}

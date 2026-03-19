@@ -174,6 +174,7 @@ export interface WorksheetEditorHandle {
   setTitle: (title: string) => void;
   setDocumentType: (type: DocumentType) => void;
   progressiveReveal: (markdown: string) => Promise<void>;
+  insertFileBadge: (attachment: { id: string; file_name: string; file_type: string; title: string }) => void;
 }
 
 interface WorksheetEditorProps {

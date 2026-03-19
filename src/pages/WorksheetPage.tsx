@@ -22,6 +22,9 @@ import { useAuth } from "@/components/AuthProvider";
 import type { Attachment } from "@/lib/attachments";
 import { getSignedUrl } from "@/lib/attachments";
 import { useWorksheetAttachments } from "@/hooks/useWorksheetAttachments";
+import TourOverlay from "@/components/tour/TourOverlay";
+import { worksheetSteps } from "@/components/tour/tourSteps";
+import { useTour } from "@/hooks/useTour";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {

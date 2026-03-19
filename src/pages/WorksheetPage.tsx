@@ -200,7 +200,21 @@ const WorksheetPage = () => {
     gcTime: 0,
   });
 
-  useEffect(() => {
+  const { attachments: rawAttachments } = useWorksheetAttachments(id || "", user?.id);
+
+  const attachmentInfos = useMemo(() => {
+    return rawAttachments.map((a) => ({
+      id: a.id,
+      file_name: a.file_name,
+      file_type: a.file_type,
+      file_size: a.file_size,
+      title: a.title,
+      description: a.description,
+      public_url: getPublicUrl(a.file_path),
+    }));
+  }, [rawAttachments]);
+
+
     if (worksheet) {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);

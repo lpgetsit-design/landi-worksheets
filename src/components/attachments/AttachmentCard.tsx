@@ -106,10 +106,10 @@ export default function AttachmentCard({
             size="icon"
             className="h-5 w-5 shrink-0"
             onClick={onGenerateTitle}
-            disabled={isGenerating}
+            disabled={isGeneratingTitle || isGeneratingDesc}
             title="AI generate title"
           >
-            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {isGeneratingTitle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
           </Button>
         </div>
 

@@ -608,7 +608,7 @@ Current worksheet state:
 - Title: "${worksheetTitle || "Untitled"}"
 - Document type: ${worksheetType || "note"}
 - Content:
-${worksheetContent || "(empty)"}${designContext}
+${worksheetContent || "(empty)"}${designContext}${attachmentsContext}
 
 WORKSHEET EDITING:
 - When the user asks you to edit, fix, rewrite, or change the worksheet, use the replace_worksheet_content tool with the FULL updated markdown content.

@@ -16,6 +16,7 @@ import TableEdgeButtons from "./TableEdgeButtons";
 import TableControls from "./TableControls";
 import CrmBadgeNode from "./CrmBadgeNode";
 import WorksheetBadgeNode from "./WorksheetBadgeNode";
+import FileBadgeNode from "./FileBadgeNode";
 import TableKeyboardShortcuts from "./TableKeyboardShortcuts";
 import UnifiedMentionExtension from "./UnifiedMentionExtension";
 import { updateWorksheet, syncWorksheetEntities, syncLinkedWorksheets, generateAndSaveSummary, generateAndSaveEmbedding, generateAndSaveKeywords } from "@/lib/worksheets";

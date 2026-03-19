@@ -38,8 +38,10 @@ export default function AttachmentCard({
   onGenerateTitle,
   onGenerateDescription,
   onInsertBadge,
-  isGenerating,
+  generatingKey,
 }: AttachmentCardProps) {
+  const isGeneratingTitle = generatingKey === `${attachment.id}:title`;
+  const isGeneratingDesc = generatingKey === `${attachment.id}:description`;
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [title, setTitle] = useState(attachment.title);

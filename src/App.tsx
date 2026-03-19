@@ -38,6 +38,21 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AuthenticatedLayout = () => {
+  return (
+    <AuthProvider>
+      <AppHeader />
+      <Routes>
+        <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+        <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AuthProvider>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -47,18 +62,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/s/:token" element={<PublicSharePage />} />
-            <Route path="*" element={
-              <AuthProvider>
-                <AppHeader />
-                <Routes>
-                  <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
-                  <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
-                  <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AuthProvider>
-            } />
+            <Route path="/*" element={<AuthenticatedLayout />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

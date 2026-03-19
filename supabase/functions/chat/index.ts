@@ -208,6 +208,76 @@ const SERVER_TOOLS = [
       },
     },
   },
+  // ─── Tavily web research tools ───
+  {
+    type: "function",
+    function: {
+      name: "tavily_search",
+      description: `Quick web search — like using Google. Returns short snippets from multiple websites matching a keyword query. Use when you need to DISCOVER information but don't have a specific URL.`,
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query — use natural language keywords" },
+          max_results: { type: "number", description: "Max results (default 5, max 10)" },
+          search_depth: { type: "string", description: "'basic' (fast, default) or 'advanced' (slower but more thorough)" },
+          include_answer: { type: "boolean", description: "Include AI-generated answer summary (default true)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tavily_extract",
+      description: `Read the full text content of one or more specific URLs. Use when you already KNOW the exact URL(s) and need to read their content.`,
+      parameters: {
+        type: "object",
+        properties: {
+          urls: { type: "array", items: { type: "string" }, description: "One or more URLs to extract content from" },
+          query: { type: "string", description: "Optional: focus extraction on content relevant to this query" },
+          extract_depth: { type: "string", description: "'basic' (default) or 'advanced'" },
+        },
+        required: ["urls"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tavily_crawl",
+      description: `Spider a website starting from a base URL — automatically discovers and reads multiple pages by following links.`,
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "The root URL to begin crawling from" },
+          instructions: { type: "string", description: "Natural language instructions to guide the crawler" },
+          max_depth: { type: "number", description: "How many link-levels deep to follow (1-5, default 1)" },
+          limit: { type: "number", description: "Max pages to process (default 10, max 20)" },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tavily_research",
+      description: `Autonomous deep research agent — performs multiple searches, reads sources, cross-references, and produces a comprehensive written report. SLOW (30-90s) but thorough.`,
+      parameters: {
+        type: "object",
+        properties: {
+          input: { type: "string", description: "The research question or topic" },
+          model: { type: "string", description: "'mini' (fast ~30s), 'pro' (comprehensive ~60-90s), or 'auto' (default)" },
+        },
+        required: ["input"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 const ALL_TOOLS = [...CLIENT_TOOLS, ...SERVER_TOOLS];
@@ -227,6 +297,10 @@ const TOOL_LABELS: Record<string, string> = {
   replace_worksheet_content: "Updating worksheet",
   update_worksheet_title: "Changing title",
   update_document_type: "Changing document type",
+  tavily_search: "Searching the web",
+  tavily_extract: "Extracting web content",
+  tavily_crawl: "Crawling website",
+  tavily_research: "Deep researching",
 };
 
 // ─── Server-side tool executors ───

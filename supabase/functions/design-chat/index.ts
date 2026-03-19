@@ -400,32 +400,40 @@ async function tavilyCrawl(url: string, instructions?: string, maxDepth = 1, lim
 }
 
 async function tavilyResearch(input: string, model = "auto"): Promise<any> {
+  // Default to "mini" for speed — edge functions have limited wall-clock time
+  const effectiveModel = model === "auto" ? "mini" : model;
+  
   // Step 1: Create research task
   const createResp = await fetch("https://api.tavily.com/research", {
     method: "POST",
     headers: getTavilyHeaders(),
-    body: JSON.stringify({ input, model }),
+    body: JSON.stringify({ input, model: effectiveModel }),
   });
   if (!createResp.ok) throw new Error(`Tavily Research error (${createResp.status}): ${await createResp.text()}`);
   const task = await createResp.json();
   const requestId = task.request_id;
   if (!requestId) throw new Error("No request_id returned from Tavily Research");
 
-  // Step 2: Poll for completion (max ~90 seconds)
+  // Step 2: Poll for completion (max ~40 seconds to stay within edge function limits)
   const headers = getTavilyHeaders();
-  for (let i = 0; i < 30; i++) {
+  let lastResult: any = null;
+  for (let i = 0; i < 13; i++) {
     await new Promise(r => setTimeout(r, 3000));
     const pollResp = await fetch(`https://api.tavily.com/research/${requestId}`, {
       method: "GET",
       headers,
     });
-    if (pollResp.status === 202) continue; // still processing
+    if (pollResp.status === 202) continue;
     if (!pollResp.ok) throw new Error(`Tavily Research poll error (${pollResp.status}): ${await pollResp.text()}`);
     const result = await pollResp.json();
     if (result.status === "completed") return result;
     if (result.status === "failed") throw new Error("Tavily Research task failed");
+    lastResult = result;
   }
-  throw new Error("Tavily Research timed out after 90 seconds");
+  if (lastResult && lastResult.content) {
+    return { ...lastResult, status: "partial", note: "Research was still in progress but partial results are available." };
+  }
+  throw new Error("Tavily Research timed out — try using tavily_search with search_depth='advanced' instead for faster results");
 }
 
 // ─── Server-Side Tool Execution ───

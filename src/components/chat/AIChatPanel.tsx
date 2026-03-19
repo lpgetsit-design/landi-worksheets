@@ -29,7 +29,7 @@ interface AttachmentInfo {
   file_size: number;
   title: string;
   description: string;
-  public_url: string;
+  signed_url: string;
 }
 
 interface AIChatPanelProps {

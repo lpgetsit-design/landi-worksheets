@@ -28,7 +28,7 @@ interface AttachmentCardProps {
   onGenerateTitle: () => void;
   onGenerateDescription: () => void;
   onInsertBadge: () => void;
-  isGenerating: boolean;
+  generatingKey: string | null;
 }
 
 export default function AttachmentCard({

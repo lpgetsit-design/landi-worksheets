@@ -80,9 +80,9 @@ export default function AttachmentPanel({
               size="sm"
               className="h-7 gap-1 text-xs"
               onClick={handleGenerateAll}
-              disabled={isGenerating}
+              disabled={!!generatingKey}
             >
-              {isGenerating ? (
+              {generatingKey ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Sparkles className="h-3 w-3" />

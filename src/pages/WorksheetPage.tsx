@@ -343,8 +343,8 @@ const WorksheetPage = () => {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)}>
-            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
+          <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)} data-tour="doc-type">
+            <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0" data-tour="doc-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

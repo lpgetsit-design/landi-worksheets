@@ -225,8 +225,6 @@ const WorksheetPage = () => {
     );
   }
 
-  // Design mode: chat is always open, auto-open on first visit
-  const designChatOpen = isDesignMode ? (chatOpen || true) : false;
 
   const chatPanel = isDesignMode ? (
     <DesignChatPanel

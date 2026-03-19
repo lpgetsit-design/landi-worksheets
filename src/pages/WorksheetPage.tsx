@@ -214,7 +214,7 @@ const WorksheetPage = () => {
     }));
   }, [rawAttachments]);
 
-
+  useEffect(() => {
     if (worksheet) {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { marked } from "marked";
-import { updateWorksheet } from "@/lib/worksheets";
+
 
 interface ToolCall {
   id: string;

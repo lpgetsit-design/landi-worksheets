@@ -20,6 +20,8 @@ import { marked } from "marked";
 import AttachmentPanel from "@/components/attachments/AttachmentPanel";
 import { useAuth } from "@/components/AuthProvider";
 import type { Attachment } from "@/lib/attachments";
+import { getPublicUrl } from "@/lib/attachments";
+import { useWorksheetAttachments } from "@/hooks/useWorksheetAttachments";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {

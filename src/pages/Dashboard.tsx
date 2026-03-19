@@ -226,7 +226,7 @@ const Dashboard = () => {
       {/* Filters (hidden during search) */}
       {!isSearchActive && (
         <div className="mb-4 flex items-center gap-1.5 sm:gap-2 flex-wrap overflow-x-auto">
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)} data-tour="type-filter">
             <SelectTrigger className="w-[100px] sm:w-[120px] h-8 text-xs">
               <SelectValue placeholder="Type" />
             </SelectTrigger>

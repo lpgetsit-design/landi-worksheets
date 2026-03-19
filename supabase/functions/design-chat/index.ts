@@ -122,18 +122,38 @@ const TOOLS = [
       },
     },
   },
-  // Server-side: Tavily Web Search
+  // ── Tavily Tools ──
+  // IMPORTANT: These 4 tools serve very different purposes. Pick the right one:
+  //   tavily_search   → Google-like keyword search, returns snippets from multiple sites
+  //   tavily_extract  → Read the full text of a KNOWN URL (like opening a webpage)
+  //   tavily_crawl    → Spider a KNOWN website to discover & read multiple pages
+  //   tavily_research → Autonomous multi-step research agent that writes a report
   {
     type: "function",
     function: {
       name: "tavily_search",
-      description: "Search the web using Tavily for real-time information. Returns relevant search results with content snippets. Use for market research, company info, industry data, salary benchmarks, news, etc.",
+      description: `Quick web search — like using Google. Returns short snippets from multiple websites matching a keyword query. Use when you need to DISCOVER information but don't have a specific URL.
+
+WHEN TO USE:
+• You need facts, stats, or news about a topic (e.g. "average software engineer salary in London 2025")
+• You want to find companies, people, or products (e.g. "top AI startups in healthcare")
+• You need recent news or market data (e.g. "tech layoffs January 2025")
+
+WHEN NOT TO USE:
+• You already have a URL and want its full content → use tavily_extract instead
+• You need to explore an entire website → use tavily_crawl instead  
+• You need a comprehensive multi-source research report → use tavily_research instead
+
+EXAMPLES:
+• query: "median base salary for VP Engineering San Francisco 2025"
+• query: "Acme Corp recent funding rounds acquisitions"
+• query: "React Native vs Flutter market share 2025"`,
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "The search query" },
+          query: { type: "string", description: "The search query — use natural language keywords like you would in Google" },
           max_results: { type: "number", description: "Max results (default 5, max 10)" },
-          search_depth: { type: "string", description: "'basic' (fast) or 'advanced' (thorough, default 'basic')" },
+          search_depth: { type: "string", description: "'basic' (fast, default) or 'advanced' (slower but more thorough results)" },
           include_answer: { type: "boolean", description: "Include AI-generated answer summary (default true)" },
         },
         required: ["query"],
@@ -141,58 +161,101 @@ const TOOLS = [
       },
     },
   },
-  // Server-side: Tavily Extract
   {
     type: "function",
     function: {
       name: "tavily_extract",
-      description: "Extract content from one or more specific URLs. Use when you need to read the full content of a webpage, company website, job posting URL, LinkedIn page, etc. Returns the raw text content of each URL.",
+      description: `Read the full text content of one or more specific URLs — like opening a webpage and copying all the text. Use when you already KNOW the exact URL(s) and need to read their content.
+
+WHEN TO USE:
+• User provides a URL and says "use this" or "read this page" (e.g. a job posting link, a company About page)
+• You found a URL via tavily_search and need the full page content, not just a snippet
+• You need to read a specific LinkedIn profile, blog post, or job description
+
+WHEN NOT TO USE:
+• You don't have a URL yet — use tavily_search first to find relevant pages
+• You need to explore many pages on a website — use tavily_crawl instead
+• You need broad research on a topic — use tavily_search or tavily_research instead
+
+EXAMPLES:
+• urls: ["https://www.acmecorp.com/about"] — read a company's About page
+• urls: ["https://www.linkedin.com/jobs/view/123456"] — extract a job posting
+• urls: ["https://acme.com/team", "https://acme.com/values"] — read multiple specific pages`,
       parameters: {
         type: "object",
         properties: {
           urls: {
             type: "array",
             items: { type: "string" },
-            description: "One or more URLs to extract content from",
+            description: "One or more specific URLs to extract full text content from",
           },
           query: { type: "string", description: "Optional: focus extraction on content relevant to this query" },
-          extract_depth: { type: "string", description: "'basic' (default) or 'advanced' (tables & embedded content)" },
+          extract_depth: { type: "string", description: "'basic' (default) or 'advanced' (better for tables & embedded content)" },
         },
         required: ["urls"],
         additionalProperties: false,
       },
     },
   },
-  // Server-side: Tavily Crawl
   {
     type: "function",
     function: {
       name: "tavily_crawl",
-      description: "Crawl a website starting from a base URL to discover and extract content from multiple pages. Use for comprehensive website analysis, gathering all content from a company site, documentation, etc.",
+      description: `Spider a website starting from a base URL — automatically discovers and reads multiple pages by following links. Like sending a bot to explore an entire website. Use when you need broad coverage of a KNOWN website.
+
+WHEN TO USE:
+• You need to understand everything about a company's website (e.g. crawl acmecorp.com to learn about their services, team, culture)
+• You want to find specific information across a website but don't know which page it's on
+• You need to gather content from documentation, a blog, or a careers section
+
+WHEN NOT TO USE:
+• You only need one specific page — use tavily_extract instead (faster)
+• You don't have a URL and need to search the web — use tavily_search first
+• You need deep analysis across many sources — use tavily_research instead
+
+EXAMPLES:
+• url: "https://www.acmecorp.com", instructions: "Find information about their leadership team and company culture"
+• url: "https://careers.bigtech.com", instructions: "Find all open engineering positions in Europe"
+• url: "https://docs.example.com", instructions: "Gather the API authentication documentation"`,
       parameters: {
         type: "object",
         properties: {
-          url: { type: "string", description: "The root URL to begin crawling" },
-          instructions: { type: "string", description: "Natural language instructions to guide the crawler (e.g. 'Find all pages about careers')" },
-          max_depth: { type: "number", description: "Max crawl depth 1-5 (default 1)" },
-          limit: { type: "number", description: "Max pages to process (default 10, keep low to avoid timeout)" },
+          url: { type: "string", description: "The root URL to begin crawling from — the spider follows links from this page" },
+          instructions: { type: "string", description: "Natural language instructions to guide the crawler (e.g. 'Find pages about pricing and features')" },
+          max_depth: { type: "number", description: "How many link-levels deep to follow (1-5, default 1). Higher = more pages but slower" },
+          limit: { type: "number", description: "Max pages to process (default 10, max 20). Keep low to avoid timeout" },
         },
         required: ["url"],
         additionalProperties: false,
       },
     },
   },
-  // Server-side: Tavily Research
   {
     type: "function",
     function: {
       name: "tavily_research",
-      description: "Perform comprehensive, multi-step research on a topic. Tavily's research agent conducts multiple searches, analyzes sources, and produces a detailed research report. Use for deep-dive market analysis, competitive intelligence, industry reports, compensation studies, etc. This is slower but much more thorough than a simple search.",
+      description: `Autonomous deep research agent — performs multiple searches, reads sources, cross-references, and produces a comprehensive written report. Like hiring a research analyst. This is SLOW (30-90 seconds) but very thorough.
+
+WHEN TO USE:
+• User asks for a "deep dive", "research report", "market analysis", or "competitive landscape"
+• You need to synthesize information from many sources into a cohesive analysis
+• Topics like: compensation benchmarking, industry trends, competitive intelligence, market sizing
+
+WHEN NOT TO USE:
+• You just need a quick fact or statistic — use tavily_search instead (much faster)
+• You need to read a specific URL — use tavily_extract instead
+• You need to explore one website — use tavily_crawl instead
+• Time-sensitive requests where the user expects a fast response
+
+EXAMPLES:
+• input: "Comprehensive salary benchmarks for VP of Engineering roles in US tech companies, including equity compensation, by company size"
+• input: "Competitive landscape analysis of AI-powered recruiting platforms in 2025, including market share, funding, and key differentiators"
+• input: "Current state of the UK contract staffing market for technology roles, including day rates, demand trends, and regulatory changes"`,
       parameters: {
         type: "object",
         properties: {
-          input: { type: "string", description: "The research question or topic to investigate" },
-          model: { type: "string", description: "'mini' (fast, focused), 'pro' (comprehensive), or 'auto' (default)" },
+          input: { type: "string", description: "The research question or topic — be specific and detailed for best results" },
+          model: { type: "string", description: "'mini' (fast, focused ~30s), 'pro' (comprehensive ~60-90s), or 'auto' (default, picks based on complexity)" },
         },
         required: ["input"],
         additionalProperties: false,

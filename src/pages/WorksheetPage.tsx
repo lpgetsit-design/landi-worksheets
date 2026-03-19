@@ -354,6 +354,7 @@ const WorksheetPage = () => {
               <SelectItem value="template">Template</SelectItem>
             </SelectContent>
           </Select>
+          <div data-tour="summary-btn">
           <SummaryButton
             worksheet={worksheet}
             worksheetContent={worksheetContent}

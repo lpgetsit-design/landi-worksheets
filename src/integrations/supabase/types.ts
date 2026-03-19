@@ -261,6 +261,59 @@ export type Database = {
           },
         ]
       }
+      worksheet_attachments: {
+        Row: {
+          created_at: string
+          description: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          meta: Json
+          title: string
+          updated_at: string
+          user_id: string
+          worksheet_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          meta?: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+          worksheet_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          meta?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheet_attachments_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worksheet_embeddings: {
         Row: {
           content_hash: string

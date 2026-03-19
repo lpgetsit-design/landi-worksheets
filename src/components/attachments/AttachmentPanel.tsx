@@ -30,7 +30,7 @@ export default function AttachmentPanel({
     remove,
     update,
     generateMetadata,
-    isGenerating,
+    generatingKey,
   } = useWorksheetAttachments(worksheetId, userId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

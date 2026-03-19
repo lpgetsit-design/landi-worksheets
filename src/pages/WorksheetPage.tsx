@@ -172,6 +172,7 @@ const WorksheetPage = () => {
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const tour = useTour("worksheet");
 
   const handleInsertFileBadge = useCallback((attachment: Attachment) => {
     if (!editorRef.current) return;

@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchAttachments,
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 export function useWorksheetAttachments(worksheetId: string, userId?: string) {
   const qc = useQueryClient();
   const key = ["worksheet-attachments", worksheetId];
+  const [generatingKey, setGeneratingKey] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: key,
@@ -46,16 +48,23 @@ export function useWorksheetAttachments(worksheetId: string, userId?: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
-  const aiMetadataMutation = useMutation({
-    mutationFn: ({ attachment, field }: { attachment: Attachment; field: "title" | "description" | "both" }) =>
-      generateAttachmentMetadata(attachment, field),
-    onSuccess: (_data, { field }) => {
-      qc.invalidateQueries({ queryKey: key });
-      const label = field === "both" ? "metadata" : field;
-      toast.success(`AI ${label} generated`);
+  const generateMetadata = useCallback(
+    async (attachment: Attachment, field: "title" | "description" | "both" = "both") => {
+      const k = `${attachment.id}:${field}`;
+      setGeneratingKey(k);
+      try {
+        await generateAttachmentMetadata(attachment, field);
+        qc.invalidateQueries({ queryKey: key });
+        const label = field === "both" ? "metadata" : field;
+        toast.success(`AI ${label} generated`);
+      } catch (e: any) {
+        toast.error(`AI generation failed: ${e.message}`);
+      } finally {
+        setGeneratingKey(null);
+      }
     },
-    onError: (e: Error) => toast.error(`AI generation failed: ${e.message}`),
-  });
+    [qc, key]
+  );
 
   return {
     attachments: query.data ?? [],
@@ -64,8 +73,7 @@ export function useWorksheetAttachments(worksheetId: string, userId?: string) {
     isUploading: uploadMutation.isPending,
     remove: deleteMutation.mutateAsync,
     update: updateMutation.mutateAsync,
-    generateMetadata: (attachment: Attachment, field: "title" | "description" | "both" = "both") =>
-      aiMetadataMutation.mutateAsync({ attachment, field }),
-    isGenerating: aiMetadataMutation.isPending,
+    generateMetadata,
+    generatingKey,
   };
 }

@@ -28,7 +28,7 @@ interface AttachmentCardProps {
   onGenerateTitle: () => void;
   onGenerateDescription: () => void;
   onInsertBadge: () => void;
-  isGenerating: boolean;
+  generatingKey: string | null;
 }
 
 export default function AttachmentCard({
@@ -38,8 +38,10 @@ export default function AttachmentCard({
   onGenerateTitle,
   onGenerateDescription,
   onInsertBadge,
-  isGenerating,
+  generatingKey,
 }: AttachmentCardProps) {
+  const isGeneratingTitle = generatingKey === `${attachment.id}:title`;
+  const isGeneratingDesc = generatingKey === `${attachment.id}:description`;
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [title, setTitle] = useState(attachment.title);
@@ -104,10 +106,10 @@ export default function AttachmentCard({
             size="icon"
             className="h-5 w-5 shrink-0"
             onClick={onGenerateTitle}
-            disabled={isGenerating}
+            disabled={isGeneratingTitle || isGeneratingDesc}
             title="AI generate title"
           >
-            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {isGeneratingTitle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
           </Button>
         </div>
 
@@ -135,10 +137,10 @@ export default function AttachmentCard({
             size="icon"
             className="h-5 w-5 shrink-0 mt-0.5"
             onClick={onGenerateDescription}
-            disabled={isGenerating}
+            disabled={isGeneratingTitle || isGeneratingDesc}
             title="AI generate description"
           >
-            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {isGeneratingDesc ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
           </Button>
         </div>
 

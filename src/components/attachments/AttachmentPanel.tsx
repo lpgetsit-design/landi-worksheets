@@ -30,7 +30,7 @@ export default function AttachmentPanel({
     remove,
     update,
     generateMetadata,
-    isGenerating,
+    generatingKey,
   } = useWorksheetAttachments(worksheetId, userId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,9 +80,9 @@ export default function AttachmentPanel({
               size="sm"
               className="h-7 gap-1 text-xs"
               onClick={handleGenerateAll}
-              disabled={isGenerating}
+              disabled={!!generatingKey}
             >
-              {isGenerating ? (
+              {generatingKey ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Sparkles className="h-3 w-3" />
@@ -140,7 +140,7 @@ export default function AttachmentPanel({
                 onGenerateTitle={() => generateMetadata(a, "title")}
                 onGenerateDescription={() => generateMetadata(a, "description")}
                 onInsertBadge={() => onInsertBadge(a)}
-                isGenerating={isGenerating}
+                generatingKey={generatingKey}
               />
             ))}
           </div>

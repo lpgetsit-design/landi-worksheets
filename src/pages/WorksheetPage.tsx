@@ -425,7 +425,7 @@ const WorksheetPage = () => {
               </Button>
             )
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
+          <Button data-tour="share-btn" variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
             <Share2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Share</span>
           </Button>

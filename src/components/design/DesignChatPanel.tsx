@@ -266,16 +266,36 @@ const DesignChatPanel = ({
         scrollToBottom();
 
         if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
-          const toolResultMessages: Message[] = assistantMsg.tool_calls.map((tc) => {
+          const toolResultMessages: Message[] = [];
+
+          // Add server-side tool results that were already executed
+          const serverResults = (assistantMsg as any)._server_tool_results as Array<{ tool_call_id: string; name: string; content: string }> | undefined;
+          const serverResultIds = new Set((serverResults || []).map(r => r.tool_call_id));
+
+          if (serverResults) {
+            for (const sr of serverResults) {
+              toolResultMessages.push({
+                id: crypto.randomUUID(),
+                role: "tool",
+                content: sr.content,
+                tool_call_id: sr.tool_call_id,
+                name: sr.name,
+              });
+            }
+          }
+
+          // Execute client-side tools
+          for (const tc of assistantMsg.tool_calls) {
+            if (serverResultIds.has(tc.id)) continue; // already handled server-side
             const result = executeTool(tc.function.name, tc.function.arguments);
-            return {
+            toolResultMessages.push({
               id: crypto.randomUUID(),
               role: "tool" as const,
               content: result,
               tool_call_id: tc.id,
               name: tc.function.name,
-            };
-          });
+            });
+          }
 
           allMessages = [...allMessages, ...toolResultMessages];
           setMessages(allMessages);

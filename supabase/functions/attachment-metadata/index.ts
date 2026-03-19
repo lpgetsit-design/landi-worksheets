@@ -19,6 +19,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Service role client for storage access (private bucket)
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -28,7 +34,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    const { attachmentId, fileName, fileType, fileUrl } = await req.json();
+    const { attachmentId, fileName, fileType, filePath } = await req.json();
 
     if (!attachmentId || !fileName)
       return new Response(
@@ -66,6 +72,15 @@ serve(async (req) => {
       fileType?.includes("powerpoint");
 
     let userContent: any;
+
+    // Generate signed URL for the file (private bucket)
+    let fileUrl: string | null = null;
+    if (filePath) {
+      const { data: signedData } = await supabaseAdmin.storage
+        .from("attachments")
+        .createSignedUrl(filePath, 600); // 10 min
+      fileUrl = signedData?.signedUrl ?? null;
+    }
 
     if (isImage && fileUrl) {
       userContent = [
@@ -177,12 +192,7 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
     }
 
     // Update the attachment record
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { error: updateError } = await serviceClient
+    const { error: updateError } = await supabaseAdmin
       .from("worksheet_attachments")
       .update({ title, description, meta: { ai_generated: true } })
       .eq("id", attachmentId);

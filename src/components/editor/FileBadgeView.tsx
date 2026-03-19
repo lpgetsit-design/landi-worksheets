@@ -6,7 +6,7 @@ import {
   HoverCardContent,
 } from "@/components/ui/hover-card";
 import { Paperclip, X, FileText, Music, Video, Image, File } from "lucide-react";
-import { getPublicUrl } from "@/lib/attachments";
+// Signed URLs are handled at the page level; this view doesn't need direct storage access
 
 function getFileIcon(fileType: string) {
   if (fileType.startsWith("image/")) return Image;

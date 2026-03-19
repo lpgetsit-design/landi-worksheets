@@ -599,7 +599,7 @@ This worksheet has ${attachments.length} attached file(s). You can reference the
 ${attachments.map((a: any, i: number) => `${i + 1}. **${a.title || a.file_name}** (ID: ${a.id})
    - File: ${a.file_name} | Type: ${a.file_type} | Size: ${a.file_size} bytes
    - Description: ${a.description || "(none)"}
-   - Public URL: ${a.public_url}`).join("\n")}`
+   - URL: ${a.signed_url || a.public_url || "(private)"}`).join("\n")}`
       : "";
 
     const systemPrompt = `You are an expert AI assistant embedded in a worksheet editor app. You can both answer questions AND take actions using the tools available to you.

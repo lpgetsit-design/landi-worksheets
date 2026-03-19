@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Paperclip, Trash2, Sparkles, Loader2, FileText, Music, Video, Image, File, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import type { Attachment } from "@/lib/attachments";
-import { getPublicUrl } from "@/lib/attachments";
+import { getSignedUrl } from "@/lib/attachments";
 
 function getFileIcon(fileType: string) {
   if (fileType.startsWith("image/")) return Image;
@@ -42,9 +42,13 @@ export default function AttachmentCard({
   const [editingDesc, setEditingDesc] = useState(false);
   const [title, setTitle] = useState(attachment.title);
   const [description, setDescription] = useState(attachment.description);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const Icon = getFileIcon(attachment.file_type);
-  const publicUrl = getPublicUrl(attachment.file_path);
   const isImage = attachment.file_type.startsWith("image/");
+
+  useEffect(() => {
+    getSignedUrl(attachment.file_path).then(setSignedUrl).catch(() => setSignedUrl(null));
+  }, [attachment.file_path]);
 
   const saveTitle = () => {
     setEditingTitle(false);
@@ -64,8 +68,8 @@ export default function AttachmentCard({
     <div className="flex gap-3 p-3 rounded-md border border-border bg-card hover:bg-accent/30 transition-colors">
       {/* Thumbnail / icon */}
       <div className="shrink-0 w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
-        {isImage ? (
-          <img src={publicUrl} alt={attachment.file_name} className="w-full h-full object-cover" />
+        {isImage && signedUrl ? (
+          <img src={signedUrl} alt={attachment.file_name} className="w-full h-full object-cover" />
         ) : (
           <Icon className="h-5 w-5 text-muted-foreground" />
         )}
@@ -155,7 +159,7 @@ export default function AttachmentCard({
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => window.open(publicUrl, "_blank")}
+          onClick={() => { if (signedUrl) window.open(signedUrl, "_blank"); }}
           title="Open file"
         >
           <Paperclip className="h-3 w-3" />

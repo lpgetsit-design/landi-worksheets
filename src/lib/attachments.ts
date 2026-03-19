@@ -53,9 +53,13 @@ export async function uploadAttachment(
   return data as unknown as Attachment;
 }
 
-export function getPublicUrl(filePath: string): string {
-  const { data } = supabase.storage.from("attachments").getPublicUrl(filePath);
-  return data.publicUrl;
+/** Get a signed URL valid for 1 hour (private bucket) */
+export async function getSignedUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("attachments")
+    .createSignedUrl(filePath, 3600); // 1 hour
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 export async function deleteAttachment(attachment: Attachment) {
@@ -79,13 +83,13 @@ export async function updateAttachmentMeta(
 }
 
 export async function generateAttachmentMetadata(attachment: Attachment) {
-  const fileUrl = getPublicUrl(attachment.file_path);
+  // Pass file_path so edge function can create its own signed URL with service role
   const { data, error } = await supabase.functions.invoke("attachment-metadata", {
     body: {
       attachmentId: attachment.id,
       fileName: attachment.file_name,
       fileType: attachment.file_type,
-      fileUrl,
+      filePath: attachment.file_path,
     },
   });
   if (error) throw error;

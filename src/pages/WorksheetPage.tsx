@@ -20,7 +20,7 @@ import { marked } from "marked";
 import AttachmentPanel from "@/components/attachments/AttachmentPanel";
 import { useAuth } from "@/components/AuthProvider";
 import type { Attachment } from "@/lib/attachments";
-import { getPublicUrl } from "@/lib/attachments";
+import { getSignedUrl } from "@/lib/attachments";
 import { useWorksheetAttachments } from "@/hooks/useWorksheetAttachments";
 
 // ─── PDF helpers ───
@@ -202,16 +202,30 @@ const WorksheetPage = () => {
 
   const { attachments: rawAttachments } = useWorksheetAttachments(id || "", user?.id);
 
-  const attachmentInfos = useMemo(() => {
-    return rawAttachments.map((a) => ({
-      id: a.id,
-      file_name: a.file_name,
-      file_type: a.file_type,
-      file_size: a.file_size,
-      title: a.title,
-      description: a.description,
-      public_url: getPublicUrl(a.file_path),
-    }));
+  const [attachmentInfos, setAttachmentInfos] = useState<Array<{
+    id: string; file_name: string; file_type: string; file_size: number;
+    title: string; description: string; signed_url: string;
+  }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      const infos = await Promise.all(
+        rawAttachments.map(async (a) => ({
+          id: a.id,
+          file_name: a.file_name,
+          file_type: a.file_type,
+          file_size: a.file_size,
+          title: a.title,
+          description: a.description,
+          signed_url: await getSignedUrl(a.file_path).catch(() => ""),
+        }))
+      );
+      if (!cancelled) setAttachmentInfos(infos);
+    }
+    if (rawAttachments.length > 0) resolve();
+    else setAttachmentInfos([]);
+    return () => { cancelled = true; };
   }, [rawAttachments]);
 
   useEffect(() => {

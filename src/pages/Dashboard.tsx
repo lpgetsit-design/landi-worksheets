@@ -427,7 +427,7 @@ const Dashboard = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="worksheet-list">
             {filtered.map((ws) => (
               <div
                 key={ws.id}

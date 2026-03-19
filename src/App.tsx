@@ -45,16 +45,21 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AuthProvider>
-            <AppHeader />
-            <Routes>
-              <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
-              <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
+          <Routes>
+            <Route path="/s/:token" element={<PublicSharePage />} />
+            <Route path="*" element={
+              <AuthProvider>
+                <AppHeader />
+                <Routes>
+                  <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+                  <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
+                  <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthProvider>
+            } />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

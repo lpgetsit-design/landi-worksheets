@@ -19,6 +19,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Service role client for storage access (private bucket)
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -28,7 +34,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    const { attachmentId, fileName, fileType, fileUrl } = await req.json();
+    const { attachmentId, fileName, fileType, filePath } = await req.json();
 
     if (!attachmentId || !fileName)
       return new Response(

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.search-worksheets]
 verify_jwt = false
+
+[functions.design-chat]
+verify_jwt = false

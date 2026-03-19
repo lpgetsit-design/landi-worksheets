@@ -225,16 +225,19 @@ const WorksheetPage = () => {
       const delta = ev.clientX - d.startX;
 
       if (d.type === 'editor-design') {
-        const newEditor = Math.max(MIN_EDITOR_WIDTH, d.startEditorW + delta);
-        const newDesign = Math.max(MIN_DESIGN_WIDTH, d.startDesignW - delta);
-        // Only apply if both above minimum
-        if (newEditor >= MIN_EDITOR_WIDTH && newDesign >= MIN_DESIGN_WIDTH) {
-          setEditorWidth(newEditor);
-          setDesignWidth(newDesign);
-        }
+        // Total space shared between editor and design stays constant
+        const totalSpace = d.startEditorW + d.startDesignW;
+        let newEditor = d.startEditorW + delta;
+        // Clamp editor within [MIN, totalSpace - MIN_DESIGN]
+        newEditor = Math.max(MIN_EDITOR_WIDTH, Math.min(newEditor, totalSpace - MIN_DESIGN_WIDTH));
+        const newDesign = totalSpace - newEditor;
+        setEditorWidth(newEditor);
+        setDesignWidth(newDesign);
       } else {
-        // content-chat: delta positive = chat shrinks
-        const newChat = Math.max(MIN_CHAT_WIDTH, d.startChatW - delta);
+        // content-chat: delta positive (drag right) = chat shrinks
+        const containerWidth = containerRef.current?.offsetWidth || 0;
+        const maxChat = containerWidth - MIN_EDITOR_WIDTH - 6; // 6px for handle
+        const newChat = Math.max(MIN_CHAT_WIDTH, Math.min(maxChat, d.startChatW - delta));
         setChatWidth(newChat);
       }
     };

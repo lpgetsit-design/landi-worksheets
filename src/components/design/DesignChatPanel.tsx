@@ -105,14 +105,28 @@ const DesignChatPanel = ({
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-  const executeTool = (name: string, args: string): string => {
+  const executeTool = async (name: string, args: string): Promise<string> => {
     try {
       const parsed = JSON.parse(args);
       switch (name) {
         case "replace_design_html":
           onHtmlChange(parsed.html);
-          // Save to DB
-          updateWorksheet(worksheetId, { content_html: parsed.html } as any).catch(console.error);
+          // Save design HTML in meta.design_html to avoid TipTap overwriting content_html
+          try {
+            const { supabase } = await import("@/integrations/supabase/client");
+            const { data: current } = await supabase
+              .from("worksheets")
+              .select("meta")
+              .eq("id", worksheetId)
+              .single();
+            const existingMeta = (current?.meta as Record<string, any>) || {};
+            await supabase
+              .from("worksheets")
+              .update({ meta: { ...existingMeta, design_html: parsed.html } })
+              .eq("id", worksheetId);
+          } catch (e) {
+            console.error("Failed to save design HTML:", e);
+          }
           return "Webpage updated successfully.";
         case "update_worksheet_title":
           onUpdateTitle?.(parsed.title);

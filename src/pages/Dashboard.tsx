@@ -16,7 +16,7 @@ import { marked } from "marked";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";
-type TypeFilter = "all" | "note" | "skill" | "prompt" | "template";
+type TypeFilter = "all" | "note" | "skill" | "prompt" | "template" | "design";
 
 interface EntityOption {
   entity_type: string;

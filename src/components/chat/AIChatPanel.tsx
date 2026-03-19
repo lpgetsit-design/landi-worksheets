@@ -334,14 +334,28 @@ const AIChatPanel = ({
     return msg;
   };
 
-  const handleSend = async (directText?: string) => {
-    const text = (directText ?? input).trim();
+  const handleSend = async (directText?: string, mentions?: ChatMention[]) => {
+    const text = (directText ?? "").trim();
     if (!text || isLoading) return;
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
+    // Build mention context to append
+    let mentionContext = "";
+    if (mentions && mentions.length > 0) {
+      const parts: string[] = [];
+      for (const m of mentions) {
+        if (m.type === "crm") {
+          parts.push(`[CRM Reference: ${m.entityType} #${m.entityId} "${m.label}"]`);
+        } else if (m.type === "worksheet") {
+          parts.push(`[Worksheet Reference: "${m.worksheetTitle}" (ID: ${m.worksheetId}, Type: ${m.documentType})]`);
+        }
+      }
+      mentionContext = "\n\n---\nReferenced entities:\n" + parts.join("\n");
+    }
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text + mentionContext };
     let allMessages = [...messages, userMsg];
     setMessages(allMessages);
-    if (!directText) setInput("");
+    setIsLoading(true);
     setIsLoading(true);
     setThinkingLabel("Connecting...");
     setStreamingContent("");

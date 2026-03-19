@@ -309,7 +309,7 @@ const DesignChatPanel = ({
           // Execute client-side tools
           for (const tc of assistantMsg.tool_calls) {
             if (serverResultIds.has(tc.id)) continue; // already handled server-side
-            const result = executeTool(tc.function.name, tc.function.arguments);
+            const result = await executeTool(tc.function.name, tc.function.arguments);
             toolResultMessages.push({
               id: crypto.randomUUID(),
               role: "tool" as const,

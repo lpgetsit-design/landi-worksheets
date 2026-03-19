@@ -79,15 +79,56 @@ Deno.serve(async (req) => {
       user_agent: userAgent,
     });
 
-    // Return worksheet data
+    // Replace private attachment URLs in design_html with fresh signed URLs
     const meta = worksheet.meta as Record<string, unknown> | null;
+    let designHtml = (meta?.design_html as string) || null;
+
+    if (designHtml) {
+      const { data: attachments } = await supabaseAdmin
+        .from("worksheet_attachments")
+        .select("file_path")
+        .eq("worksheet_id", link.worksheet_id);
+
+      if (attachments?.length) {
+        for (const att of attachments) {
+          // Replace raw file_path references
+          const escapedPath = att.file_path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (designHtml.includes(att.file_path)) {
+            const { data: signed } = await supabaseAdmin.storage
+              .from("attachments")
+              .createSignedUrl(att.file_path, 86400); // 24 hours
+            if (signed?.signedUrl) {
+              designHtml = designHtml.replaceAll(att.file_path, signed.signedUrl);
+            }
+          }
+          // Also replace any existing signed URLs for this file (they may have expired)
+          const signedUrlPattern = new RegExp(
+            `https?://[^"'\\s]*?/storage/v1/object/sign/attachments/${escapedPath}[^"'\\s]*`,
+            'g'
+          );
+          const matches = designHtml.match(signedUrlPattern);
+          if (matches?.length) {
+            const { data: signed } = await supabaseAdmin.storage
+              .from("attachments")
+              .createSignedUrl(att.file_path, 86400);
+            if (signed?.signedUrl) {
+              for (const m of matches) {
+                designHtml = designHtml.replaceAll(m, signed.signedUrl);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Return worksheet data
     return new Response(
       JSON.stringify({
         title: worksheet.title,
         document_type: worksheet.document_type,
         content_html: worksheet.content_html,
         content_md: worksheet.content_md,
-        design_html: meta?.design_html || null,
+        design_html: designHtml,
         recipient_name: link.recipient_name,
       }),
       {

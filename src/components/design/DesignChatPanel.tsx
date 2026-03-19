@@ -177,7 +177,8 @@ const DesignChatPanel = ({
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
-      buffer = "";
+      // Keep the last element — it may be an incomplete line split across chunks
+      buffer = lines.pop() || "";
 
       let currentEventType = "";
 
@@ -222,13 +223,15 @@ const DesignChatPanel = ({
                 return null;
             }
           } catch {
-            buffer += line + "\n";
+            // JSON parse failed — likely an incomplete line, put it back
+            buffer = line + "\n" + buffer;
           }
           currentEventType = "";
         } else if (line === "") {
-          // empty
+          // empty line (SSE delimiter)
         } else {
-          buffer += line + "\n";
+          // Unknown line — could be continuation, preserve event type
+          buffer = line + "\n" + buffer;
         }
       }
     }

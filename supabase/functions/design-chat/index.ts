@@ -431,6 +431,51 @@ async function executeServerTool(name: string, argsStr: string): Promise<string>
         };
         return JSON.stringify(trimmed, null, 2);
       }
+      case "tavily_extract": {
+        const data = await tavilyExtract(
+          args.urls,
+          args.query,
+          args.extract_depth || "basic",
+        );
+        const trimmed = {
+          results: (data.results || []).map((r: any) => ({
+            url: r.url,
+            content: (r.raw_content || "").slice(0, 2000),
+          })),
+          failed: data.failed_results || [],
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_crawl": {
+        const data = await tavilyCrawl(
+          args.url,
+          args.instructions,
+          args.max_depth || 1,
+          args.limit || 10,
+        );
+        const trimmed = {
+          base_url: data.base_url,
+          results: (data.results || []).slice(0, 10).map((r: any) => ({
+            url: r.url,
+            content: (r.raw_content || "").slice(0, 1000),
+          })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_research": {
+        const data = await tavilyResearch(
+          args.input,
+          args.model || "auto",
+        );
+        const trimmed = {
+          content: (data.content || "").slice(0, 5000),
+          sources: (data.sources || []).slice(0, 10).map((s: any) => ({
+            title: s.title,
+            url: s.url,
+          })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
       default:
         return JSON.stringify({ error: `Unknown server tool: ${name}` });
     }

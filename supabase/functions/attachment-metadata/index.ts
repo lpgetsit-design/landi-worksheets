@@ -192,12 +192,7 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
     }
 
     // Update the attachment record
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { error: updateError } = await serviceClient
+    const { error: updateError } = await supabaseAdmin
       .from("worksheet_attachments")
       .update({ title, description, meta: { ai_generated: true } })
       .eq("id", attachmentId);

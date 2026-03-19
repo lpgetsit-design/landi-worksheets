@@ -66,7 +66,7 @@ const PublicSharePage = () => {
 
   if (!data) return null;
 
-  const isDesign = data.document_type === "design" && data.design_html;
+  const isDesign = !!data.design_html;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">

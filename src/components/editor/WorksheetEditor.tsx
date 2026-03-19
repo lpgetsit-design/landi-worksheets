@@ -59,6 +59,18 @@ turndown.addRule("worksheetBadge", {
   },
 });
 
+// Custom Turndown rule: serialize file badge spans into [[FILE:id:title]] placeholders
+turndown.addRule("fileBadge", {
+  filter: (node) =>
+    node.nodeName === "SPAN" && node.hasAttribute("data-file-badge"),
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const attachmentId = el.getAttribute("data-attachment-id") || "";
+    const title = el.getAttribute("data-file-title") || el.textContent?.trim() || "";
+    return `[[FILE:${attachmentId}:${title}]]`;
+  },
+});
+
 const STREAM_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-ai`;
 
 // ─── Shared SSE streaming helper ───

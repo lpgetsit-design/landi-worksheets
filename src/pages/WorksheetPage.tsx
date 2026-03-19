@@ -425,6 +425,15 @@ const WorksheetPage = () => {
                     onDocumentTypeChange={handleUpdateDocumentType}
                   />
                 </div>
+                {user && (
+                  <div className="mx-auto max-w-[800px] px-3 sm:px-6 pb-4">
+                    <AttachmentPanel
+                      worksheetId={worksheet.id}
+                      userId={user.id}
+                      onInsertBadge={handleInsertFileBadge}
+                    />
+                  </div>
+                )}
               </div>
             </ResizablePanel>
           )}

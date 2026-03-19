@@ -49,6 +49,20 @@ const UnifiedMentionExtension = Extension.create({
                 },
               })
               .run();
+          } else if (props._type === "file") {
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: "fileBadge",
+                attrs: {
+                  attachmentId: props.attachmentId,
+                  fileName: props.fileName,
+                  fileType: props.fileType,
+                  title: props.title,
+                },
+              })
+              .run();
           }
         },
         render: () => {

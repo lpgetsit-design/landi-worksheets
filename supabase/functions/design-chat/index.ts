@@ -4,7 +4,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Tool Definitions ───
+
+const CLIENT_TOOLS = new Set(["replace_design_html", "update_worksheet_title"]);
+
 const TOOLS = [
+  // Client-side tools
   {
     type: "function",
     function: {
@@ -14,10 +19,7 @@ const TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          html: {
-            type: "string",
-            description: "The complete HTML document source code",
-          },
+          html: { type: "string", description: "The complete HTML document source code" },
         },
         required: ["html"],
         additionalProperties: false,
@@ -39,28 +41,306 @@ const TOOLS = [
       },
     },
   },
+  // Server-side: Bullhorn CRM
+  {
+    type: "function",
+    function: {
+      name: "search_bullhorn",
+      description: "Search Bullhorn CRM using a free-text query. Returns matching Candidates, Jobs, Companies, Contacts, and Placements. Use this to find CRM records by name, skill, title, company, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query (name, skill, company, etc.)" },
+          count: { type: "number", description: "Max results per entity type (default 5)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_candidate_profile",
+      description: "Get detailed profile for a specific Bullhorn candidate by their numeric ID. Returns full contact info, skills, experience, salary, availability, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "The Bullhorn candidate ID" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_job_details",
+      description: "Get detailed information for a specific Bullhorn job order by its numeric ID. Returns title, status, salary, description, requirements, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "The Bullhorn job order ID" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_candidates",
+      description: "Search Bullhorn candidates with a Lucene query. Use field:value syntax (e.g. 'skills:Python AND status:Active'). Returns candidate list with contact info, skills, salary.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Lucene query string (e.g. 'skills:React AND status:Active')" },
+          count: { type: "number", description: "Max results (default 10)" },
+          sort: { type: "string", description: "Sort field (default -dateLastModified)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_jobs",
+      description: "Search Bullhorn job orders with a Lucene query. Use field:value syntax (e.g. 'title:Engineer AND status:Open'). Returns job listings.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Lucene query string" },
+          count: { type: "number", description: "Max results (default 10)" },
+          sort: { type: "string", description: "Sort field (default -dateAdded)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  // Server-side: Tavily Web Search
+  {
+    type: "function",
+    function: {
+      name: "tavily_search",
+      description: "Search the web using Tavily for real-time information. Returns relevant search results with content snippets. Use for market research, company info, industry data, salary benchmarks, news, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query" },
+          max_results: { type: "number", description: "Max results (default 5, max 10)" },
+          search_depth: { type: "string", description: "'basic' (fast) or 'advanced' (thorough, default 'basic')" },
+          include_answer: { type: "boolean", description: "Include AI-generated answer summary (default true)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 const TOOL_LABELS: Record<string, string> = {
   replace_design_html: "Building webpage",
   update_worksheet_title: "Changing title",
+  search_bullhorn: "Searching CRM",
+  get_candidate_profile: "Loading candidate",
+  get_job_details: "Loading job details",
+  search_candidates: "Searching candidates",
+  search_jobs: "Searching jobs",
+  tavily_search: "Researching the web",
 };
 
-const MAX_LOOPS = 5;
+const MAX_LOOPS = 8;
 
 function sseEvent(type: string, data: any): string {
   return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
 }
+
+// ─── Bullhorn Auth & API ───
+
+let cachedSession: { bhRestToken: string; restUrl: string; expiresAt: number } | null = null;
+
+async function getAccessToken(): Promise<{ access_token: string }> {
+  const clientId = Deno.env.get("BULLHORN_CLIENT_ID")!;
+  const clientSecret = Deno.env.get("BULLHORN_CLIENT_SECRET")!;
+  const username = Deno.env.get("BULLHORN_USERNAME")!;
+  const password = Deno.env.get("BULLHORN_PASSWORD")!;
+
+  const authorizeUrl = new URL("https://auth.bullhornstaffing.com/oauth/authorize");
+  authorizeUrl.searchParams.set("client_id", clientId);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("action", "Login");
+  authorizeUrl.searchParams.set("username", username);
+  authorizeUrl.searchParams.set("password", password);
+
+  let url = authorizeUrl.toString();
+  let code: string | null = null;
+  let regionalOrigin = "https://auth.bullhornstaffing.com";
+
+  for (let i = 0; i < 10; i++) {
+    const resp = await fetch(url, { redirect: "manual" });
+    await resp.text();
+    const location = resp.headers.get("location");
+    if (!location) break;
+    const codeMatch = location.match(/[?&]code=([^&]+)/);
+    if (codeMatch) { code = decodeURIComponent(codeMatch[1]); break; }
+    if (location.includes("bullhornstaffing.com/oauth")) {
+      regionalOrigin = new URL(location).origin;
+    }
+    url = location;
+  }
+  if (!code) throw new Error("Could not obtain Bullhorn authorization code");
+
+  const tokenResp = await fetch(`${regionalOrigin}/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "authorization_code", code, client_id: clientId, client_secret: clientSecret }).toString(),
+  });
+  if (!tokenResp.ok) throw new Error("Bullhorn token exchange failed: " + await tokenResp.text());
+  return await tokenResp.json();
+}
+
+async function getBullhornSession(): Promise<{ bhRestToken: string; restUrl: string }> {
+  if (cachedSession && Date.now() < cachedSession.expiresAt) {
+    return { bhRestToken: cachedSession.bhRestToken, restUrl: cachedSession.restUrl };
+  }
+  const { access_token } = await getAccessToken();
+  const loginUrl = new URL("https://rest.bullhornstaffing.com/rest-services/login");
+  loginUrl.searchParams.set("version", "2.0");
+  loginUrl.searchParams.set("access_token", access_token);
+  const loginResp = await fetch(loginUrl.toString());
+  if (!loginResp.ok) throw new Error("Bullhorn REST login failed");
+  const session = await loginResp.json();
+  if (!session.BhRestToken || !session.restUrl) throw new Error("Invalid Bullhorn REST login response");
+  cachedSession = { bhRestToken: session.BhRestToken, restUrl: session.restUrl, expiresAt: Date.now() + 8 * 60 * 1000 };
+  return { bhRestToken: session.BhRestToken, restUrl: session.restUrl };
+}
+
+async function bullhornFetch(path: string, params: Record<string, string> = {}, retried = false): Promise<any> {
+  const { bhRestToken, restUrl } = await getBullhornSession();
+  const url = new URL(`${restUrl}${path}`);
+  url.searchParams.set("BhRestToken", bhRestToken);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const resp = await fetch(url.toString());
+  if (!resp.ok) {
+    if (resp.status === 401 && !retried) { cachedSession = null; return bullhornFetch(path, params, true); }
+    throw new Error(`Bullhorn API error (${resp.status}): ${await resp.text()}`);
+  }
+  return resp.json();
+}
+
+// ─── Tavily Search ───
+
+async function tavilySearch(query: string, maxResults = 5, searchDepth = "basic", includeAnswer = true): Promise<any> {
+  const apiKey = Deno.env.get("TAVILY_API_KEY");
+  if (!apiKey) throw new Error("TAVILY_API_KEY is not configured");
+
+  const resp = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query,
+      max_results: Math.min(maxResults, 10),
+      search_depth: searchDepth,
+      include_answer: includeAnswer,
+    }),
+  });
+  if (!resp.ok) throw new Error(`Tavily API error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+// ─── Server-Side Tool Execution ───
+
+async function executeServerTool(name: string, argsStr: string): Promise<string> {
+  try {
+    const args = JSON.parse(argsStr);
+    switch (name) {
+      case "search_bullhorn": {
+        const data = await bullhornFetch("find", {
+          query: args.query,
+          countPerEntity: String(args.count || 5),
+          meta: "full",
+        });
+        const results = (data.data || []).map((item: any) => {
+          const label = item.title || [item.firstName, item.lastName].filter(Boolean).join(" ") || item.name || item.companyName || `${item.entityType} ${item.id}`;
+          return { entityType: item.entityType, id: item.id, label };
+        });
+        return JSON.stringify({ results }, null, 2);
+      }
+      case "get_candidate_profile": {
+        const fields = "id,firstName,lastName,email,phone,mobile,status,source,address,occupation,skillSet,primarySkills,experience,salary,hourlyRate,dateAvailable,companyName,educationDegree,employmentPreference,willRelocate,dayRate,dayRateLow,description";
+        const data = await bullhornFetch(`entity/Candidate/${args.id}`, { fields });
+        return JSON.stringify(data.data || data, null, 2);
+      }
+      case "get_job_details": {
+        const fields = "id,title,status,employmentType,clientCorporation,clientContact,address,salary,salaryUnit,startDate,dateEnd,numOpenings,publicDescription,skills,yearsRequired,educationDegree";
+        const data = await bullhornFetch(`entity/JobOrder/${args.id}`, { fields });
+        return JSON.stringify(data.data || data, null, 2);
+      }
+      case "search_candidates": {
+        const fields = "id,firstName,lastName,email,phone,status,address,occupation,skillSet,experience,salary,hourlyRate,companyName";
+        const data = await bullhornFetch("search/Candidate", {
+          query: args.query,
+          fields,
+          count: String(args.count || 10),
+          sort: args.sort || "-dateLastModified",
+        });
+        return JSON.stringify(data, null, 2);
+      }
+      case "search_jobs": {
+        const fields = "id,title,status,employmentType,clientCorporation,address,salary,startDate,dateEnd,numOpenings,publicDescription";
+        const data = await bullhornFetch("search/JobOrder", {
+          query: args.query,
+          fields,
+          count: String(args.count || 10),
+          sort: args.sort || "-dateAdded",
+        });
+        return JSON.stringify(data, null, 2);
+      }
+      case "tavily_search": {
+        const data = await tavilySearch(
+          args.query,
+          args.max_results || 5,
+          args.search_depth || "basic",
+          args.include_answer !== false,
+        );
+        // Trim for context window
+        const trimmed = {
+          answer: data.answer,
+          results: (data.results || []).slice(0, 8).map((r: any) => ({
+            title: r.title,
+            url: r.url,
+            content: (r.content || "").slice(0, 500),
+          })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      default:
+        return JSON.stringify({ error: `Unknown server tool: ${name}` });
+    }
+  } catch (e) {
+    console.error(`Tool ${name} error:`, e);
+    return JSON.stringify({ error: e instanceof Error ? e.message : "Tool execution failed" });
+  }
+}
+
+// ─── AI Streaming ───
 
 interface StreamResult {
   content: string;
   toolCalls: any[];
 }
 
-async function streamAIResponse(
+async function callAI(
   apiMessages: any[],
   apiKey: string,
   send: (type: string, data: any) => void,
+  streamTokens: boolean,
 ): Promise<StreamResult> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -118,12 +398,12 @@ async function streamAIResponse(
         if (!delta) continue;
 
         if (delta.content) {
-          if (!firstContentSent) {
+          if (!firstContentSent && streamTokens) {
             send("status", { phase: "responding", message: "AI is responding..." });
             firstContentSent = true;
           }
           content += delta.content;
-          send("token", { content: delta.content });
+          if (streamTokens) send("token", { content: delta.content });
         }
 
         if (delta.tool_calls) {
@@ -147,6 +427,8 @@ async function streamAIResponse(
   const toolCalls = Object.values(toolCallDeltas);
   return { content, toolCalls };
 }
+
+// ─── Main Handler ───
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -183,6 +465,12 @@ IMPORTANT:
 - Every call to replace_design_html must contain the COMPLETE HTML document, not a partial snippet.
 - If the user asks a question (not a build request), respond conversationally without calling tools.
 - You may also change the title if appropriate using update_worksheet_title.
+
+DATA & RESEARCH TOOLS:
+- You have access to Bullhorn CRM to search and retrieve candidate, job, and company data. Use search_bullhorn for free-text search, search_candidates / search_jobs for structured Lucene queries, and get_candidate_profile / get_job_details for full records.
+- You have access to Tavily web search for real-time market research, company information, industry data, salary benchmarks, news, and any other web-based research.
+- When building data-driven designs (reports, dossiers, proposals), proactively use these tools to pull real data.
+- When the user mentions a candidate, job, or company by name, search for them in Bullhorn first.
 
 ═══════════════════════════════════════════════════════════════
 MANDATORY BRAND IDENTITY: LANDING POINT VISUAL IDENTITY SYSTEM
@@ -322,7 +610,7 @@ END OF BRAND IDENTITY GUIDELINES
             send("status", {
               step: loop + 1,
               phase: "thinking",
-              message: loop === 0 ? "Designing your page..." : "Refining...",
+              message: loop === 0 ? "Designing your page..." : "Processing...",
             });
 
             let keepAlive = true;
@@ -332,9 +620,13 @@ END OF BRAND IDENTITY GUIDELINES
               }
             }, 3000);
 
+            // Only stream tokens to the client on the last pass (when we expect text output).
+            // During server-side tool loops, suppress token streaming to keep it clean.
+            const isFirstOrFinalPass = loop === 0;
+
             let result: StreamResult;
             try {
-              result = await streamAIResponse(apiMessages, LOVABLE_API_KEY, send);
+              result = await callAI(apiMessages, LOVABLE_API_KEY, send, true);
             } catch (e: any) {
               keepAlive = false;
               clearInterval(pingInterval);
@@ -354,25 +646,85 @@ END OF BRAND IDENTITY GUIDELINES
 
             const { content, toolCalls } = result;
 
-            // All tools are client-side for design-chat
-            if (toolCalls.length > 0) {
-              const toolCallLabels = toolCalls.map((tc) => TOOL_LABELS[tc.function.name] || tc.function.name);
-              send("tool_calls", {
-                step: loop + 1,
-                tools: toolCalls.map((tc) => tc.function.name),
-                message: toolCallLabels.join(", ") + "...",
-              });
+            if (toolCalls.length === 0) {
+              // No tools — final text response
+              send("done", { message: { role: "assistant", content: content || "" } });
+              controller.close();
+              return;
             }
 
+            // Separate client-side vs server-side tool calls
+            const clientToolCalls = toolCalls.filter(tc => CLIENT_TOOLS.has(tc.function.name));
+            const serverToolCalls = toolCalls.filter(tc => !CLIENT_TOOLS.has(tc.function.name));
+
+            if (serverToolCalls.length > 0) {
+              // Show status for server-side tools
+              const serverLabels = serverToolCalls.map(tc => TOOL_LABELS[tc.function.name] || tc.function.name);
+              send("status", {
+                step: loop + 1,
+                phase: "tools",
+                message: serverLabels.join(", ") + "...",
+              });
+
+              // Execute server-side tools
+              const assistantMsg: any = { role: "assistant", content: content || "" };
+              assistantMsg.tool_calls = toolCalls;
+              apiMessages.push(assistantMsg);
+
+              for (const tc of serverToolCalls) {
+                const toolResult = await executeServerTool(tc.function.name, tc.function.arguments);
+                apiMessages.push({
+                  role: "tool",
+                  content: toolResult,
+                  tool_call_id: tc.id,
+                  name: tc.function.name,
+                });
+              }
+
+              // If there are also client-side tool calls, we need to return them along with
+              // fake "success" tool results for the server-side ones so the AI can continue
+              if (clientToolCalls.length > 0) {
+                const allLabels = toolCalls.map(tc => TOOL_LABELS[tc.function.name] || tc.function.name);
+                send("tool_calls", {
+                  step: loop + 1,
+                  tools: toolCalls.map(tc => tc.function.name),
+                  message: allLabels.join(", ") + "...",
+                });
+
+                const finalMessage: any = { role: "assistant", content: content || "" };
+                finalMessage.tool_calls = toolCalls;
+                // Include server tool results so the client can add them to conversation
+                finalMessage._server_tool_results = serverToolCalls.map(tc => ({
+                  tool_call_id: tc.id,
+                  name: tc.function.name,
+                  content: apiMessages.find((m: any) => m.tool_call_id === tc.id)?.content || "Done",
+                }));
+                send("done", { message: finalMessage });
+                controller.close();
+                return;
+              }
+
+              // Only server tools — continue the loop so AI can process results
+              continue;
+            }
+
+            // Only client-side tool calls — return to client for execution
+            const toolCallLabels = clientToolCalls.map(tc => TOOL_LABELS[tc.function.name] || tc.function.name);
+            send("tool_calls", {
+              step: loop + 1,
+              tools: clientToolCalls.map(tc => tc.function.name),
+              message: toolCallLabels.join(", ") + "...",
+            });
+
             const finalMessage: any = { role: "assistant", content: content || "" };
-            if (toolCalls.length > 0) finalMessage.tool_calls = toolCalls;
+            finalMessage.tool_calls = toolCalls;
             send("done", { message: finalMessage });
             controller.close();
             return;
           }
 
           send("done", {
-            message: { role: "assistant", content: "I encountered an issue. Please try again." },
+            message: { role: "assistant", content: "I encountered an issue processing your request. Please try again." },
           });
           controller.close();
         } catch (e) {

@@ -22,6 +22,16 @@ interface Message {
   name?: string;
 }
 
+interface AttachmentInfo {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  title: string;
+  description: string;
+  public_url: string;
+}
+
 interface AIChatPanelProps {
   open: boolean;
   onClose: () => void;
@@ -38,6 +48,7 @@ interface AIChatPanelProps {
   onApplyEdit?: (content: string) => void;
   onUpdateTitle?: (title: string) => void;
   onUpdateDocumentType?: (type: DocumentType) => void;
+  attachments?: AttachmentInfo[];
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;

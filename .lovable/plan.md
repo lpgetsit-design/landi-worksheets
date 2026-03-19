@@ -1,107 +1,82 @@
 
 
-# File Attachments with AI Metadata
+# Private Attachments with Shared Design Access
 
-## Overview
+## Problem
+Attachments are private (good), but when a design is shared via a public share link, embedded attachment URLs (e.g., images used in the design HTML) are inaccessible to the recipient because they require authentication.
 
-Add file attachment support to worksheets — users can upload multimedia files (audio, video, docs, PDFs, VTT, etc.), mention them inline as badges in the editor, and get AI-generated title/description metadata for each file.
-
-## Architecture
+## Approach
+Instead of physically copying files, the `public-share` edge function will generate fresh signed URLs for any attachments referenced in the design HTML. Access is gated by the share token — no token, no access. This achieves the same security model as copying (permissions match the share link) without duplicating storage.
 
 ```text
-┌─────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  Storage     │     │  worksheet_      │     │  TipTap Editor     │
-│  Bucket:     │────▶│  attachments     │────▶│  fileBadge node    │
-│  attachments │     │  (DB table)      │     │  (inline mention)  │
-└─────────────┘     └──────────────────┘     └────────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │ Edge Fn:    │
-                    │ attachment- │
-                    │ metadata    │
-                    └─────────────┘
+Recipient visits /s/{token}
+        │
+        ▼
+public-share edge function
+        │
+   ┌────┴─────────────────┐
+   │ 1. Validate token    │
+   │ 2. Fetch design_html │
+   │ 3. Fetch attachments │
+   │ 4. Scan HTML for      │
+   │    attachment URLs    │
+   │ 5. Replace with fresh │
+   │    signed URLs (24h)  │
+   │ 6. Return HTML        │
+   └──────────────────────┘
 ```
 
-## Step 1: Database & Storage
+## Changes
 
-**Storage bucket** `attachments` (public, so files can be previewed/downloaded).
+### 1. Update `public-share` edge function
+- After fetching the worksheet, also fetch its `worksheet_attachments`
+- Scan `design_html` for any references to the attachments bucket (signed URL patterns or file paths)
+- Use service role to generate fresh signed URLs (24-hour expiry)
+- Replace all matching URLs in the HTML before returning
+- Also return attachment metadata so the public page can reference files
 
-**New table** `worksheet_attachments`:
-- `id` (uuid, PK)
-- `worksheet_id` (uuid, FK → worksheets)
-- `user_id` (uuid, not null)
-- `file_path` (text) — storage path
-- `file_name` (text) — original filename
-- `file_type` (text) — MIME type
-- `file_size` (bigint)
-- `title` (text, default '') — AI-generated or user-edited
-- `description` (text, default '') — AI-generated or user-edited
-- `meta` (jsonb, default '{}') — extra AI metadata
-- `created_at`, `updated_at`
+### 2. Update `design-chat` edge function
+- When the AI generates design HTML using attachments, ensure it uses the signed URLs provided in the attachment context
+- These URLs will naturally appear in `design_html` stored in `meta`
 
-**RLS**: Owner-based using `is_worksheet_owner` helper + user_id = auth.uid() for insert.
+### 3. No database changes needed
+- The private bucket + RLS is already correct
+- The share token validation in `public-share` gates all access
+- No new tables or buckets required
 
-## Step 2: Edge Function — `attachment-metadata`
+## Technical Detail
 
-New edge function that:
-1. Accepts `{ fileUrl, fileName, fileType, worksheetId, attachmentId }`
-2. Uses Lovable AI (gemini-3-flash-preview) to analyze the file:
-   - For documents/text: fetches content, sends to AI for title + description
-   - For audio/video: uses filename + type to suggest title/description
-   - For images: sends image URL to multimodal model
-3. Updates the `worksheet_attachments` row with AI-generated `title`, `description`, and any extra `meta`
-4. Returns the generated metadata
+In `public-share/index.ts`, after fetching the worksheet:
 
-## Step 3: File Upload UI — `AttachmentPanel`
+```typescript
+// Fetch attachments for this worksheet
+const { data: attachments } = await supabaseAdmin
+  .from("worksheet_attachments")
+  .select("*")
+  .eq("worksheet_id", link.worksheet_id);
 
-A panel/section in the worksheet page (collapsible, below the toolbar or in a sidebar tab) showing:
-- **Upload button** (drag-and-drop or file picker, accepts all file types)
-- **List of attachments** as cards showing: thumbnail/icon, title, description, file type badge, file size
-- **Edit** title/description inline
-- **AI Generate** button per attachment (or "Generate All" bulk button) to call the edge function
-- **Delete** attachment
-- **Insert into editor** button → inserts a `fileBadge` inline node
+// Generate signed URLs and replace in design_html
+let designHtml = meta?.design_html || null;
+if (designHtml && attachments?.length) {
+  for (const att of attachments) {
+    const { data: signed } = await supabaseAdmin.storage
+      .from("attachments")
+      .createSignedUrl(att.file_path, 86400); // 24 hours
+    if (signed?.signedUrl) {
+      // Replace any occurrence of the file path or old signed URL
+      designHtml = designHtml.replaceAll(
+        new RegExp(att.file_path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        signed.signedUrl
+      );
+    }
+  }
+}
+```
 
-## Step 4: TipTap `fileBadge` Node
+## Files to Modify
 
-New inline atom node (like `crmBadge` / `worksheetBadge`):
-- Attrs: `attachmentId`, `fileName`, `fileType`, `title`
-- Renders as an inline badge with file icon + title
-- Clicking opens/downloads the file
-- Add to UnifiedMentionExtension as a third category: "Attach File"
-
-## Step 5: Mention Integration
-
-Add "Attach File" as a third option in `UnifiedMentionMenu`:
-- When selected, shows list of existing attachments for this worksheet
-- Selecting one inserts a `fileBadge` node
-- Optionally add an "Upload new" option at the top
-
-## Step 6: Turndown + Markdown Serialization
-
-Add turndown rule for `fileBadge` → `[[FILE:attachmentId:title]]` placeholder, and restore function for AI content rendering.
-
-## Step 7: Wire into WorksheetPage
-
-- Add attachment state and queries
-- Pass worksheet attachments to AIChatPanel context so the AI assistant knows about attached files
-- Add the AttachmentPanel to the worksheet layout
-
-## Files to Create/Modify
-
-| Action | File |
-|--------|------|
-| Create | `supabase/functions/attachment-metadata/index.ts` |
-| Create | `src/components/editor/FileBadgeNode.ts` |
-| Create | `src/components/editor/FileBadgeView.tsx` |
-| Create | `src/components/attachments/AttachmentPanel.tsx` |
-| Create | `src/components/attachments/AttachmentCard.tsx` |
-| Create | `src/hooks/useWorksheetAttachments.ts` |
-| Create | `src/lib/attachments.ts` (upload, CRUD, AI metadata helpers) |
-| Modify | `src/components/editor/WorksheetEditor.tsx` (add FileBadgeNode extension) |
-| Modify | `src/components/editor/UnifiedMentionExtension.ts` (add file category) |
-| Modify | `src/components/editor/UnifiedMentionMenu.tsx` (add file search/list) |
-| Modify | `src/pages/WorksheetPage.tsx` (add AttachmentPanel, wire state) |
-| Modify | `supabase/config.toml` (add attachment-metadata function) |
-| Migration | Create storage bucket + worksheet_attachments table + RLS |
+| File | Change |
+|------|--------|
+| `supabase/functions/public-share/index.ts` | Fetch attachments, generate signed URLs, replace in design_html |
+| `supabase/functions/design-chat/index.ts` | Ensure attachment URLs in system prompt use identifiable paths for replacement |
 

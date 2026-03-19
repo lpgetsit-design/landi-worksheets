@@ -40,7 +40,10 @@ const toolLabels: Record<string, string> = {
   get_job_details: "Loaded job details",
   search_candidates: "Searched candidates",
   search_jobs: "Searched jobs",
-  tavily_search: "Researched the web",
+  tavily_search: "Searched the web",
+  tavily_extract: "Extracted web content",
+  tavily_crawl: "Crawled website",
+  tavily_research: "Completed deep research",
 };
 
 const CopyButton = ({ content }: { content: string }) => {

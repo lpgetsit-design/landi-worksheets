@@ -907,8 +907,12 @@ Choose mode based on the document purpose. Default to Light Mode for data-heavy 
 - Logo clear space: minimum 24px on all sides
 - Dark Mode: Use white logo version or place dark logo in Off White container (rounded, shadow)
 - Light Mode: Logo top-left, sized to match H1 height (~32-40px)
-- Logo files are referenced as ./logo-dark.png (white version for dark bg) and ./logo-light.png (dark version for light bg)
-- When creating documents that would have a logo, include placeholder positioning with the text "LANDING POINT" in the appropriate style until actual logo assets are provided.
+- IMPORTANT: Logo files are available at these PUBLIC URLs and MUST be used as <img> tags with these exact URLs:
+  - Full logo (horizontal, dark text for light backgrounds): https://landi-worksheets.lovable.app/logo-full.png
+  - Dark background version (white text): https://landi-worksheets.lovable.app/logo-dark.png
+  - Light background version (dark text): https://landi-worksheets.lovable.app/logo-light.png
+- Example: <img src="https://landi-worksheets.lovable.app/logo-full.png" alt="Landing Point" style="height: 40px;">
+- ALWAYS use these absolute URLs. NEVER use relative paths like ./logo.png — they will not work in the design iframe.
 
 ## 8. Header Templates
 

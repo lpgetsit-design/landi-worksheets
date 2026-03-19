@@ -377,6 +377,7 @@ const WorksheetPage = () => {
           </Button>
           {/* Design toggle */}
           <Button
+            data-tour="design-toggle"
             variant={designActive ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"

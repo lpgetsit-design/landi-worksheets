@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -279,6 +279,43 @@ const WorksheetPage = () => {
                 worksheetTitle={worksheetTitle}
                 worksheetType={worksheetType}
               />
+            )}
+            {isDesignMode && designHtml && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  // Open the design HTML in a new window and trigger print (Save as PDF)
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) {
+                    alert('Please allow popups to download as PDF');
+                    return;
+                  }
+                  // Inject print-optimized styles and the design HTML
+                  const printHtml = designHtml.replace(
+                    '</head>',
+                    `<style>
+                      @media print {
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                      }
+                    </style>
+                    <script>
+                      window.onload = function() { 
+                        setTimeout(function() { window.print(); }, 500); 
+                      };
+                    </script>
+                    </head>`
+                  );
+                  printWindow.document.open();
+                  printWindow.document.write(printHtml);
+                  printWindow.document.close();
+                }}
+                title="Download as PDF (use browser's Save as PDF option)"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
             )}
             <Button
               variant={chatOpen || isDesignMode ? "secondary" : "outline"}

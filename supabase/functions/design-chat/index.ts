@@ -122,6 +122,65 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "batch_resolve_entities",
+      description:
+        "Resolve multiple Bullhorn entities by their type and ID in a single call. Use when you have specific entity types and IDs. Much faster than individual lookups.",
+      parameters: {
+        type: "object",
+        properties: {
+          entities: {
+            type: "array",
+            description: "Array of entities to resolve",
+            items: {
+              type: "object",
+              properties: {
+                entityType: { type: "string", description: "Bullhorn entity type: Candidate, ClientContact, ClientCorporation, JobOrder, or Placement" },
+                entityId: { type: "string", description: "Numeric Bullhorn entity ID" },
+              },
+              required: ["entityType", "entityId"],
+            },
+          },
+        },
+        required: ["entities"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_placements",
+      description: "Search Bullhorn CRM for placements using a Lucene query.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Lucene search query" },
+          count: { type: "number", description: "Max results (default 10, max 50)" },
+          sort: { type: "string", description: "Sort field (default -dateAdded)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_placement_details",
+      description: "Get detailed placement information from Bullhorn by numeric Placement ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "Numeric Bullhorn Placement ID" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
   // ── Tavily Tools ──
   // IMPORTANT: These 4 tools serve very different purposes. Pick the right one:
   //   tavily_search   → Google-like keyword search, returns snippets from multiple sites
@@ -272,6 +331,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_job_details: "Loading job details",
   search_candidates: "Searching candidates",
   search_jobs: "Searching jobs",
+  batch_resolve_entities: "Resolving CRM entities",
+  search_placements: "Searching placements",
+  get_placement_details: "Loading placement details",
   tavily_search: "Searching the web",
   tavily_extract: "Extracting web content",
   tavily_crawl: "Crawling website",
@@ -483,6 +545,35 @@ async function executeServerTool(name: string, argsStr: string): Promise<string>
           sort: args.sort || "-dateAdded",
         });
         return JSON.stringify(data, null, 2);
+      }
+      case "batch_resolve_entities": {
+        const results = [];
+        for (const entity of (args.entities || [])) {
+          try {
+            const data = await bullhornFetch(`entity/${entity.entityType}/${entity.entityId}`, { fields: "id,firstName,lastName,name,title,companyName" });
+            const d = data.data || data;
+            const label = [d.firstName, d.lastName].filter(Boolean).join(" ") || d.name || d.title || d.companyName || `${entity.entityType} ${entity.entityId}`;
+            results.push({ entityType: entity.entityType, entityId: entity.entityId, label });
+          } catch {
+            results.push({ entityType: entity.entityType, entityId: entity.entityId, label: `${entity.entityType} ${entity.entityId}`, error: "Not found" });
+          }
+        }
+        return JSON.stringify({ results }, null, 2);
+      }
+      case "search_placements": {
+        const fields = "id,status,candidate,jobOrder,dateBegin,dateEnd,salary,payRate,clientBillRate";
+        const data = await bullhornFetch("search/Placement", {
+          query: args.query,
+          fields,
+          count: String(args.count || 10),
+          sort: args.sort || "-dateAdded",
+        });
+        return JSON.stringify(data, null, 2);
+      }
+      case "get_placement_details": {
+        const fields = "id,status,candidate,jobOrder,dateBegin,dateEnd,salary,payRate,clientBillRate,employeeType,employmentType,comments,customText1";
+        const data = await bullhornFetch(`entity/Placement/${args.id}`, { fields });
+        return JSON.stringify(data.data || data, null, 2);
       }
       case "tavily_search": {
         const data = await tavilySearch(

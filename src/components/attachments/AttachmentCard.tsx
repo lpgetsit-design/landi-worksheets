@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Paperclip, Trash2, Sparkles, Loader2, FileText, Music, Video, Image, File, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import type { Attachment } from "@/lib/attachments";
-import { getPublicUrl } from "@/lib/attachments";
+import { getSignedUrl } from "@/lib/attachments";
 
 function getFileIcon(fileType: string) {
   if (fileType.startsWith("image/")) return Image;
@@ -42,9 +42,13 @@ export default function AttachmentCard({
   const [editingDesc, setEditingDesc] = useState(false);
   const [title, setTitle] = useState(attachment.title);
   const [description, setDescription] = useState(attachment.description);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const Icon = getFileIcon(attachment.file_type);
-  const publicUrl = getPublicUrl(attachment.file_path);
   const isImage = attachment.file_type.startsWith("image/");
+
+  useEffect(() => {
+    getSignedUrl(attachment.file_path).then(setSignedUrl).catch(() => setSignedUrl(null));
+  }, [attachment.file_path]);
 
   const saveTitle = () => {
     setEditingTitle(false);

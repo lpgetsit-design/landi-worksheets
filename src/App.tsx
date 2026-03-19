@@ -11,6 +11,7 @@ import WorksheetPage from "./pages/WorksheetPage";
 import AuthPage from "./pages/AuthPage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFound from "./pages/NotFound";
+import PublicSharePage from "./pages/PublicSharePage";
 
 const queryClient = new QueryClient();
 

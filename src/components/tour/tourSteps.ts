@@ -69,22 +69,40 @@ export const worksheetSteps: TourStep[] = [
     target: "[data-tour='design-toggle']",
     title: "Design Mode",
     content:
-      "Toggle the Design panel to have AI build a complete web page from your content — candidate profiles, job specs, branded documents. It creates full HTML with custom styling.",
+      "Toggle the Design panel to have AI build a complete web page from your content — candidate profiles, job specs, branded documents. It creates full HTML with custom styling. Try clicking this button to open the design panel!",
     placement: "bottom",
   },
   {
     target: "[data-tour='chat-toggle']",
     title: "AI Assistant",
     content:
-      "Your AI co-pilot. Ask it to edit your worksheet, build a design, look up CRM data, search candidates or jobs, and more. Select text in the editor and the AI can rewrite just that part.",
+      "Your AI co-pilot lives here. Click this button to open the chat panel. The AI can edit your worksheet, build designs, look up CRM data, search candidates or jobs, and more.",
     placement: "left",
+  },
+  {
+    target: "center",
+    title: "Using AI Chat with the Editor",
+    content:
+      "When the chat panel is open, you can ask the AI to rewrite, expand, or restructure your content. Select text in the editor first, then ask the AI — it will rewrite just that selection. Try things like 'make this more professional' or 'add a summary section'.",
+  },
+  {
+    target: "center",
+    title: "Switching to Design Chat Mode",
+    content:
+      "Inside the chat panel, you'll see a toggle at the bottom to switch between Editor mode and Design mode. In Design mode, the AI builds full HTML web pages instead of editing your text. Switch modes depending on what you want the AI to work on.",
+  },
+  {
+    target: "center",
+    title: "Resizing Panels",
+    content:
+      "When multiple panels are open (Editor, Design, Chat), you'll see drag handles between them. Grab any handle and drag left or right to resize panels to your preference. This lets you focus on what matters — make the editor larger when writing, or expand the design preview when reviewing.",
   },
   {
     target: "[data-tour='attachments-toggle']",
     title: "File Attachments",
     content:
       "Attach files like CVs, contracts, or images. AI automatically generates titles and descriptions for each attachment — and they're available to the AI assistant for context.",
-    placement: "left",
+    placement: "top",
   },
   {
     target: "[data-tour='share-btn']",
@@ -92,5 +110,11 @@ export const worksheetSteps: TourStep[] = [
     content:
       "Generate a secure, trackable link to share a worksheet or design with anyone outside the system. You can set expiry dates and track when recipients view it.",
     placement: "bottom",
+  },
+  {
+    target: "center",
+    title: "You're Ready!",
+    content:
+      "That's the tour! Remember: write freely, let AI handle the busy work. Use the editor for content, the design panel for web pages, and the chat for anything you need help with. Click the ? button in the bottom-right corner anytime to replay this tour.",
   },
 ];

@@ -44,6 +44,88 @@ export type Database = {
         }
         Relationships: []
       }
+      public_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          recipient_company: string | null
+          recipient_email: string | null
+          recipient_name: string
+          share_token: string
+          worksheet_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name: string
+          share_token: string
+          worksheet_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name?: string
+          share_token?: string
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_share_links_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_link_views: {
+        Row: {
+          duration_seconds: number | null
+          id: string
+          share_link_id: string
+          user_agent: string | null
+          viewed_at: string
+          viewer_ip: string | null
+        }
+        Insert: {
+          duration_seconds?: number | null
+          id?: string
+          share_link_id: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_ip?: string | null
+        }
+        Update: {
+          duration_seconds?: number | null
+          id?: string
+          share_link_id?: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_ip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_link_views_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "public_share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_cards: {
         Row: {
           assignee_id: string | null

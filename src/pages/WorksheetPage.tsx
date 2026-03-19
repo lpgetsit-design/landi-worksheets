@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2 } from "lucide-react";
+import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -112,6 +113,7 @@ const WorksheetPage = () => {
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const [designHtml, setDesignHtml] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
 
@@ -375,6 +377,15 @@ const WorksheetPage = () => {
               </Button>
             )}
             <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShareOpen(true)}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
+            <Button
               variant={chatOpen || isDesignMode ? "secondary" : "outline"}
               size="sm"
               className="gap-1.5"
@@ -428,6 +439,13 @@ const WorksheetPage = () => {
           </div>
         )
       )}
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        worksheetId={worksheet.id}
+        worksheetTitle={worksheetTitle}
+      />
     </div>
   );
 };

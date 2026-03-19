@@ -251,6 +251,7 @@ const WorksheetPage = () => {
                   <SelectItem value="skill">Skill</SelectItem>
                   <SelectItem value="prompt">Prompt</SelectItem>
                   <SelectItem value="template">Template</SelectItem>
+                  <SelectItem value="design">Design</SelectItem>
                 </SelectContent>
               </Select>
               <SummaryButton

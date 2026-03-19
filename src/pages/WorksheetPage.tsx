@@ -113,6 +113,7 @@ const WorksheetPage = () => {
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const [designHtml, setDesignHtml] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
 

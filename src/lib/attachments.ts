@@ -82,16 +82,19 @@ export async function updateAttachmentMeta(
   if (error) throw error;
 }
 
-export async function generateAttachmentMetadata(attachment: Attachment) {
-  // Pass file_path so edge function can create its own signed URL with service role
+export async function generateAttachmentMetadata(
+  attachment: Attachment,
+  field: "title" | "description" | "both" = "both"
+) {
   const { data, error } = await supabase.functions.invoke("attachment-metadata", {
     body: {
       attachmentId: attachment.id,
       fileName: attachment.file_name,
       fileType: attachment.file_type,
       filePath: attachment.file_path,
+      field,
     },
   });
   if (error) throw error;
-  return data as { title: string; description: string };
+  return data as { title?: string; description?: string };
 }

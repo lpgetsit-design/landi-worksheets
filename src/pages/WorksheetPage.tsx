@@ -255,12 +255,30 @@ const WorksheetPage = () => {
       {/* Main content area */}
       <div className="flex-1 overflow-hidden min-w-0 flex flex-col">
         {/* Header bar */}
-        <div className="px-3 sm:px-6 py-3 flex items-center justify-between border-b border-border shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Back</span>
-          </Button>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="px-3 sm:px-6 py-3 flex items-center justify-between border-b border-border shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 shrink">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1.5 shrink-0">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Back</span>
+            </Button>
+            {isDesignMode && (
+              <input
+                type="text"
+                value={worksheetTitle}
+                onChange={(e) => setWorksheetTitle(e.target.value)}
+                onBlur={() => {
+                  if (id) {
+                    updateWorksheet(id, { title: worksheetTitle }).catch(console.error);
+                    queryClient.invalidateQueries({ queryKey: ["worksheet", id] });
+                  }
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground border-none outline-none focus:ring-0 placeholder:text-muted-foreground truncate"
+                placeholder="Untitled"
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Select value={worksheetType} onValueChange={(v) => handleUpdateDocumentType(v as DocumentType)} disabled={worksheetType === "design" && !!designHtml}>
               <SelectTrigger className="w-[90px] sm:w-[120px] h-8 text-xs shrink-0">
                 <SelectValue />

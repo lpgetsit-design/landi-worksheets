@@ -17,6 +17,9 @@ import type { DocumentType } from "@/lib/worksheets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { marked } from "marked";
+import AttachmentPanel from "@/components/attachments/AttachmentPanel";
+import { useAuth } from "@/components/AuthProvider";
+import type { Attachment } from "@/lib/attachments";
 
 // ─── PDF helpers ───
 const openDesignPdf = (html: string) => {

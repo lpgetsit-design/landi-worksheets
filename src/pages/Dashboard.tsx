@@ -180,7 +180,7 @@ const Dashboard = () => {
       </div>
 
       {/* Search bar */}
-      <div className="mb-4">
+      <div className="mb-4" data-tour="search-bar">
         <div className="relative flex items-center">
           <div className="absolute left-3 text-muted-foreground pointer-events-none">
             {isSearching ? (

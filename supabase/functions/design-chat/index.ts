@@ -663,9 +663,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, currentHtml } = await req.json();
+    const { messages, worksheetTitle, currentHtml, worksheetContent } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const wsRefContext = worksheetContent
+      ? "\n\nWORKSHEET CONTENT (READ-ONLY REFERENCE):\nThis worksheet also has an editor panel with the following content. You can reference this to inform your designs (e.g. pull data, names, structure from the worksheet), but you CANNOT modify the worksheet from design mode.\n---\n" + worksheetContent + "\n---"
+      : "";
 
     const systemPrompt = `You are an expert web designer and developer AI. You build complete, interactive, standalone HTML webpages inside a design worksheet.
 
@@ -674,7 +678,7 @@ Current worksheet:
 - Current HTML content:
 \`\`\`html
 ${currentHtml || "<!-- empty - no page built yet -->"}
-\`\`\`
+\`\`\`${wsRefContext}
 
 YOUR ROLE:
 - You are a webpage builder. When the user asks you to create, modify, or build something, use the replace_design_html tool to output a COMPLETE standalone HTML document.

@@ -141,6 +141,64 @@ const TOOLS = [
       },
     },
   },
+  // Server-side: Tavily Extract
+  {
+    type: "function",
+    function: {
+      name: "tavily_extract",
+      description: "Extract content from one or more specific URLs. Use when you need to read the full content of a webpage, company website, job posting URL, LinkedIn page, etc. Returns the raw text content of each URL.",
+      parameters: {
+        type: "object",
+        properties: {
+          urls: {
+            type: "array",
+            items: { type: "string" },
+            description: "One or more URLs to extract content from",
+          },
+          query: { type: "string", description: "Optional: focus extraction on content relevant to this query" },
+          extract_depth: { type: "string", description: "'basic' (default) or 'advanced' (tables & embedded content)" },
+        },
+        required: ["urls"],
+        additionalProperties: false,
+      },
+    },
+  },
+  // Server-side: Tavily Crawl
+  {
+    type: "function",
+    function: {
+      name: "tavily_crawl",
+      description: "Crawl a website starting from a base URL to discover and extract content from multiple pages. Use for comprehensive website analysis, gathering all content from a company site, documentation, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "The root URL to begin crawling" },
+          instructions: { type: "string", description: "Natural language instructions to guide the crawler (e.g. 'Find all pages about careers')" },
+          max_depth: { type: "number", description: "Max crawl depth 1-5 (default 1)" },
+          limit: { type: "number", description: "Max pages to process (default 10, keep low to avoid timeout)" },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+  // Server-side: Tavily Research
+  {
+    type: "function",
+    function: {
+      name: "tavily_research",
+      description: "Perform comprehensive, multi-step research on a topic. Tavily's research agent conducts multiple searches, analyzes sources, and produces a detailed research report. Use for deep-dive market analysis, competitive intelligence, industry reports, compensation studies, etc. This is slower but much more thorough than a simple search.",
+      parameters: {
+        type: "object",
+        properties: {
+          input: { type: "string", description: "The research question or topic to investigate" },
+          model: { type: "string", description: "'mini' (fast, focused), 'pro' (comprehensive), or 'auto' (default)" },
+        },
+        required: ["input"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -151,7 +209,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_job_details: "Loading job details",
   search_candidates: "Searching candidates",
   search_jobs: "Searching jobs",
-  tavily_search: "Researching the web",
+  tavily_search: "Searching the web",
+  tavily_extract: "Extracting web content",
+  tavily_crawl: "Crawling website",
+  tavily_research: "Deep researching",
 };
 
 const MAX_LOOPS = 8;

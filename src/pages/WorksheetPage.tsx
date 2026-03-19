@@ -162,9 +162,11 @@ const WorksheetPage = () => {
     if (worksheet) {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
-      setWorksheetType((worksheet.document_type as DocumentType) || "note");
+      const docType = (worksheet.document_type as DocumentType) || "note";
+      setWorksheetType(docType);
       const meta = worksheet.meta as Record<string, any> | null;
       if (meta?.design_html) setDesignHtml(meta.design_html);
+      if (docType === "design") setChatOpen(true);
     }
   }, [worksheet]);
 

@@ -137,7 +137,8 @@ export default function AttachmentPanel({
                 attachment={a}
                 onDelete={() => remove(a)}
                 onUpdate={(updates) => update({ id: a.id, updates })}
-                onGenerateMetadata={() => generateMetadata(a)}
+                onGenerateTitle={() => generateMetadata(a, "title")}
+                onGenerateDescription={() => generateMetadata(a, "description")}
                 onInsertBadge={() => onInsertBadge(a)}
                 isGenerating={isGenerating}
               />

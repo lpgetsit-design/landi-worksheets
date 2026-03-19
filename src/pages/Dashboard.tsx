@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles, Check, HelpCircle } from "lucide-react";
 import { Plus, FileText, Clock, Trash2, ArrowUpDown, X, Search, Loader2, Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

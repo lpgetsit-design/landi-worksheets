@@ -227,13 +227,13 @@ const AIChatPanel = ({
           worksheetContent: worksheetContent || "",
         }
       : {
-218:           messages: apiMessages,
-219:           worksheetTitle: worksheetTitle || "",
-220:           worksheetContent: worksheetContent || "",
-221:           worksheetType: worksheetType || "note",
-222:           designHtml: designHtmlRef.current || "",
-223:           attachments: attachments || [],
-224:         };
+          messages: apiMessages,
+          worksheetTitle: worksheetTitle || "",
+          worksheetContent: worksheetContent || "",
+          worksheetType: worksheetType || "note",
+          designHtml: designHtmlRef.current || "",
+          attachments: attachments || [],
+        };
 
     const resp = await fetch(url, {
       method: "POST",

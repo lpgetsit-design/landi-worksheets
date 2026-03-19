@@ -491,6 +491,7 @@ async function streamAIResponse(
       tools: ALL_TOOLS,
       parallel_tool_calls: true,
       stream: true,
+      max_tokens: 16384,
     }),
   });
 
@@ -602,6 +603,7 @@ ${worksheetContent || "(empty)"}${designContext}
 
 WORKSHEET EDITING:
 - When the user asks you to edit, fix, rewrite, or change the worksheet, use the replace_worksheet_content tool with the FULL updated markdown content.
+- CRITICAL: You MUST include ALL content in replace_worksheet_content — the ENTIRE worksheet from start to finish. NEVER truncate, abbreviate, or cut off the content. If the worksheet is long, you must still output every section completely. Partial updates will break the worksheet.
 - When asked to change the title, use update_worksheet_title.
 - When asked to change the document type, use update_document_type.
 - You can call multiple tools in a single response for multi-step edits.

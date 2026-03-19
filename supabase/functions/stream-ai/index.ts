@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
           { role: "user", content: prompt },
         ],
         stream: true,
-        max_tokens: 16384,
+        max_completion_tokens: 16384,
       }),
     });
 

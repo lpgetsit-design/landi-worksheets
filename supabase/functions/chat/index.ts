@@ -491,7 +491,7 @@ async function streamAIResponse(
       tools: ALL_TOOLS,
       parallel_tool_calls: true,
       stream: true,
-      max_tokens: 16384,
+      max_completion_tokens: 16384,
     }),
   });
 

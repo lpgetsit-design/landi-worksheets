@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useRef, useMemo, MouseEvent as ReactMouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
@@ -15,6 +16,69 @@ import type { DocumentType } from "@/lib/worksheets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { marked } from "marked";
+
+const MIN_EDITOR_WIDTH = 280;
+const MIN_DESIGN_WIDTH = 280;
+const MIN_CHAT_WIDTH = 280;
+
+// ─── Resize Handle ───
+const ResizeHandle = ({ onMouseDown }: { onMouseDown: (e: ReactMouseEvent) => void }) => (
+  <div
+    className="shrink-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors self-stretch"
+    onMouseDown={onMouseDown}
+  />
+);
+
+// ─── PDF helpers ───
+const openDesignPdf = (html: string) => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) { alert('Please allow popups to download as PDF'); return; }
+  const printCss = `
+    @page { size: A4; margin: 0; }
+    @media print {
+      html, body { width: 210mm; min-height: 297mm; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      * { box-shadow: none !important; }
+      .container, [class*="container"] { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+    }
+    @media screen {
+      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
+    }
+  `;
+  const printHtml = html.replace(
+    '</head>',
+    `<style>${printCss}</style><script>window.onload=function(){document.fonts.ready.then(function(){setTimeout(function(){window.print();},300);});};${'<'}/script></head>`
+  );
+  printWindow.document.open();
+  printWindow.document.write(printHtml);
+  printWindow.document.close();
+};
+
+const openEditorPdf = (editorRef: React.RefObject<WorksheetEditorHandle>, title: string) => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) { alert('Please allow popups to download as PDF'); return; }
+  // Get HTML content from the editor
+  const editorHtml = editorRef.current?.getHTML?.() || '';
+  const printCss = `
+    @page { size: A4; margin: 20mm; }
+    @media print {
+      html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+    @media screen {
+      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
+    }
+    body { font-family: 'Source Serif 4', Georgia, serif; line-height: 1.7; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+    h2, h3 { margin-top: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  `;
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${printCss}</style>
+    <script>window.onload=function(){setTimeout(function(){window.print();},300);}${'<'}/script></head>
+    <body><h1>${title}</h1>${editorHtml}</body></html>`;
+  printWindow.document.open();
+  printWindow.document.write(fullHtml);
+  printWindow.document.close();
+};
 
 // ─── Summary Button ───
 const SummaryButton = ({
@@ -61,10 +125,7 @@ const SummaryButton = ({
 
   const handleOpen = async (open: boolean) => {
     if (!open) return;
-    if (existingSummary && !summary) {
-      setSummary(existingSummary);
-      return;
-    }
+    if (existingSummary && !summary) { setSummary(existingSummary); return; }
     if (summary) return;
     await regenerate();
   };
@@ -101,11 +162,15 @@ const SummaryButton = ({
   );
 };
 
+// ═══════════════════════════════════════════════════════
+// WorksheetPage
+// ═══════════════════════════════════════════════════════
 const WorksheetPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(true);
   const [selectedText, setSelectedText] = useState<string | undefined>();
   const [autoMessage, setAutoMessage] = useState<string | undefined>();
   const [worksheetContent, setWorksheetContent] = useState("");
@@ -116,37 +181,86 @@ const WorksheetPage = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
-
-  // Resizable chat panel
-  const [chatWidth, setChatWidth] = useState(350);
-  const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDragStart = useCallback((e: ReactMouseEvent) => {
+  // Panel widths as fractions (editor + design share the content area; chat is separate)
+  // We store pixel widths for each panel; flex distributes remaining space
+  const [editorWidth, setEditorWidth] = useState<number | null>(null); // null = take remaining
+  const [designWidth, setDesignWidth] = useState<number | null>(null);
+  const [chatWidth, setChatWidth] = useState(350);
+
+  // Dragging state
+  const dragRef = useRef<{
+    type: 'editor-design' | 'content-chat';
+    startX: number;
+    startEditorW: number;
+    startDesignW: number;
+    startChatW: number;
+  } | null>(null);
+
+  const startDrag = useCallback((type: 'editor-design' | 'content-chat', e: ReactMouseEvent) => {
     e.preventDefault();
-    isDragging.current = true;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Measure current actual widths
+    const editorEl = container.querySelector('[data-panel="editor"]') as HTMLElement | null;
+    const designEl = container.querySelector('[data-panel="design"]') as HTMLElement | null;
+    const chatEl = container.querySelector('[data-panel="chat"]') as HTMLElement | null;
+
+    dragRef.current = {
+      type,
+      startX: e.clientX,
+      startEditorW: editorEl?.offsetWidth || 0,
+      startDesignW: designEl?.offsetWidth || 0,
+      startChatW: chatEl?.offsetWidth || 0,
+    };
+
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
 
-    const handleMouseMove = (ev: globalThis.MouseEvent) => {
-      if (!isDragging.current || !containerRef.current) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const maxWidth = containerRect.width * 0.5;
-      const newWidth = Math.max(300, Math.min(maxWidth, containerRect.right - ev.clientX));
-      setChatWidth(newWidth);
+    const onMove = (ev: globalThis.MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const delta = ev.clientX - d.startX;
+
+      if (d.type === 'editor-design') {
+        const newEditor = Math.max(MIN_EDITOR_WIDTH, d.startEditorW + delta);
+        const newDesign = Math.max(MIN_DESIGN_WIDTH, d.startDesignW - delta);
+        // Only apply if both above minimum
+        if (newEditor >= MIN_EDITOR_WIDTH && newDesign >= MIN_DESIGN_WIDTH) {
+          setEditorWidth(newEditor);
+          setDesignWidth(newDesign);
+        }
+      } else {
+        // content-chat: delta positive = chat shrinks
+        const newChat = Math.max(MIN_CHAT_WIDTH, d.startChatW - delta);
+        setChatWidth(newChat);
+      }
     };
 
-    const handleMouseUp = () => {
-      isDragging.current = false;
+    const onUp = () => {
+      dragRef.current = null;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   }, []);
+
+  // Toggle logic: at least one of editor/design must stay visible
+  const toggleEditor = useCallback(() => {
+    if (editorOpen && !designActive) return; // can't close both
+    setEditorOpen((v) => !v);
+  }, [editorOpen, designActive]);
+
+  const toggleDesign = useCallback(() => {
+    if (designActive && !editorOpen) return; // can't close both
+    setDesignActive((v) => !v);
+  }, [designActive, editorOpen]);
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -161,7 +275,6 @@ const WorksheetPage = () => {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
       const docType = (worksheet.document_type as DocumentType) || "note";
-      // For backward compat: treat "design" type as "note" but activate design panel
       if (docType === "design") {
         setWorksheetType("note");
       } else {
@@ -182,9 +295,7 @@ const WorksheetPage = () => {
   }, []);
 
   const handleApplyEdit = useCallback((content: string) => {
-    if (editorRef.current) {
-      editorRef.current.progressiveReveal(content);
-    }
+    if (editorRef.current) editorRef.current.progressiveReveal(content);
   }, []);
 
   const handleUpdateTitle = useCallback((title: string) => {
@@ -209,10 +320,7 @@ const WorksheetPage = () => {
     setDesignHtml(html);
   }, []);
 
-  if (id === "new") {
-    navigate("/");
-    return null;
-  }
+  if (id === "new") { navigate("/"); return null; }
 
   if (isLoading) {
     return (
@@ -234,6 +342,11 @@ const WorksheetPage = () => {
     );
   }
 
+  // Determine what's downloadable as PDF
+  const canDownloadEditor = editorOpen && worksheetContent.trim().length > 0;
+  const canDownloadDesign = designHtml.length > 0;
+  const canDownload = canDownloadEditor || canDownloadDesign;
+
   const chatPanel = (
     <AIChatPanel
       open={chatOpen}
@@ -254,9 +367,18 @@ const WorksheetPage = () => {
     />
   );
 
+  // Build style for editor/design panels
+  const editorStyle: React.CSSProperties = editorWidth && designActive
+    ? { width: editorWidth, minWidth: MIN_EDITOR_WIDTH, flexShrink: 0 }
+    : { flex: 1, minWidth: MIN_EDITOR_WIDTH };
+
+  const designStyle: React.CSSProperties = designWidth && editorOpen
+    ? { width: designWidth, minWidth: MIN_DESIGN_WIDTH, flexShrink: 0 }
+    : { flex: 1, minWidth: MIN_DESIGN_WIDTH };
+
   return (
     <div ref={containerRef} className="flex h-[calc(100vh-3.5rem)]">
-      {/* Main content area */}
+      {/* Main content area (editor + design) */}
       <div className="flex-1 overflow-hidden min-w-0 flex flex-col">
         {/* Header bar */}
         <div className="px-3 sm:px-6 py-3 flex items-center justify-between border-b border-border shrink-0 gap-2">
@@ -284,57 +406,68 @@ const WorksheetPage = () => {
               worksheetTitle={worksheetTitle}
               worksheetType={worksheetType}
             />
+            {/* Editor toggle */}
+            <Button
+              variant={editorOpen ? "secondary" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={toggleEditor}
+              disabled={editorOpen && !designActive}
+              title={editorOpen && !designActive ? "At least one panel must be visible" : undefined}
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Editor</span>
+            </Button>
+            {/* Design toggle */}
             <Button
               variant={designActive ? "secondary" : "outline"}
               size="sm"
               className="gap-1.5"
-              onClick={() => setDesignActive(!designActive)}
+              onClick={toggleDesign}
+              disabled={designActive && !editorOpen}
+              title={designActive && !editorOpen ? "At least one panel must be visible" : undefined}
             >
               <Paintbrush className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Design</span>
             </Button>
-            {designActive && designHtml && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  const printWindow = window.open('', '_blank');
-                  if (!printWindow) {
-                    alert('Please allow popups to download as PDF');
-                    return;
-                  }
-                  const printCss = `
-                    @page { size: A4; margin: 0; }
-                    @media print {
-                      html, body { width: 210mm; min-height: 297mm; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-                      * { box-shadow: none !important; }
-                      .container, [class*="container"] { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-                    }
-                    @media screen {
-                      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
-                    }
-                  `;
-                  const printHtml = designHtml.replace(
-                    '</head>',
-                    `<style>${printCss}</style><script>window.onload=function(){document.fonts.ready.then(function(){setTimeout(function(){window.print();},300);});};${'<'}/script></head>`
-                  );
-                  printWindow.document.open();
-                  printWindow.document.write(printHtml);
-                  printWindow.document.close();
-                }}
-                title="Download as PDF"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">PDF</span>
-              </Button>
+            {/* PDF download — dropdown when both available */}
+            {canDownload && (
+              canDownloadEditor && canDownloadDesign ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5" title="Download as PDF">
+                      <Download className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">PDF</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditorPdf(editorRef, worksheetTitle)}>
+                      <PenLine className="h-3.5 w-3.5 mr-2" />
+                      Editor content
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openDesignPdf(designHtml)}>
+                      <Paintbrush className="h-3.5 w-3.5 mr-2" />
+                      Design webpage
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    if (canDownloadDesign) openDesignPdf(designHtml);
+                    else openEditorPdf(editorRef, worksheetTitle);
+                  }}
+                  title="Download as PDF"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">PDF</span>
+                </Button>
+              )
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShareOpen(true)}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
               <Share2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Share</span>
             </Button>
@@ -350,31 +483,36 @@ const WorksheetPage = () => {
           </div>
         </div>
 
-        {/* Content: side-by-side when design is active */}
+        {/* Content panels */}
         <div className="flex-1 overflow-hidden flex">
-          <div className={designActive ? "w-1/2 overflow-y-auto border-r border-border" : "flex-1 overflow-y-auto"}>
-            <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
-              <WorksheetEditor
-                editorRef={editorRef}
-                worksheetId={worksheet.id}
-                initialTitle={worksheet.title}
-                initialContent={worksheet.content_json}
-                initialDocumentType={(worksheet.document_type as DocumentType) === "design" ? "note" : (worksheet.document_type as DocumentType) || "note"}
-                onSelectionAI={handleSelectionAI}
-                onContentChange={setWorksheetContent}
-                onDocumentTypeChange={handleUpdateDocumentType}
-              />
+          {editorOpen && (
+            <div data-panel="editor" className="overflow-y-auto" style={editorStyle}>
+              <div className="mx-auto max-w-[800px] px-3 sm:px-6 py-4 sm:py-8">
+                <WorksheetEditor
+                  editorRef={editorRef}
+                  worksheetId={worksheet.id}
+                  initialTitle={worksheet.title}
+                  initialContent={worksheet.content_json}
+                  initialDocumentType={(worksheet.document_type as DocumentType) === "design" ? "note" : (worksheet.document_type as DocumentType) || "note"}
+                  onSelectionAI={handleSelectionAI}
+                  onContentChange={setWorksheetContent}
+                  onDocumentTypeChange={handleUpdateDocumentType}
+                />
+              </div>
             </div>
-          </div>
+          )}
+          {editorOpen && designActive && (
+            <ResizeHandle onMouseDown={(e) => startDrag('editor-design', e)} />
+          )}
           {designActive && (
-            <div className="w-1/2 overflow-hidden p-2">
+            <div data-panel="design" className="overflow-hidden p-2" style={designStyle}>
               <DesignPreview html={designHtml} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Chat panel */}
+      {/* Chat panel with resize handle */}
       {isMobile ? (
         <Sheet open={chatOpen} onOpenChange={setChatOpen}>
           <SheetContent side="bottom" className="h-[85vh] p-0">
@@ -384,13 +522,12 @@ const WorksheetPage = () => {
         </Sheet>
       ) : (
         chatOpen && (
-          <div className="relative flex-shrink-0" style={{ width: chatWidth }}>
-            <div
-              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
-              onMouseDown={handleDragStart}
-            />
-            {chatPanel}
-          </div>
+          <>
+            <ResizeHandle onMouseDown={(e) => startDrag('content-chat', e)} />
+            <div data-panel="chat" className="flex-shrink-0 overflow-hidden" style={{ width: chatWidth, minWidth: MIN_CHAT_WIDTH }}>
+              {chatPanel}
+            </div>
+          </>
         )
       )}
 

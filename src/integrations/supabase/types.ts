@@ -367,7 +367,7 @@ export type Database = {
       }
     }
     Enums: {
-      document_type: "note" | "skill" | "prompt" | "template"
+      document_type: "note" | "skill" | "prompt" | "template" | "design"
       worksheet_permission: "read" | "write"
     }
     CompositeTypes: {
@@ -496,7 +496,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      document_type: ["note", "skill", "prompt", "template"],
+      document_type: ["note", "skill", "prompt", "template", "design"],
       worksheet_permission: ["read", "write"],
     },
   },

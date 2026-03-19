@@ -137,10 +137,10 @@ export default function AttachmentCard({
             size="icon"
             className="h-5 w-5 shrink-0 mt-0.5"
             onClick={onGenerateDescription}
-            disabled={isGenerating}
+            disabled={isGeneratingTitle || isGeneratingDesc}
             title="AI generate description"
           >
-            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {isGeneratingDesc ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
           </Button>
         </div>
 

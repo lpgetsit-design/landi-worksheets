@@ -122,6 +122,65 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "batch_resolve_entities",
+      description:
+        "Resolve multiple Bullhorn entities by their type and ID in a single call. Use when you have specific entity types and IDs. Much faster than individual lookups.",
+      parameters: {
+        type: "object",
+        properties: {
+          entities: {
+            type: "array",
+            description: "Array of entities to resolve",
+            items: {
+              type: "object",
+              properties: {
+                entityType: { type: "string", description: "Bullhorn entity type: Candidate, ClientContact, ClientCorporation, JobOrder, or Placement" },
+                entityId: { type: "string", description: "Numeric Bullhorn entity ID" },
+              },
+              required: ["entityType", "entityId"],
+            },
+          },
+        },
+        required: ["entities"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_placements",
+      description: "Search Bullhorn CRM for placements using a Lucene query.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Lucene search query" },
+          count: { type: "number", description: "Max results (default 10, max 50)" },
+          sort: { type: "string", description: "Sort field (default -dateAdded)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_placement_details",
+      description: "Get detailed placement information from Bullhorn by numeric Placement ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "Numeric Bullhorn Placement ID" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+  },
   // ── Tavily Tools ──
   // IMPORTANT: These 4 tools serve very different purposes. Pick the right one:
   //   tavily_search   → Google-like keyword search, returns snippets from multiple sites

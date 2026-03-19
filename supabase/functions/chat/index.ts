@@ -255,6 +255,78 @@ async function callBullhornProxy(action: string, params: Record<string, any>): P
   }
 }
 
+// ─── Tavily APIs ───
+
+function getTavilyHeaders(): { Authorization: string; "Content-Type": string } {
+  const apiKey = Deno.env.get("TAVILY_API_KEY");
+  if (!apiKey) throw new Error("TAVILY_API_KEY is not configured");
+  return { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
+}
+
+async function tavilySearch(query: string, maxResults = 5, searchDepth = "basic", includeAnswer = true): Promise<any> {
+  const resp = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify({ query, max_results: Math.min(maxResults, 10), search_depth: searchDepth, include_answer: includeAnswer }),
+  });
+  if (!resp.ok) throw new Error(`Tavily Search error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+async function tavilyExtract(urls: string[], query?: string, extractDepth = "basic"): Promise<any> {
+  const body: any = { urls, extract_depth: extractDepth };
+  if (query) body.query = query;
+  const resp = await fetch("https://api.tavily.com/extract", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Tavily Extract error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+async function tavilyCrawl(url: string, instructions?: string, maxDepth = 1, limit = 10): Promise<any> {
+  const body: any = { url, max_depth: Math.min(maxDepth, 3), limit: Math.min(limit, 20) };
+  if (instructions) body.instructions = instructions;
+  const resp = await fetch("https://api.tavily.com/crawl", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Tavily Crawl error (${resp.status}): ${await resp.text()}`);
+  return resp.json();
+}
+
+async function tavilyResearch(input: string, model = "auto"): Promise<any> {
+  const effectiveModel = model === "auto" ? "mini" : model;
+  const createResp = await fetch("https://api.tavily.com/research", {
+    method: "POST",
+    headers: getTavilyHeaders(),
+    body: JSON.stringify({ input, model: effectiveModel }),
+  });
+  if (!createResp.ok) throw new Error(`Tavily Research error (${createResp.status}): ${await createResp.text()}`);
+  const task = await createResp.json();
+  const requestId = task.request_id;
+  if (!requestId) throw new Error("No request_id returned from Tavily Research");
+
+  const headers = getTavilyHeaders();
+  let lastResult: any = null;
+  for (let i = 0; i < 13; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const pollResp = await fetch(`https://api.tavily.com/research/${requestId}`, { method: "GET", headers });
+    if (pollResp.status === 202) continue;
+    if (!pollResp.ok) throw new Error(`Tavily Research poll error (${pollResp.status}): ${await pollResp.text()}`);
+    const result = await pollResp.json();
+    if (result.status === "completed") return result;
+    if (result.status === "failed") throw new Error("Tavily Research task failed");
+    lastResult = result;
+  }
+  if (lastResult && lastResult.content) {
+    return { ...lastResult, status: "partial", note: "Research was still in progress but partial results are available." };
+  }
+  throw new Error("Tavily Research timed out — try using tavily_search with search_depth='advanced' instead");
+}
+
 async function executeServerTool(name: string, argsJson: string): Promise<string> {
   try {
     const args = JSON.parse(argsJson);
@@ -275,6 +347,38 @@ async function executeServerTool(name: string, argsJson: string): Promise<string
         return await callBullhornProxy("search_placements", { query: args.query, count: args.count, fields: args.fields });
       case "get_bullhorn_placement_summary":
         return await callBullhornProxy("get_placement_summary", { id: args.id, fields: args.fields });
+      case "tavily_search": {
+        const data = await tavilySearch(args.query, args.max_results || 5, args.search_depth || "basic", args.include_answer !== false);
+        const trimmed = {
+          answer: data.answer,
+          results: (data.results || []).slice(0, 8).map((r: any) => ({ title: r.title, url: r.url, content: (r.content || "").slice(0, 500) })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_extract": {
+        const data = await tavilyExtract(args.urls, args.query, args.extract_depth || "basic");
+        const trimmed = {
+          results: (data.results || []).map((r: any) => ({ url: r.url, content: (r.raw_content || "").slice(0, 2000) })),
+          failed: data.failed_results || [],
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_crawl": {
+        const data = await tavilyCrawl(args.url, args.instructions, args.max_depth || 1, args.limit || 10);
+        const trimmed = {
+          base_url: data.base_url,
+          results: (data.results || []).slice(0, 10).map((r: any) => ({ url: r.url, content: (r.raw_content || "").slice(0, 1000) })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
+      case "tavily_research": {
+        const data = await tavilyResearch(args.input, args.model || "auto");
+        const trimmed = {
+          content: (data.content || "").slice(0, 5000),
+          sources: (data.sources || []).slice(0, 10).map((s: any) => ({ title: s.title, url: s.url })),
+        };
+        return JSON.stringify(trimmed, null, 2);
+      }
       default:
         return JSON.stringify({ error: `Unknown server tool: ${name}` });
     }

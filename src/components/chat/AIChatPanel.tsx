@@ -126,7 +126,7 @@ const AIChatPanel = ({
   onUpdateDocumentType,
 }: AIChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string>("");

@@ -47,10 +47,12 @@ export function useWorksheetAttachments(worksheetId: string, userId?: string) {
   });
 
   const aiMetadataMutation = useMutation({
-    mutationFn: (attachment: Attachment) => generateAttachmentMetadata(attachment),
-    onSuccess: () => {
+    mutationFn: ({ attachment, field }: { attachment: Attachment; field: "title" | "description" | "both" }) =>
+      generateAttachmentMetadata(attachment, field),
+    onSuccess: (_data, { field }) => {
       qc.invalidateQueries({ queryKey: key });
-      toast.success("AI metadata generated");
+      const label = field === "both" ? "metadata" : field;
+      toast.success(`AI ${label} generated`);
     },
     onError: (e: Error) => toast.error(`AI generation failed: ${e.message}`),
   });
@@ -62,7 +64,8 @@ export function useWorksheetAttachments(worksheetId: string, userId?: string) {
     isUploading: uploadMutation.isPending,
     remove: deleteMutation.mutateAsync,
     update: updateMutation.mutateAsync,
-    generateMetadata: aiMetadataMutation.mutateAsync,
+    generateMetadata: (attachment: Attachment, field: "title" | "description" | "both" = "both") =>
+      aiMetadataMutation.mutateAsync({ attachment, field }),
     isGenerating: aiMetadataMutation.isPending,
   };
 }

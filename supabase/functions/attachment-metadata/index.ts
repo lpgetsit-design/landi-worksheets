@@ -19,7 +19,6 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Service role client for storage access (private bucket)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -34,7 +33,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    const { attachmentId, fileName, fileType, filePath } = await req.json();
+    // field: "title" | "description" | "both" (default "both" for backwards compat)
+    const { attachmentId, fileName, fileType, filePath, field = "both" } = await req.json();
 
     if (!attachmentId || !fileName)
       return new Response(
@@ -55,7 +55,6 @@ serve(async (req) => {
         }
       );
 
-    // Build prompt based on file type
     const isImage = fileType?.startsWith("image/");
     const isAudio = fileType?.startsWith("audio/");
     const isVideo = fileType?.startsWith("video/");
@@ -71,22 +70,44 @@ serve(async (req) => {
       fileType?.includes("presentation") ||
       fileType?.includes("powerpoint");
 
-    let userContent: any;
-
     // Generate signed URL for the file (private bucket)
     let fileUrl: string | null = null;
     if (filePath) {
       const { data: signedData } = await supabaseAdmin.storage
         .from("attachments")
-        .createSignedUrl(filePath, 600); // 10 min
+        .createSignedUrl(filePath, 600);
       fileUrl = signedData?.signedUrl ?? null;
     }
+
+    // Build field-specific instructions
+    let fieldInstruction: string;
+    let toolParams: Record<string, any>;
+    let requiredFields: string[];
+
+    if (field === "title") {
+      fieldInstruction = `Generate ONLY a concise, descriptive title (max 8 words) for this file. Return a JSON object with a "title" key.`;
+      toolParams = { title: { type: "string", description: "Concise title, max 8 words" } };
+      requiredFields = ["title"];
+    } else if (field === "description") {
+      fieldInstruction = `Generate ONLY a brief description (1-2 sentences) that captures the content/purpose of this file. Return a JSON object with a "description" key.`;
+      toolParams = { description: { type: "string", description: "Brief description, 1-2 sentences" } };
+      requiredFields = ["description"];
+    } else {
+      fieldInstruction = `Generate a concise, descriptive title (max 8 words) and a brief description (1-2 sentences). Return a JSON object with "title" and "description" keys.`;
+      toolParams = {
+        title: { type: "string", description: "Concise title, max 8 words" },
+        description: { type: "string", description: "Brief description, 1-2 sentences" },
+      };
+      requiredFields = ["title", "description"];
+    }
+
+    let userContent: any;
 
     if (isImage && fileUrl) {
       userContent = [
         {
           type: "text",
-          text: `Analyze this image file named "${fileName}" (type: ${fileType}). Generate a concise, descriptive title (max 8 words) and a brief description (1-2 sentences) that captures what the image shows. Return ONLY a JSON object with "title" and "description" keys.`,
+          text: `Analyze this image file named "${fileName}" (type: ${fileType}). ${fieldInstruction}`,
         },
         { type: "image_url", image_url: { url: fileUrl } },
       ];
@@ -103,9 +124,7 @@ serve(async (req) => {
       else
         contextHint = `This is a file named "${fileName}" (type: ${fileType || "unknown"}).`;
 
-      userContent = `${contextHint}
-
-Based on the file name and type, generate a concise, descriptive title (max 8 words) and a brief description (1-2 sentences) that describes the likely content and purpose of this file. Return ONLY a JSON object with "title" and "description" keys.`;
+      userContent = `${contextHint}\n\nBased on the file name and type, ${fieldInstruction}`;
     }
 
     const aiResp = await fetch(
@@ -122,7 +141,7 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
             {
               role: "system",
               content:
-                'You generate metadata for uploaded files. Always respond with a valid JSON object containing "title" (string, max 8 words, no quotes) and "description" (string, 1-2 sentences). No markdown fences, no extra text.',
+                'You generate metadata for uploaded files. Always respond with a valid JSON object. No markdown fences, no extra text.',
             },
             { role: "user", content: userContent },
           ],
@@ -131,14 +150,11 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
               type: "function",
               function: {
                 name: "set_metadata",
-                description: "Set the title and description for the file",
+                description: "Set the metadata for the file",
                 parameters: {
                   type: "object",
-                  properties: {
-                    title: { type: "string", description: "Concise title, max 8 words" },
-                    description: { type: "string", description: "Brief description, 1-2 sentences" },
-                  },
-                  required: ["title", "description"],
+                  properties: toolParams,
+                  required: requiredFields,
                   additionalProperties: false,
                 },
               },
@@ -155,19 +171,13 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
       if (aiResp.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limited, please try again later." }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (aiResp.status === 402) {
         return new Response(
           JSON.stringify({ error: "Payment required, please add credits." }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       return new Response(JSON.stringify({ error: "AI generation failed" }), {
@@ -177,34 +187,35 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
     }
 
     const aiData = await aiResp.json();
-    let title = fileName;
-    let description = "";
+    let title: string | undefined;
+    let description: string | undefined;
 
     try {
       const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
       if (toolCall) {
         const args = JSON.parse(toolCall.function.arguments);
-        title = args.title || fileName;
-        description = args.description || "";
+        if (field === "title" || field === "both") title = args.title || fileName;
+        if (field === "description" || field === "both") description = args.description || "";
       }
     } catch (e) {
       console.error("Failed to parse AI response:", e);
     }
 
-    // Update the attachment record
+    // Build update object with only the requested field(s)
+    const updateObj: Record<string, any> = { meta: { ai_generated: true, ai_field: field } };
+    if (title !== undefined) updateObj.title = title;
+    if (description !== undefined) updateObj.description = description;
+
     const { error: updateError } = await supabaseAdmin
       .from("worksheet_attachments")
-      .update({ title, description, meta: { ai_generated: true } })
+      .update(updateObj)
       .eq("id", attachmentId);
 
     if (updateError) {
       console.error("Update error:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to update attachment" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -217,10 +228,7 @@ Based on the file name and type, generate a concise, descriptive title (max 8 wo
       JSON.stringify({
         error: e instanceof Error ? e.message : "Unknown error",
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

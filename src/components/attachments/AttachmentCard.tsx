@@ -25,7 +25,8 @@ interface AttachmentCardProps {
   attachment: Attachment;
   onDelete: () => void;
   onUpdate: (updates: { title?: string; description?: string }) => void;
-  onGenerateMetadata: () => void;
+  onGenerateTitle: () => void;
+  onGenerateDescription: () => void;
   onInsertBadge: () => void;
   isGenerating: boolean;
 }
@@ -34,7 +35,8 @@ export default function AttachmentCard({
   attachment,
   onDelete,
   onUpdate,
-  onGenerateMetadata,
+  onGenerateTitle,
+  onGenerateDescription,
   onInsertBadge,
   isGenerating,
 }: AttachmentCardProps) {
@@ -77,44 +79,68 @@ export default function AttachmentCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0 space-y-1">
-        {/* Title */}
-        {editingTitle ? (
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={saveTitle}
-            onKeyDown={(e) => e.key === "Enter" && saveTitle()}
-            className="h-6 text-sm px-1 py-0"
-            autoFocus
-          />
-        ) : (
-          <p
-            className="text-sm font-medium text-foreground truncate cursor-pointer hover:underline"
-            onClick={() => setEditingTitle(true)}
-            title="Click to edit title"
+        {/* Title row with AI button */}
+        <div className="flex items-center gap-1">
+          {editingTitle ? (
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => e.key === "Enter" && saveTitle()}
+              className="h-6 text-sm px-1 py-0 flex-1"
+              autoFocus
+            />
+          ) : (
+            <p
+              className="text-sm font-medium text-foreground truncate cursor-pointer hover:underline flex-1"
+              onClick={() => setEditingTitle(true)}
+              title="Click to edit title"
+            >
+              {title || attachment.file_name}
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 shrink-0"
+            onClick={onGenerateTitle}
+            disabled={isGenerating}
+            title="AI generate title"
           >
-            {title || attachment.file_name}
-          </p>
-        )}
+            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+          </Button>
+        </div>
 
-        {/* Description */}
-        {editingDesc ? (
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={saveDesc}
-            className="text-xs min-h-[40px] px-1 py-0.5"
-            autoFocus
-          />
-        ) : (
-          <p
-            className="text-xs text-muted-foreground line-clamp-2 cursor-pointer hover:underline"
-            onClick={() => setEditingDesc(true)}
-            title="Click to edit description"
+        {/* Description row with AI button */}
+        <div className="flex items-start gap-1">
+          {editingDesc ? (
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={saveDesc}
+              className="text-xs min-h-[40px] px-1 py-0.5 flex-1"
+              autoFocus
+            />
+          ) : (
+            <p
+              className="text-xs text-muted-foreground line-clamp-2 cursor-pointer hover:underline flex-1"
+              onClick={() => setEditingDesc(true)}
+              title="Click to edit description"
+            >
+              {description || "Click to add description…"}
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 shrink-0 mt-0.5"
+            onClick={onGenerateDescription}
+            disabled={isGenerating}
+            title="AI generate description"
           >
-            {description || "Click to add description…"}
-          </p>
-        )}
+            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+          </Button>
+        </div>
 
         {/* Meta row */}
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -127,16 +153,6 @@ export default function AttachmentCard({
 
       {/* Actions */}
       <div className="shrink-0 flex flex-col gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onGenerateMetadata}
-          disabled={isGenerating}
-          title="AI generate title & description"
-        >
-          {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-        </Button>
         <Button
           variant="ghost"
           size="icon"

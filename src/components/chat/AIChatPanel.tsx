@@ -555,52 +555,15 @@ const AIChatPanel = ({
         )}
       </div>
 
-      {/* Input area with mode toggle */}
-      <div className="border-t border-border p-3">
-        {/* Mode toggle - only show when design panel is available */}
-        {designActive && (
-          <div className="flex items-center gap-1 mb-2">
-            <button
-              onClick={() => setChatDesignMode(false)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                !chatDesignMode
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <PenLine className="h-3 w-3" />
-              Editor
-            </button>
-            <button
-              onClick={() => setChatDesignMode(true)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                chatDesignMode
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Paintbrush className="h-3 w-3" />
-              Design
-            </button>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder={chatDesignMode ? "Describe your webpage..." : "Ask or instruct..."}
-            disabled={isLoading}
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-          />
-          <Button size="icon" className="h-9 w-9" onClick={() => handleSend()} disabled={isLoading}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      {/* Input area */}
+      <ChatInput
+        onSend={(text, mentions) => handleSend(text, mentions)}
+        isLoading={isLoading}
+        chatDesignMode={chatDesignMode}
+        designActive={!!designActive}
+        onToggleMode={(design) => setChatDesignMode(design)}
+        worksheetId={worksheetId}
+      />
     </div>
   );
 };

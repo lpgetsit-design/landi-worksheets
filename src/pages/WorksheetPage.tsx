@@ -286,23 +286,61 @@ const WorksheetPage = () => {
                 size="sm"
                 className="gap-1.5"
                 onClick={() => {
-                  // Open the design HTML in a new window and trigger print (Save as PDF)
                   const printWindow = window.open('', '_blank');
                   if (!printWindow) {
                     alert('Please allow popups to download as PDF');
                     return;
                   }
-                  // Inject print-optimized styles and the design HTML
+                  // Strict @page rules for consistent sizing/margins across browsers
+                  const printCss = `
+                    @page {
+                      size: A4;
+                      margin: 0;
+                    }
+                    @media print {
+                      html, body {
+                        width: 210mm;
+                        min-height: 297mm;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                      }
+                      /* Remove any box-shadow that creates weird edges */
+                      * {
+                        box-shadow: none !important;
+                      }
+                      /* Ensure container fills the page cleanly */
+                      .container, [class*="container"] {
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                      }
+                    }
+                    @media screen {
+                      body::before {
+                        content: "Close this tab after saving your PDF";
+                        display: block;
+                        background: #0e363c;
+                        color: #f9f9f9;
+                        text-align: center;
+                        padding: 8px;
+                        font-family: system-ui, sans-serif;
+                        font-size: 13px;
+                      }
+                    }
+                  `;
                   const printHtml = designHtml.replace(
                     '</head>',
-                    `<style>
-                      @media print {
-                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                      }
-                    </style>
+                    `<style>${printCss}</style>
                     <script>
-                      window.onload = function() { 
-                        setTimeout(function() { window.print(); }, 500); 
+                      window.onload = function() {
+                        // Wait for fonts to load before printing
+                        document.fonts.ready.then(function() {
+                          setTimeout(function() { window.print(); }, 300);
+                        });
                       };
                     </script>
                     </head>`
@@ -311,7 +349,7 @@ const WorksheetPage = () => {
                   printWindow.document.write(printHtml);
                   printWindow.document.close();
                 }}
-                title="Download as PDF (use browser's Save as PDF option)"
+                title="Download as PDF"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">PDF</span>

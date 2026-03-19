@@ -13,6 +13,9 @@ import { getWorksheets, createWorksheet, deleteWorksheet, getWorksheetEntities, 
 import type { HybridSearchResult } from "@/lib/worksheets";
 import { toast } from "sonner";
 import { marked } from "marked";
+import TourOverlay from "@/components/tour/TourOverlay";
+import { dashboardSteps } from "@/components/tour/tourSteps";
+import { useTour } from "@/hooks/useTour";
 
 type SortField = "updated_at" | "created_at";
 type SortDir = "desc" | "asc";

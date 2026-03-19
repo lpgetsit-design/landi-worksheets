@@ -140,7 +140,7 @@ export default function AttachmentPanel({
                 onGenerateTitle={() => generateMetadata(a, "title")}
                 onGenerateDescription={() => generateMetadata(a, "description")}
                 onInsertBadge={() => onInsertBadge(a)}
-                isGenerating={isGenerating}
+                generatingKey={generatingKey}
               />
             ))}
           </div>

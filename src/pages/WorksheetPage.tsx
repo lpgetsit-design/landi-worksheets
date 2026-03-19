@@ -525,6 +525,26 @@ const WorksheetPage = () => {
         worksheetId={worksheet.id}
         worksheetTitle={worksheetTitle}
       />
+
+      {/* Tour */}
+      <TourOverlay
+        steps={worksheetSteps}
+        step={tour.step}
+        active={tour.active}
+        onNext={tour.next}
+        onPrev={tour.prev}
+        onEnd={tour.end}
+      />
+
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 h-9 w-9 rounded-full shadow-md z-50"
+        onClick={tour.start}
+        title="Take a tour"
+      >
+        <HelpCircle className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

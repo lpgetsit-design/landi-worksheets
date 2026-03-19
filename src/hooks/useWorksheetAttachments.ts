@@ -64,7 +64,8 @@ export function useWorksheetAttachments(worksheetId: string, userId?: string) {
     isUploading: uploadMutation.isPending,
     remove: deleteMutation.mutateAsync,
     update: updateMutation.mutateAsync,
-    generateMetadata: aiMetadataMutation.mutateAsync,
+    generateMetadata: (attachment: Attachment, field: "title" | "description" | "both" = "both") =>
+      aiMetadataMutation.mutateAsync({ attachment, field }),
     isGenerating: aiMetadataMutation.isPending,
   };
 }

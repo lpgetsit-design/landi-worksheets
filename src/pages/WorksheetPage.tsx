@@ -162,9 +162,11 @@ const WorksheetPage = () => {
     if (worksheet) {
       if (worksheet.content_md) setWorksheetContent(worksheet.content_md);
       setWorksheetTitle(worksheet.title);
-      setWorksheetType((worksheet.document_type as DocumentType) || "note");
+      const docType = (worksheet.document_type as DocumentType) || "note";
+      setWorksheetType(docType);
       const meta = worksheet.meta as Record<string, any> | null;
       if (meta?.design_html) setDesignHtml(meta.design_html);
+      if (docType === "design") setChatOpen(true);
     }
   }, [worksheet]);
 
@@ -223,8 +225,6 @@ const WorksheetPage = () => {
     );
   }
 
-  // Design mode: chat is always open, auto-open on first visit
-  const designChatOpen = isDesignMode ? (chatOpen || true) : false;
 
   const chatPanel = isDesignMode ? (
     <DesignChatPanel
@@ -422,14 +422,14 @@ const WorksheetPage = () => {
 
       {/* Chat panel */}
       {isMobile ? (
-        <Sheet open={chatOpen || isDesignMode} onOpenChange={setChatOpen}>
+        <Sheet open={chatOpen} onOpenChange={setChatOpen}>
           <SheetContent side="bottom" className="h-[85vh] p-0">
             <SheetTitle className="sr-only">AI Assistant</SheetTitle>
             {chatPanel}
           </SheetContent>
         </Sheet>
       ) : (
-        (chatOpen || isDesignMode) && (
+        chatOpen && (
           <div className="relative flex-shrink-0" style={{ width: chatWidth }}>
             <div
               className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"

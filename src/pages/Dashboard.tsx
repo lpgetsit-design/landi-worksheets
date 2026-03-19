@@ -172,7 +172,7 @@ const Dashboard = () => {
     <div className="mx-auto max-w-2xl px-3 sm:px-4 py-6 sm:py-10">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground">Worksheets</h1>
-        <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
+        <Button data-tour="new-worksheet" onClick={() => createMutation.mutate()} disabled={createMutation.isPending} size="sm" className="gap-1.5 sm:gap-2">
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">New Worksheet</span>
           <span className="sm:hidden">New</span>

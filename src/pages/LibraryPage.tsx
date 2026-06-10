@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye, Share2, Link2, MousePointerClick, Save } from "lucide-react";
+import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye, Share2, Link2, MousePointerClick, Save, Undo2, Redo2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import DesignPreview from "@/components/design/DesignPreview";
-import DesignEditor, { type DesignEditorHandle } from "@/components/design/DesignEditor";
+import DesignEditor, { type DesignEditorHandle, type DesignEditorState } from "@/components/design/DesignEditor";
 import ShareDialog from "@/components/share/ShareDialog";
 
 interface LibraryItem {
@@ -61,11 +61,13 @@ const LibraryPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
   const editorRef = useRef<DesignEditorHandle>(null);
+  const [editorState, setEditorState] = useState<DesignEditorState>({ canUndo: false, canRedo: false });
 
   // Reset edit state whenever the preview target changes.
   useEffect(() => {
     setEditMode(false);
     setSavingEdits(false);
+    setEditorState({ canUndo: false, canRedo: false });
   }, [previewItem?.designId]);
 
   const handleSavePreviewEdits = async () => {
@@ -410,6 +412,26 @@ const LibraryPage = () => {
               {editMode ? (
                 <>
                   <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => editorRef.current?.undo()}
+                    disabled={!editorState.canUndo || savingEdits}
+                    title="Undo (Ctrl/Cmd+Z)"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => editorRef.current?.redo()}
+                    disabled={!editorState.canRedo || savingEdits}
+                    title="Redo (Ctrl/Cmd+Shift+Z)"
+                  >
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
                     variant="default"
                     size="sm"
                     className="h-7 text-xs gap-1.5"
@@ -488,7 +510,12 @@ const LibraryPage = () => {
           <div className="flex-1 min-h-0">
             {previewItem && (
               editMode ? (
-                <DesignEditor ref={editorRef} html={previewItem.latestHtml} editMode={editMode} />
+                <DesignEditor
+                  ref={editorRef}
+                  html={previewItem.latestHtml}
+                  editMode={editMode}
+                  onStateChange={setEditorState}
+                />
               ) : (
                 <DesignPreview html={previewItem.latestHtml} />
               )

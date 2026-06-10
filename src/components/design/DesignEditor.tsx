@@ -15,11 +15,19 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 export interface DesignEditorHandle {
   /** Read the current edited HTML out of the iframe, stripped of editor attrs. */
   getEditedHtml: () => Promise<string>;
+  undo: () => void;
+  redo: () => void;
+}
+
+export interface DesignEditorState {
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 interface Props {
   html: string;
   editMode: boolean;
+  onStateChange?: (state: DesignEditorState) => void;
 }
 
 const EDITOR_SCRIPT = `
@@ -57,6 +65,89 @@ const EDITOR_SCRIPT = `
   var selected = null;
   var toolbar = null;
 
+  // ── Undo/redo (max 5 snapshots) ────────────────────────────────────────
+  var UNDO_LIMIT = 5;
+  var undoStack = [];
+  var redoStack = [];
+  var textSnapshotTimer = null;
+
+  function postState(){
+    try {
+      parent.postMessage({
+        type: '__DE_STATE',
+        canUndo: undoStack.length > 0,
+        canRedo: redoStack.length > 0,
+      }, '*');
+    } catch(_){}
+  }
+
+  function snapshotHtml(){
+    // Clone body and strip transient editor attrs before snapshotting so
+    // restoring doesn't bring back stale selection/drag markers.
+    var clone = document.body.cloneNode(true);
+    clone.querySelectorAll('[data-de-selected],[data-de-dragging],[data-de-drop-before],[data-de-drop-after],[data-de-drop-inside]').forEach(function(el){
+      el.removeAttribute('data-de-selected');
+      el.removeAttribute('data-de-dragging');
+      el.removeAttribute('data-de-drop-before');
+      el.removeAttribute('data-de-drop-after');
+      el.removeAttribute('data-de-drop-inside');
+    });
+    // Remove the injected toolbar element from the snapshot.
+    var tb = clone.querySelector('#__de_toolbar');
+    if (tb) tb.remove();
+    return clone.innerHTML;
+  }
+
+  function snapshot(){
+    var snap = snapshotHtml();
+    // Avoid pushing duplicate consecutive snapshots.
+    if (undoStack.length && undoStack[undoStack.length - 1] === snap) return;
+    undoStack.push(snap);
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack.length = 0;
+    postState();
+  }
+
+  function scheduleTextSnapshot(){
+    if (textSnapshotTimer) clearTimeout(textSnapshotTimer);
+    textSnapshotTimer = setTimeout(function(){
+      textSnapshotTimer = null;
+      snapshot();
+    }, 600);
+  }
+
+  function restore(html){
+    clearSelection();
+    if (toolbar) { toolbar.remove(); toolbar = null; }
+    document.body.innerHTML = html;
+    // Re-tag the new subtree and rebuild toolbar so editor stays usable.
+    if (enabled) {
+      tagSubtree(document.body);
+      buildToolbar();
+    }
+  }
+
+  function undo(){
+    if (!undoStack.length) return;
+    var current = snapshotHtml();
+    var prev = undoStack.pop();
+    redoStack.push(current);
+    if (redoStack.length > UNDO_LIMIT) redoStack.shift();
+    restore(prev);
+    postState();
+  }
+
+  function redo(){
+    if (!redoStack.length) return;
+    var current = snapshotHtml();
+    var next = redoStack.pop();
+    undoStack.push(current);
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    restore(next);
+    postState();
+  }
+  // ───────────────────────────────────────────────────────────────────────
+
   function isLeafTextEl(el){
     if (!TEXT_TAGS[el.tagName]) return false;
     // leaf-ish: no child element nodes
@@ -82,11 +173,13 @@ const EDITOR_SCRIPT = `
       if (!b || !selected) return;
       var act = b.getAttribute('data-act');
       if (act === 'del') {
+        snapshot();
         var p = selected.parentElement;
         selected.remove();
         clearSelection();
         if (p) reindexParent(p);
       } else if (act === 'dup') {
+        snapshot();
         var clone = selected.cloneNode(true);
         // Strip editor attributes from the clone subtree so re-tagging is clean.
         stripEditorAttrs(clone);
@@ -95,11 +188,11 @@ const EDITOR_SCRIPT = `
         selectBlock(clone);
       } else if (act === 'up') {
         var prev = selected.previousElementSibling;
-        if (prev) selected.parentElement.insertBefore(selected, prev);
+        if (prev) { snapshot(); selected.parentElement.insertBefore(selected, prev); }
         positionToolbar();
       } else if (act === 'down') {
         var next = selected.nextElementSibling;
-        if (next) selected.parentElement.insertBefore(next, selected);
+        if (next) { snapshot(); selected.parentElement.insertBefore(next, selected); }
         positionToolbar();
       }
       e.stopPropagation();
@@ -175,8 +268,10 @@ const EDITOR_SCRIPT = `
     document.addEventListener('paste', onPaste, true);
     document.addEventListener('click', onClick, true);
     document.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('input', onInput, true);
     window.addEventListener('scroll', positionToolbar, true);
     window.addEventListener('resize', positionToolbar, true);
+    postState();
   }
 
   function disable(){
@@ -206,8 +301,16 @@ const EDITOR_SCRIPT = `
     document.removeEventListener('paste', onPaste, true);
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('mousedown', onMouseDown, true);
+    document.removeEventListener('input', onInput, true);
     window.removeEventListener('scroll', positionToolbar, true);
     window.removeEventListener('resize', positionToolbar, true);
+  }
+
+  function onInput(e){
+    if (!enabled) return;
+    var t = e.target;
+    if (!t || !t.getAttribute || t.getAttribute('contenteditable') !== 'true') return;
+    scheduleTextSnapshot();
   }
 
   function onClick(e){
@@ -232,11 +335,27 @@ const EDITOR_SCRIPT = `
   function onKeyDown(e){
     if (!enabled) return;
     if (e.key === 'Escape') { clearSelection(); return; }
+    // Undo / redo shortcuts
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+      var ae0 = document.activeElement;
+      var editing0 = ae0 && ae0.getAttribute && ae0.getAttribute('contenteditable') === 'true';
+      if (!editing0) {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+    }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || e.key === 'Y')) {
+      var ae1 = document.activeElement;
+      var editing1 = ae1 && ae1.getAttribute && ae1.getAttribute('contenteditable') === 'true';
+      if (!editing1) { e.preventDefault(); redo(); return; }
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
       var ae = document.activeElement;
       var editing = ae && ae.getAttribute && ae.getAttribute('contenteditable') === 'true';
       if (!editing) {
         e.preventDefault();
+        snapshot();
         var p = selected.parentElement;
         selected.remove();
         clearSelection();
@@ -248,6 +367,7 @@ const EDITOR_SCRIPT = `
       var editing2 = ae2 && ae2.getAttribute && ae2.getAttribute('contenteditable') === 'true';
       if (!editing2) {
         e.preventDefault();
+        snapshot();
         var clone = selected.cloneNode(true);
         stripEditorAttrs(clone);
         selected.parentElement.insertBefore(clone, selected.nextSibling);
@@ -282,6 +402,8 @@ const EDITOR_SCRIPT = `
     var t = e.target && e.target.closest && e.target.closest('[data-de-block]');
     if (!t) return;
     dragSrc = t;
+    // Snapshot before any potential move/drop mutation.
+    snapshot();
     t.setAttribute('data-de-dragging','1');
     clearSelection();
     try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain','de'); } catch(_){}
@@ -371,6 +493,8 @@ const EDITOR_SCRIPT = `
     var d = ev.data || {};
     if (d.type === '__DE_ENABLE') enable();
     else if (d.type === '__DE_DISABLE') disable();
+    else if (d.type === '__DE_UNDO') undo();
+    else if (d.type === '__DE_REDO') redo();
     else if (d.type === '__DE_GET') {
       var html = getCleanHtml();
       try { parent.postMessage({type:'__DE_HTML', reqId:d.reqId, html:html}, '*'); } catch(_){}
@@ -381,9 +505,23 @@ const EDITOR_SCRIPT = `
 })();
 `;
 
-const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode }, ref) => {
+const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode, onStateChange }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const readyRef = useRef(false);
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+
+  // Listen for state messages from the iframe to surface undo/redo availability.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const d: any = e.data;
+      if (d && d.type === "__DE_STATE") {
+        onStateChangeRef.current?.({ canUndo: !!d.canUndo, canRedo: !!d.canRedo });
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   // (Re)write document whenever the source HTML changes.
   useEffect(() => {
@@ -439,6 +577,12 @@ const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode }, 
           reject(new Error("timeout reading edited html"));
         }, 3000);
       }),
+    undo: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: "__DE_UNDO" }, "*");
+    },
+    redo: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: "__DE_REDO" }, "*");
+    },
   }));
 
   return (

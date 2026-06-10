@@ -54,9 +54,10 @@ interface Props {
   onAutoMessageConsumed?: () => void;
   /** Optional selection context shown above the composer. */
   selectedText?: string;
-  /** Notified whenever the in-chat design panel opens or closes. Lets the
-   * parent (e.g. WorksheetPage) widen the chat column when a design is shown. */
-  onDesignPanelOpenChange?: (open: boolean) => void;
+  /** Notified whenever this session has at least one design (active or saved).
+   * Lets the parent (e.g. WorksheetPage) widen the chat column so the design
+   * and conversation can sit side-by-side. */
+  onHasDesignChange?: (hasDesign: boolean) => void;
 }
 
 const AskLandiChat = ({
@@ -68,16 +69,13 @@ const AskLandiChat = ({
   autoMessage,
   onAutoMessageConsumed,
   selectedText,
-  onDesignPanelOpenChange,
+  onHasDesignChange,
 }: Props) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [designs, setDesigns] = useState<ChatDesign[]>([]);
   const [viewingDesignId, setViewingDesignId] = useState<string | null>(null);
   const [revisionIndex, setRevisionIndex] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
-  useEffect(() => {
-    onDesignPanelOpenChange?.(panelOpen);
-  }, [panelOpen, onDesignPanelOpenChange]);
   const [shareOpen, setShareOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -166,6 +164,10 @@ const AskLandiChat = ({
     () => designs.filter((d) => d.status === "saved"),
     [designs],
   );
+
+  useEffect(() => {
+    onHasDesignChange?.(designs.length > 0);
+  }, [designs.length, onHasDesignChange]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);

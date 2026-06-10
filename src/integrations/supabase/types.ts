@@ -14,6 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_design_revisions: {
+        Row: {
+          created_at: string
+          design_id: string
+          html: string
+          id: string
+          prompt_message_id: string | null
+          revision_index: number
+        }
+        Insert: {
+          created_at?: string
+          design_id: string
+          html: string
+          id?: string
+          prompt_message_id?: string | null
+          revision_index: number
+        }
+        Update: {
+          created_at?: string
+          design_id?: string
+          html?: string
+          id?: string
+          prompt_message_id?: string | null
+          revision_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_design_revisions_design_id_fkey"
+            columns: ["design_id"]
+            isOneToOne: false
+            referencedRelation: "chat_designs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_design_revisions_prompt_message_id_fkey"
+            columns: ["prompt_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_designs: {
+        Row: {
+          created_at: string
+          id: string
+          session_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_id: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_designs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          mentions: Json
+          role: string
+          session_id: string
+          tool_args: Json | null
+          tool_name: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: Json
+          role: string
+          session_id: string
+          tool_args?: Json | null
+          tool_name?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: Json
+          role?: string
+          session_id?: string
+          tool_args?: Json | null
+          tool_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean
@@ -490,6 +632,14 @@ export type Database = {
           title: string
           updated_at: string
         }[]
+      }
+      is_chat_design_owner: {
+        Args: { _design_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_chat_session_owner: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
       }
       is_worksheet_owner: {
         Args: { _user_id: string; _worksheet_id: string }

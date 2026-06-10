@@ -49,6 +49,7 @@ const AuthenticatedLayout = () => {
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/chat/:sessionId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Send, Paintbrush, PenLine } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import ChatMentionMenu, { type MentionItem, type ChatMentionMenuRef } from "./ChatMentionMenu";
 
 export interface ChatMention {
@@ -17,18 +16,12 @@ export interface ChatMention {
 interface ChatInputProps {
   onSend: (text: string, mentions: ChatMention[]) => void;
   isLoading: boolean;
-  chatDesignMode: boolean;
-  designActive: boolean;
-  onToggleMode: (design: boolean) => void;
   worksheetId?: string;
 }
 
 const ChatInput = ({
   onSend,
   isLoading,
-  chatDesignMode,
-  designActive,
-  onToggleMode,
   worksheetId,
 }: ChatInputProps) => {
   const [input, setInput] = useState("");
@@ -152,36 +145,6 @@ const ChatInput = ({
 
   return (
     <div className="border-t border-border p-3">
-      {/* Mode toggle */}
-      {designActive && (
-        <div className="flex items-center gap-1 mb-2">
-          <button
-            onClick={() => onToggleMode(false)}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-              !chatDesignMode
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <PenLine className="h-3 w-3" />
-            Editor
-          </button>
-          <button
-            onClick={() => onToggleMode(true)}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-              chatDesignMode
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Paintbrush className="h-3 w-3" />
-            Design
-          </button>
-        </div>
-      )}
-
       {/* Input area */}
       <div className="relative">
         {/* Mention menu - positioned above the textarea */}
@@ -223,11 +186,7 @@ const ChatInput = ({
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={
-              chatDesignMode
-                ? "Describe your webpage… (@ to mention)"
-                : "Ask or instruct… (@ to mention)"
-            }
+            placeholder="Ask or instruct… (@ to mention)"
             disabled={isLoading}
             rows={1}
             className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 min-h-[36px] max-h-[150px] leading-5"

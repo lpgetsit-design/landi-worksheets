@@ -1,16 +1,14 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine, Paperclip, HelpCircle } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, PenLine, Paperclip, HelpCircle } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
-import DesignPreview from "@/components/design/DesignPreview";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
@@ -27,29 +25,6 @@ import { worksheetSteps } from "@/components/tour/tourSteps";
 import { useTour } from "@/hooks/useTour";
 
 // ─── PDF helpers ───
-const openDesignPdf = (html: string) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) { alert('Please allow popups to download as PDF'); return; }
-  const printCss = `
-    @page { size: A4; margin: 0; }
-    @media print {
-      html, body { width: 210mm; min-height: 297mm; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-      * { box-shadow: none !important; }
-      .container, [class*="container"] { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-    }
-    @media screen {
-      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
-    }
-  `;
-  const printHtml = html.replace(
-    '</head>',
-    `<style>${printCss}</style><script>window.onload=function(){document.fonts.ready.then(function(){setTimeout(function(){window.print();},300);});};${'<'}/script></head>`
-  );
-  printWindow.document.open();
-  printWindow.document.write(printHtml);
-  printWindow.document.close();
-};
-
 const openEditorPdf = (editorRef: React.RefObject<WorksheetEditorHandle>, title: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) { alert('Please allow popups to download as PDF'); return; }
@@ -166,8 +141,6 @@ const WorksheetPage = () => {
   const [worksheetContent, setWorksheetContent] = useState("");
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
-  const [designHtml, setDesignHtml] = useState("");
-  const [designActive, setDesignActive] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
@@ -185,16 +158,7 @@ const WorksheetPage = () => {
     }
   }, []);
 
-  // Toggle logic: at least one of editor/design must stay visible
-  const toggleEditor = useCallback(() => {
-    if (editorOpen && !designActive) return;
-    setEditorOpen((v) => !v);
-  }, [editorOpen, designActive]);
-
-  const toggleDesign = useCallback(() => {
-    if (designActive && !editorOpen) return;
-    setDesignActive((v) => !v);
-  }, [designActive, editorOpen]);
+  // Editor is always-on for the worksheet product; design moved to /chat.
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],
@@ -243,10 +207,8 @@ const WorksheetPage = () => {
         setWorksheetType(docType);
       }
       const meta = worksheet.meta as Record<string, any> | null;
-      if (meta?.design_html) {
-        setDesignHtml(meta.design_html);
-        setDesignActive(true);
-      }
+      // design_html in meta is legacy; the design feature now lives in /chat
+      void meta;
     }
   }, [worksheet]);
 
@@ -278,10 +240,6 @@ const WorksheetPage = () => {
     }
   }, [id, queryClient]);
 
-  const handleDesignHtmlChange = useCallback((html: string) => {
-    setDesignHtml(html);
-  }, []);
-
   if (id === "new") { navigate("/"); return null; }
 
   if (isLoading) {
@@ -304,9 +262,7 @@ const WorksheetPage = () => {
     );
   }
 
-  const canDownloadEditor = editorOpen && worksheetContent.trim().length > 0;
-  const canDownloadDesign = designHtml.length > 0;
-  const canDownload = canDownloadEditor || canDownloadDesign;
+  const canDownload = editorOpen && worksheetContent.trim().length > 0;
 
   const chatPanel = (
     <AIChatPanel
@@ -319,18 +275,12 @@ const WorksheetPage = () => {
       worksheetTitle={worksheetTitle}
       worksheetType={worksheetType}
       worksheetId={worksheet.id}
-      designActive={designActive}
-      designHtml={designHtml}
-      onDesignHtmlChange={handleDesignHtmlChange}
       onApplyEdit={handleApplyEdit}
       onUpdateTitle={handleUpdateTitle}
       onUpdateDocumentType={handleUpdateDocumentType}
       attachments={attachmentInfos}
     />
   );
-
-  // Count visible content panels for sizing
-  const visiblePanels = (editorOpen ? 1 : 0) + (designActive ? 1 : 0);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -368,62 +318,23 @@ const WorksheetPage = () => {
             variant={editorOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"
-            onClick={toggleEditor}
-            disabled={editorOpen && !designActive}
-            title={editorOpen && !designActive ? "At least one panel must be visible" : undefined}
+            onClick={() => setEditorOpen((v) => !v)}
           >
             <PenLine className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Editor</span>
           </Button>
-          {/* Design toggle */}
-          <Button
-            data-tour="design-toggle"
-            variant={designActive ? "secondary" : "outline"}
-            size="sm"
-            className="gap-1.5"
-            onClick={toggleDesign}
-            disabled={designActive && !editorOpen}
-            title={designActive && !editorOpen ? "At least one panel must be visible" : undefined}
-          >
-            <Paintbrush className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Design</span>
-          </Button>
           {/* PDF download */}
           {canDownload && (
-            canDownloadEditor && canDownloadDesign ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5" title="Download as PDF">
-                    <Download className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">PDF</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openEditorPdf(editorRef, worksheetTitle)}>
-                    <PenLine className="h-3.5 w-3.5 mr-2" />
-                    Editor content
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => openDesignPdf(designHtml)}>
-                    <Paintbrush className="h-3.5 w-3.5 mr-2" />
-                    Design webpage
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  if (canDownloadDesign) openDesignPdf(designHtml);
-                  else openEditorPdf(editorRef, worksheetTitle);
-                }}
-                title="Download as PDF"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">PDF</span>
-              </Button>
-            )
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => openEditorPdf(editorRef, worksheetTitle)}
+              title="Download as PDF"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
           )}
           <Button data-tour="share-btn" variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
             <Share2 className="h-3.5 w-3.5" />
@@ -445,10 +356,10 @@ const WorksheetPage = () => {
       {/* Main content area: resizable panels */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Content panels (editor + design) */}
+          {/* Editor panel */}
           {editorOpen && (
             <ResizablePanel
-              defaultSize={designActive ? 50 : (chatOpen ? 70 : 100)}
+              defaultSize={chatOpen ? 70 : 100}
               minSize={20}
               order={1}
             >
@@ -474,20 +385,6 @@ const WorksheetPage = () => {
                     />
                   </div>
                 )}
-              </div>
-            </ResizablePanel>
-          )}
-
-          {editorOpen && designActive && <ResizableHandle withHandle />}
-
-          {designActive && (
-            <ResizablePanel
-              defaultSize={editorOpen ? 50 : (chatOpen ? 70 : 100)}
-              minSize={20}
-              order={2}
-            >
-              <div className="h-full overflow-hidden p-2">
-                <DesignPreview html={designHtml} />
               </div>
             </ResizablePanel>
           )}

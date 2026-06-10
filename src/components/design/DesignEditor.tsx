@@ -31,9 +31,16 @@ const EDITOR_SCRIPT = `
     '[data-de-block]:hover{outline:2px dashed rgba(99,102,241,.6);outline-offset:2px;cursor:grab;}'+
     '[data-de-text]:hover{outline:2px dashed rgba(16,185,129,.6);outline-offset:2px;cursor:text;}'+
     '[data-de-text]:focus{outline:2px solid #10b981;outline-offset:2px;cursor:text;}'+
+    '[data-de-selected]{outline:2px solid #6366f1!important;outline-offset:2px;}'+
     '[data-de-dragging]{opacity:.4;}'+
     '[data-de-drop-before]{box-shadow:inset 0 4px 0 0 #6366f1!important;}'+
-    '[data-de-drop-after]{box-shadow:inset 0 -4px 0 0 #6366f1!important;}';
+    '[data-de-drop-after]{box-shadow:inset 0 -4px 0 0 #6366f1!important;}'+
+    '[data-de-drop-inside]{box-shadow:inset 0 0 0 3px #6366f1!important;}'+
+    '#__de_toolbar{position:fixed;z-index:2147483647;display:flex;gap:2px;padding:3px;background:#111827;color:#fff;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.25);font:500 11px system-ui,sans-serif;}'+
+    '#__de_toolbar button{appearance:none;border:0;background:transparent;color:#fff;padding:3px 6px;border-radius:4px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;gap:4px;}'+
+    '#__de_toolbar button:hover{background:rgba(255,255,255,.15);}'+
+    '#__de_toolbar .de-sep{width:1px;background:rgba(255,255,255,.2);margin:2px 2px;}'+
+    '#__de_toolbar .de-danger:hover{background:#dc2626;}';
 
   var styleEl = document.createElement('style');
   styleEl.id = '__de_style';
@@ -42,9 +49,13 @@ const EDITOR_SCRIPT = `
 
   var SKIP = {SCRIPT:1,STYLE:1,HTML:1,HEAD:1,META:1,LINK:1,BODY:1,NOSCRIPT:1,TITLE:1};
   var TEXT_TAGS = {H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,P:1,LI:1,A:1,BUTTON:1,SPAN:1,STRONG:1,EM:1,SMALL:1,BLOCKQUOTE:1,TD:1,TH:1,LABEL:1,FIGCAPTION:1};
+  // Containers we never want to nest into during cross-container moves.
+  var ATOMIC = {IMG:1,SVG:1,VIDEO:1,AUDIO:1,IFRAME:1,INPUT:1,TEXTAREA:1,BR:1,HR:1,CANVAS:1};
 
   var enabled = false;
   var dragSrc = null;
+  var selected = null;
+  var toolbar = null;
 
   function isLeafTextEl(el){
     if (!TEXT_TAGS[el.tagName]) return false;
@@ -55,21 +66,106 @@ const EDITOR_SCRIPT = `
     return true;
   }
 
+  function buildToolbar(){
+    toolbar = document.createElement('div');
+    toolbar.id = '__de_toolbar';
+    toolbar.style.display = 'none';
+    toolbar.innerHTML =
+      '<button data-act="up" title="Move up">↑</button>'+
+      '<button data-act="down" title="Move down">↓</button>'+
+      '<div class="de-sep"></div>'+
+      '<button data-act="dup" title="Duplicate">⧉ Duplicate</button>'+
+      '<button data-act="del" class="de-danger" title="Delete">✕ Delete</button>';
+    toolbar.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    toolbar.addEventListener('click', function(e){
+      var b = e.target && e.target.closest && e.target.closest('button');
+      if (!b || !selected) return;
+      var act = b.getAttribute('data-act');
+      if (act === 'del') {
+        var p = selected.parentElement;
+        selected.remove();
+        clearSelection();
+        if (p) reindexParent(p);
+      } else if (act === 'dup') {
+        var clone = selected.cloneNode(true);
+        // Strip editor attributes from the clone subtree so re-tagging is clean.
+        stripEditorAttrs(clone);
+        selected.parentElement.insertBefore(clone, selected.nextSibling);
+        tagSubtree(clone);
+        selectBlock(clone);
+      } else if (act === 'up') {
+        var prev = selected.previousElementSibling;
+        if (prev) selected.parentElement.insertBefore(selected, prev);
+        positionToolbar();
+      } else if (act === 'down') {
+        var next = selected.nextElementSibling;
+        if (next) selected.parentElement.insertBefore(next, selected);
+        positionToolbar();
+      }
+      e.stopPropagation();
+    });
+    document.body.appendChild(toolbar);
+  }
+
+  function reindexParent(){ /* placeholder for future ordering hooks */ }
+
+  function tagEl(el){
+    if (SKIP[el.tagName]) return;
+    if (isLeafTextEl(el)){
+      el.setAttribute('contenteditable','true');
+      el.setAttribute('data-de-text','1');
+      el.setAttribute('spellcheck','true');
+    }
+    el.setAttribute('draggable','true');
+    el.setAttribute('data-de-block','1');
+  }
+
+  function tagSubtree(root){
+    tagEl(root);
+    var nodes = root.querySelectorAll('*');
+    for (var i=0;i<nodes.length;i++) tagEl(nodes[i]);
+  }
+
+  function stripEditorAttrs(root){
+    var EATTRS = ['draggable','contenteditable','spellcheck','data-de-block','data-de-text','data-de-selected','data-de-dragging','data-de-drop-before','data-de-drop-after','data-de-drop-inside'];
+    function clean(el){ for (var i=0;i<EATTRS.length;i++) el.removeAttribute(EATTRS[i]); }
+    clean(root);
+    var nodes = root.querySelectorAll('*');
+    for (var i=0;i<nodes.length;i++) clean(nodes[i]);
+  }
+
+  function clearSelection(){
+    if (selected) selected.removeAttribute('data-de-selected');
+    selected = null;
+    if (toolbar) toolbar.style.display = 'none';
+  }
+
+  function selectBlock(el){
+    if (!el) return;
+    if (selected && selected !== el) selected.removeAttribute('data-de-selected');
+    selected = el;
+    el.setAttribute('data-de-selected','1');
+    positionToolbar();
+  }
+
+  function positionToolbar(){
+    if (!toolbar || !selected) return;
+    var r = selected.getBoundingClientRect();
+    var top = r.top - 32;
+    if (top < 4) top = r.bottom + 4;
+    var left = r.left;
+    if (left < 4) left = 4;
+    var maxLeft = window.innerWidth - 220;
+    if (left > maxLeft) left = Math.max(4, maxLeft);
+    toolbar.style.top = top + 'px';
+    toolbar.style.left = left + 'px';
+    toolbar.style.display = 'flex';
+  }
+
   function enable(){
     if (enabled) return; enabled = true;
-    var all = document.body.querySelectorAll('*');
-    for (var i=0;i<all.length;i++){
-      var el = all[i];
-      if (SKIP[el.tagName]) continue;
-      if (isLeafTextEl(el)){
-        el.setAttribute('contenteditable','true');
-        el.setAttribute('data-de-text','1');
-        el.setAttribute('spellcheck','true');
-      }
-      // Mark as a draggable block (any element). Drag only fires sibling moves.
-      el.setAttribute('draggable','true');
-      el.setAttribute('data-de-block','1');
-    }
+    tagSubtree(document.body);
+    if (!toolbar) buildToolbar();
     document.addEventListener('dragstart', onDragStart, true);
     document.addEventListener('dragover', onDragOver, true);
     document.addEventListener('dragleave', onDragLeave, true);
@@ -77,24 +173,30 @@ const EDITOR_SCRIPT = `
     document.addEventListener('dragend', onDragEnd, true);
     document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('paste', onPaste, true);
-    // Prevent navigation when clicking edited anchors.
     document.addEventListener('click', onClick, true);
+    document.addEventListener('mousedown', onMouseDown, true);
+    window.addEventListener('scroll', positionToolbar, true);
+    window.addEventListener('resize', positionToolbar, true);
   }
 
   function disable(){
     if (!enabled) return; enabled = false;
+    clearSelection();
     document.querySelectorAll('[data-de-block]').forEach(function(el){
       el.removeAttribute('draggable');
       el.removeAttribute('data-de-block');
       el.removeAttribute('data-de-dragging');
       el.removeAttribute('data-de-drop-before');
       el.removeAttribute('data-de-drop-after');
+      el.removeAttribute('data-de-drop-inside');
+      el.removeAttribute('data-de-selected');
     });
     document.querySelectorAll('[data-de-text]').forEach(function(el){
       el.removeAttribute('contenteditable');
       el.removeAttribute('data-de-text');
       el.removeAttribute('spellcheck');
     });
+    if (toolbar) toolbar.style.display = 'none';
     document.removeEventListener('dragstart', onDragStart, true);
     document.removeEventListener('dragover', onDragOver, true);
     document.removeEventListener('dragleave', onDragLeave, true);
@@ -103,6 +205,9 @@ const EDITOR_SCRIPT = `
     document.removeEventListener('keydown', onKeyDown, true);
     document.removeEventListener('paste', onPaste, true);
     document.removeEventListener('click', onClick, true);
+    document.removeEventListener('mousedown', onMouseDown, true);
+    window.removeEventListener('scroll', positionToolbar, true);
+    window.removeEventListener('resize', positionToolbar, true);
   }
 
   function onClick(e){
@@ -111,8 +216,46 @@ const EDITOR_SCRIPT = `
     if (a) { e.preventDefault(); }
   }
 
+  function onMouseDown(e){
+    if (!enabled) return;
+    if (toolbar && toolbar.contains(e.target)) return;
+    // If user clicks text element, let contenteditable take focus and clear block selection.
+    if (e.target && e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') {
+      clearSelection();
+      return;
+    }
+    var t = e.target && e.target.closest && e.target.closest('[data-de-block]');
+    if (t) selectBlock(t);
+    else clearSelection();
+  }
+
   function onKeyDown(e){
     if (!enabled) return;
+    if (e.key === 'Escape') { clearSelection(); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+      var ae = document.activeElement;
+      var editing = ae && ae.getAttribute && ae.getAttribute('contenteditable') === 'true';
+      if (!editing) {
+        e.preventDefault();
+        var p = selected.parentElement;
+        selected.remove();
+        clearSelection();
+        return;
+      }
+    }
+    if ((e.key === 'd' || e.key === 'D') && (e.metaKey || e.ctrlKey) && selected) {
+      var ae2 = document.activeElement;
+      var editing2 = ae2 && ae2.getAttribute && ae2.getAttribute('contenteditable') === 'true';
+      if (!editing2) {
+        e.preventDefault();
+        var clone = selected.cloneNode(true);
+        stripEditorAttrs(clone);
+        selected.parentElement.insertBefore(clone, selected.nextSibling);
+        tagSubtree(clone);
+        selectBlock(clone);
+        return;
+      }
+    }
     var t = e.target;
     if (!t || !t.getAttribute || t.getAttribute('contenteditable') !== 'true') return;
     // Block Enter to keep one-line elements intact.
@@ -140,6 +283,7 @@ const EDITOR_SCRIPT = `
     if (!t) return;
     dragSrc = t;
     t.setAttribute('data-de-dragging','1');
+    clearSelection();
     try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain','de'); } catch(_){}
     e.stopPropagation();
   }
@@ -148,33 +292,50 @@ const EDITOR_SCRIPT = `
     if (!enabled || !dragSrc) return;
     var t = e.target && e.target.closest && e.target.closest('[data-de-block]');
     if (!t || t === dragSrc) return;
-    // STRICT: must be a direct sibling (same parent).
-    if (t.parentElement !== dragSrc.parentElement) return;
+    // Disallow dropping a node into its own descendant (would detach the source).
+    if (dragSrc.contains(t)) return;
     e.preventDefault();
     try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
     clearMarkers();
     var r = t.getBoundingClientRect();
-    var before = (e.clientY - r.top) < r.height / 2;
-    t.setAttribute(before ? 'data-de-drop-before' : 'data-de-drop-after','1');
+    var y = e.clientY - r.top;
+    var canNest = !ATOMIC[t.tagName] && !t.hasAttribute('data-de-text') && t !== dragSrc;
+    // Bands: top 30% = before, bottom 30% = after, middle = nest inside (if allowed)
+    if (canNest && y > r.height * 0.3 && y < r.height * 0.7) {
+      t.setAttribute('data-de-drop-inside','1');
+    } else {
+      var before = y < r.height / 2;
+      t.setAttribute(before ? 'data-de-drop-before' : 'data-de-drop-after','1');
+    }
     e.stopPropagation();
   }
 
   function onDragLeave(e){
     if (!enabled) return;
     var t = e.target && e.target.closest && e.target.closest('[data-de-block]');
-    if (t){ t.removeAttribute('data-de-drop-before'); t.removeAttribute('data-de-drop-after'); }
+    if (t){
+      t.removeAttribute('data-de-drop-before');
+      t.removeAttribute('data-de-drop-after');
+      t.removeAttribute('data-de-drop-inside');
+    }
   }
 
   function onDrop(e){
     if (!enabled || !dragSrc) return;
     var t = e.target && e.target.closest && e.target.closest('[data-de-block]');
     if (!t || t === dragSrc) return;
-    if (t.parentElement !== dragSrc.parentElement) return;
+    if (dragSrc.contains(t)) return;
     e.preventDefault();
     var r = t.getBoundingClientRect();
-    var before = (e.clientY - r.top) < r.height / 2;
-    if (before) t.parentElement.insertBefore(dragSrc, t);
-    else t.parentElement.insertBefore(dragSrc, t.nextSibling);
+    var y = e.clientY - r.top;
+    var canNest = !ATOMIC[t.tagName] && !t.hasAttribute('data-de-text');
+    if (canNest && y > r.height * 0.3 && y < r.height * 0.7) {
+      t.appendChild(dragSrc);
+    } else {
+      var before = y < r.height / 2;
+      if (before) t.parentElement.insertBefore(dragSrc, t);
+      else t.parentElement.insertBefore(dragSrc, t.nextSibling);
+    }
     clearMarkers();
     e.stopPropagation();
   }
@@ -186,18 +347,22 @@ const EDITOR_SCRIPT = `
   }
 
   function clearMarkers(){
-    document.querySelectorAll('[data-de-drop-before],[data-de-drop-after]').forEach(function(el){
+    document.querySelectorAll('[data-de-drop-before],[data-de-drop-after],[data-de-drop-inside]').forEach(function(el){
       el.removeAttribute('data-de-drop-before');
       el.removeAttribute('data-de-drop-after');
+      el.removeAttribute('data-de-drop-inside');
     });
   }
 
   function getCleanHtml(){
     var was = enabled;
     if (was) disable();
+    if (toolbar) toolbar.remove();
+    toolbar = null;
     var html = '<!DOCTYPE html>\\n' + document.documentElement.outerHTML;
     // Strip our injected style tag regardless.
     html = html.replace(/<style[^>]*id="__de_style"[\\s\\S]*?<\\/style>/i, '');
+    html = html.replace(/<div[^>]*id="__de_toolbar"[\\s\\S]*?<\\/div>/i, '');
     if (was) enable();
     return html;
   }

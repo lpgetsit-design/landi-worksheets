@@ -28,6 +28,7 @@ interface LibraryItem {
   title: string;
   sessionId: string;
   sessionTitle: string;
+  worksheetId: string | null;
   createdAt: string;
   updatedAt: string;
   latestHtml: string;
@@ -121,7 +122,7 @@ const LibraryPage = () => {
       const { data, error } = await supabase
         .from("chat_designs")
         .select(
-          "id,title,created_at,updated_at,session_id,chat_sessions(title),chat_design_revisions(id,revision_index,html)",
+          "id,title,created_at,updated_at,session_id,chat_sessions(title,worksheet_id),chat_design_revisions(id,revision_index,html)",
         )
         .eq("status", "saved")
         .order("updated_at", { ascending: false });
@@ -143,6 +144,7 @@ const LibraryPage = () => {
             title: d.title || "Untitled design",
             sessionId: d.session_id,
             sessionTitle: d.chat_sessions?.title || "Chat",
+            worksheetId: d.chat_sessions?.worksheet_id ?? null,
             createdAt: d.created_at,
             updatedAt: d.updated_at,
             latestHtml: latest.html || "",
@@ -213,6 +215,12 @@ const LibraryPage = () => {
   }, [items, query, sort]);
 
   const handleResume = (item: LibraryItem) => {
+    if (item.worksheetId) {
+      navigate(
+        `/worksheet/${item.worksheetId}?session=${item.sessionId}&design=${item.designId}`,
+      );
+      return;
+    }
     navigate(`/chat/${item.sessionId}?design=${item.designId}`);
   };
 

@@ -229,10 +229,11 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       return;
     }
     const newRev: DesignRevision = { id: data.id, revision_index: data.revision_index, html: data.html };
+    const now = new Date().toISOString();
     setDesigns((prev) =>
       prev.map((d) =>
         d.id === designId
-          ? { ...d, revisions: [...d.revisions, newRev] }
+          ? { ...d, revisions: [...d.revisions, newRev], updated_at: now }
           : d,
       ),
     );

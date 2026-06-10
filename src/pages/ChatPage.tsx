@@ -296,10 +296,11 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       toast.error("Could not reopen draft");
       return;
     }
+    const now = new Date().toISOString();
     setDesigns((prev) =>
       prev.map((d) => {
-        if (d.id === designId) return { ...d, status: "active" };
-        if (current && d.id === current.id) return { ...d, status: "saved" };
+        if (d.id === designId) return { ...d, status: "active", updated_at: now };
+        if (current && d.id === current.id) return { ...d, status: "saved", updated_at: now };
         return d;
       }),
     );

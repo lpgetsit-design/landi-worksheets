@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye } from "lucide-react";
+import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye, Share2, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import DesignPreview from "@/components/design/DesignPreview";
+import ShareDialog from "@/components/share/ShareDialog";
 
 interface LibraryItem {
   designId: string;
@@ -30,6 +31,9 @@ interface LibraryItem {
   updatedAt: string;
   latestHtml: string;
   visibleText: string;
+  activeLinkCount: number;
+  totalLinkCount: number;
+  totalViews: number;
 }
 
 type SortKey = "newest" | "oldest" | "updated";
@@ -52,6 +56,7 @@ const LibraryPage = () => {
   const [sort, setSort] = useState<SortKey>("newest");
   const [previewItem, setPreviewItem] = useState<LibraryItem | null>(null);
   const [cloning, setCloning] = useState<string | null>(null);
+  const [shareItem, setShareItem] = useState<LibraryItem | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -87,9 +92,46 @@ const LibraryPage = () => {
             updatedAt: d.updated_at,
             latestHtml: latest.html || "",
             visibleText: stripHtml(latest.html || ""),
+            activeLinkCount: 0,
+            totalLinkCount: 0,
+            totalViews: 0,
           } as LibraryItem;
         })
         .filter(Boolean) as LibraryItem[];
+
+      // Fetch share stats per design
+      const ids = mapped.map((m) => m.designId);
+      if (ids.length > 0) {
+        const { data: links, error: lErr } = await supabase
+          .from("public_share_links")
+          .select("id,chat_design_id,is_active,share_link_views(count)")
+          .in("chat_design_id", ids);
+        if (!lErr && links) {
+          const statsByDesign = new Map<
+            string,
+            { active: number; total: number; views: number }
+          >();
+          for (const row of links as any[]) {
+            const did = row.chat_design_id as string;
+            const s = statsByDesign.get(did) || { active: 0, total: 0, views: 0 };
+            s.total += 1;
+            if (row.is_active) s.active += 1;
+            const v = Array.isArray(row.share_link_views)
+              ? row.share_link_views[0]?.count ?? 0
+              : 0;
+            s.views += Number(v) || 0;
+            statsByDesign.set(did, s);
+          }
+          for (const item of mapped) {
+            const s = statsByDesign.get(item.designId);
+            if (s) {
+              item.activeLinkCount = s.active;
+              item.totalLinkCount = s.total;
+              item.totalViews = s.views;
+            }
+          }
+        }
+      }
       setItems(mapped);
       setLoading(false);
     })();
@@ -246,6 +288,24 @@ const LibraryPage = () => {
                       <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
                         {item.visibleText || "(no text content)"}
                       </p>
+                      {item.totalLinkCount > 0 && (
+                        <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Link2 className="h-3 w-3" />
+                            {item.activeLinkCount} active
+                            {item.totalLinkCount !== item.activeLinkCount && (
+                              <span className="text-muted-foreground/70">
+                                {" "}
+                                / {item.totalLinkCount} total
+                              </span>
+                            )}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            {item.totalViews} view{item.totalViews === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -271,6 +331,14 @@ const LibraryPage = () => {
                       )}
                       New chat with this design
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => setShareItem(item)}
+                    >
+                      <Share2 className="h-3 w-3" /> Share
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -289,6 +357,15 @@ const LibraryPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {shareItem && (
+        <ShareDialog
+          open={!!shareItem}
+          onOpenChange={(v) => !v && setShareItem(null)}
+          chatDesignId={shareItem.designId}
+          worksheetTitle={shareItem.title}
+        />
+      )}
     </div>
   );
 };

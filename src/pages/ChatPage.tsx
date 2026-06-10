@@ -698,6 +698,9 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
           reopenSavedDraft(id);
         }}
         onShare={viewingDesign ? () => setShareOpen(true) : undefined}
+        onSaveEditedHtml={viewingDesign ? async (html) => {
+          await appendRevision(html, null);
+        } : undefined}
       />
       {viewingDesign && (
         <ShareDialog

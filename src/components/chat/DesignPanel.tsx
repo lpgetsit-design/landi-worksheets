@@ -13,6 +13,7 @@ export interface ChatDesign {
   id: string;
   title: string;
   status: "active" | "saved";
+  updated_at: string;
   revisions: DesignRevision[];
 }
 

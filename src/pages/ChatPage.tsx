@@ -87,6 +87,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
 
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastUserTextRef = useRef<string>("");
 
   // ── Load session data
   useEffect(() => {
@@ -185,12 +186,19 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     return data?.id ?? null;
   };
 
+  const autoTitleFromText = (text: string): string => {
+    const cleaned = (text || "").replace(/\s+/g, " ").trim();
+    if (!cleaned) return "Design";
+    return cleaned.length > 60 ? cleaned.slice(0, 57) + "…" : cleaned;
+  };
+
   const ensureActiveDesign = async (titleHint: string): Promise<string> => {
     const existing = designs.find((d) => d.status === "active");
     if (existing) return existing.id;
+    const title = autoTitleFromText(titleHint);
     const { data, error } = await supabase
       .from("chat_designs")
-      .insert([{ session_id: sessionId, title: titleHint || "Untitled design", status: "active" }])
+      .insert([{ session_id: sessionId, title, status: "active" }])
       .select()
       .single();
     if (error || !data) throw new Error("Could not create design draft");
@@ -200,7 +208,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   };
 
   const appendRevision = async (html: string, promptMessageId: string | null): Promise<void> => {
-    const designId = await ensureActiveDesign("Untitled design");
+    const designId = await ensureActiveDesign(lastUserTextRef.current);
     const currentRevs = designs.find((d) => d.id === designId)?.revisions ?? [];
     const nextIdx = (currentRevs[currentRevs.length - 1]?.revision_index ?? -1) + 1;
     const { data, error } = await supabase
@@ -253,6 +261,46 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     if (!viewingDesign) return;
     setDesigns((prev) => prev.map((d) => (d.id === viewingDesign.id ? { ...d, title } : d)));
     await supabase.from("chat_designs").update({ title }).eq("id", viewingDesign.id);
+  };
+
+  // Reopen a saved draft for further iteration. Demote any currently-active
+  // design to "saved" so the model's constraint of one active draft per
+  // session is preserved, then promote the selected one to "active".
+  const reopenSavedDraft = async (designId: string) => {
+    const target = designs.find((d) => d.id === designId);
+    if (!target) return;
+    if (target.status === "active") {
+      setViewingDesignId(designId);
+      setRevisionIndex(Math.max(0, target.revisions.length - 1));
+      setPanelOpen(true);
+      return;
+    }
+    const current = designs.find((d) => d.status === "active");
+    const updates: Promise<any>[] = [];
+    if (current && current.id !== designId) {
+      updates.push(
+        supabase.from("chat_designs").update({ status: "saved" }).eq("id", current.id),
+      );
+    }
+    updates.push(
+      supabase.from("chat_designs").update({ status: "active" }).eq("id", designId),
+    );
+    const results = await Promise.all(updates);
+    if (results.some((r) => r.error)) {
+      toast.error("Could not reopen draft");
+      return;
+    }
+    setDesigns((prev) =>
+      prev.map((d) => {
+        if (d.id === designId) return { ...d, status: "active" };
+        if (current && d.id === current.id) return { ...d, status: "saved" };
+        return d;
+      }),
+    );
+    setViewingDesignId(designId);
+    setRevisionIndex(Math.max(0, target.revisions.length - 1));
+    setPanelOpen(true);
+    toast.success("Draft reopened — new edits will add a revision");
   };
 
   // ── Streaming
@@ -352,6 +400,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     async (text: string, mentions: WorksheetMention[]) => {
       if (isLoading) return;
       const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text, mentions };
+      lastUserTextRef.current = text;
       let convo: Message[] = [...messages, userMsg];
       setMessages(convo);
       setIsLoading(true);
@@ -595,9 +644,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
         onRenameTitle={renameTitle}
         savedDesigns={savedDesigns}
         onOpenSaved={(id) => {
-          const d = designs.find((x) => x.id === id);
-          setViewingDesignId(id);
-          setRevisionIndex(d ? Math.max(0, d.revisions.length - 1) : 0);
+          reopenSavedDraft(id);
         }}
       />
     </div>

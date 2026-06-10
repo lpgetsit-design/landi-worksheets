@@ -141,8 +141,6 @@ const WorksheetPage = () => {
   const [worksheetContent, setWorksheetContent] = useState("");
   const [worksheetTitle, setWorksheetTitle] = useState("");
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
-  const [designHtml, setDesignHtml] = useState("");
-  const [designActive, setDesignActive] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
   const isMobile = useIsMobile();
@@ -160,16 +158,7 @@ const WorksheetPage = () => {
     }
   }, []);
 
-  // Toggle logic: at least one of editor/design must stay visible
-  const toggleEditor = useCallback(() => {
-    if (editorOpen && !designActive) return;
-    setEditorOpen((v) => !v);
-  }, [editorOpen, designActive]);
-
-  const toggleDesign = useCallback(() => {
-    if (designActive && !editorOpen) return;
-    setDesignActive((v) => !v);
-  }, [designActive, editorOpen]);
+  // Editor is always-on for the worksheet product; design moved to /chat.
 
   const { data: worksheet, isLoading, error } = useQuery({
     queryKey: ["worksheet", id],

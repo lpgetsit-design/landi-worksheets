@@ -79,6 +79,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   const [viewingDesignId, setViewingDesignId] = useState<string | null>(null);
   const [revisionIndex, setRevisionIndex] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [thinking, setThinking] = useState<string | null>(null);

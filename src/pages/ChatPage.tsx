@@ -276,17 +276,19 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       return;
     }
     const current = designs.find((d) => d.status === "active");
-    const updates: Promise<any>[] = [];
+    let demoteErr: any = null;
     if (current && current.id !== designId) {
-      updates.push(
-        supabase.from("chat_designs").update({ status: "saved" }).eq("id", current.id),
-      );
+      const r = await supabase
+        .from("chat_designs")
+        .update({ status: "saved" })
+        .eq("id", current.id);
+      demoteErr = r.error;
     }
-    updates.push(
-      supabase.from("chat_designs").update({ status: "active" }).eq("id", designId),
-    );
-    const results = await Promise.all(updates);
-    if (results.some((r) => r.error)) {
+    const promote = await supabase
+      .from("chat_designs")
+      .update({ status: "active" })
+      .eq("id", designId);
+    if (demoteErr || promote.error) {
       toast.error("Could not reopen draft");
       return;
     }

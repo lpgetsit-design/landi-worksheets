@@ -54,6 +54,9 @@ interface Props {
   onAutoMessageConsumed?: () => void;
   /** Optional selection context shown above the composer. */
   selectedText?: string;
+  /** Notified whenever the in-chat design panel opens or closes. Lets the
+   * parent (e.g. WorksheetPage) widen the chat column when a design is shown. */
+  onDesignPanelOpenChange?: (open: boolean) => void;
 }
 
 const AskLandiChat = ({
@@ -65,12 +68,16 @@ const AskLandiChat = ({
   autoMessage,
   onAutoMessageConsumed,
   selectedText,
+  onDesignPanelOpenChange,
 }: Props) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [designs, setDesigns] = useState<ChatDesign[]>([]);
   const [viewingDesignId, setViewingDesignId] = useState<string | null>(null);
   const [revisionIndex, setRevisionIndex] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    onDesignPanelOpenChange?.(panelOpen);
+  }, [panelOpen, onDesignPanelOpenChange]);
   const [shareOpen, setShareOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);

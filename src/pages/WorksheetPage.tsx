@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AskLandiChat from "@/components/chat/AskLandiChat";
@@ -146,6 +147,7 @@ const WorksheetPage = () => {
   const [worksheetType, setWorksheetType] = useState<DocumentType>("note");
   const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<WorksheetEditorHandle>(null!);
+  const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const tour = useTour("worksheet");
@@ -310,6 +312,16 @@ const WorksheetPage = () => {
     }
   }, [id, queryClient]);
 
+  // Apply layout imperatively so we don't remount AskLandiChat (which would
+  // reset its designs state and cause an onHasDesignChange feedback loop).
+  useEffect(() => {
+    if (!chatOpen || isMobile || !editorOpen) return;
+    const group = panelGroupRef.current;
+    if (!group) return;
+    const editorSize = hasDesign ? 34 : 70;
+    group.setLayout([editorSize, 100 - editorSize]);
+  }, [hasDesign, chatOpen, isMobile, editorOpen]);
+
   if (id === "new") { navigate("/"); return null; }
 
   if (isLoading) {
@@ -435,7 +447,8 @@ const WorksheetPage = () => {
       {/* Main content area: resizable panels */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup
-          key={`pg-${chatOpen ? "c" : "n"}-${hasDesign ? "d" : "n"}`}
+          ref={panelGroupRef}
+          key={`pg-${chatOpen ? "c" : "n"}-${editorOpen ? "e" : "n"}`}
           direction="horizontal"
           className="h-full"
         >

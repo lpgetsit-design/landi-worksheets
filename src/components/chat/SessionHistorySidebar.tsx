@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Plus, PanelLeftClose, PanelLeftOpen, Trash2 } from "lucide-react";
@@ -17,10 +16,13 @@ interface Props {
   /** Bumped by parent whenever the current session changes (new msg, new title) so we refetch. */
   refreshKey?: number;
   onNewChat: () => void;
+  /** When set, only sessions tied to this worksheet are shown. When omitted, only sessions with no worksheet (global /chat) are shown. */
+  worksheetId?: string | null;
+  /** Called when the user picks a session from the list. Parent decides whether to navigate or swap state. */
+  onSelectSession?: (sessionId: string) => void;
 }
 
-const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat }: Props) => {
-  const navigate = useNavigate();
+const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat, worksheetId, onSelectSession }: Props) => {
   const [open, setOpen] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,12 +32,18 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat 
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      let q = supabase
         .from("chat_sessions")
         .select("id,title,updated_at")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false })
         .limit(100);
+      if (worksheetId) {
+        q = q.eq("worksheet_id", worksheetId);
+      } else {
+        q = q.is("worksheet_id", null);
+      }
+      const { data, error } = await q;
       if (cancelled) return;
       if (error) {
         toast.error("Failed to load chat history");
@@ -47,7 +55,7 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat 
     return () => {
       cancelled = true;
     };
-  }, [userId, refreshKey, activeSessionId]);
+  }, [userId, refreshKey, activeSessionId, worksheetId]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,6 +69,11 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat 
     if (id === activeSessionId) {
       onNewChat();
     }
+  };
+
+  const pick = (id: string) => {
+    if (onSelectSession) onSelectSession(id);
+    else window.location.assign(`/chat/${id}`);
   };
 
   if (!open) {
@@ -80,7 +93,7 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat 
   }
 
   return (
-    <div className="border-r border-border bg-muted/30 flex flex-col w-64 shrink-0">
+    <div className="border-r border-border bg-muted/30 flex flex-col w-56 shrink-0">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">History</span>
         <Button
@@ -111,9 +124,9 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat 
                 key={s.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/chat/${s.id}`)}
+                onClick={() => pick(s.id)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") navigate(`/chat/${s.id}`);
+                  if (e.key === "Enter") pick(s.id);
                 }}
                 className={`group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs cursor-pointer ${
                   isActive ? "bg-primary/10 text-foreground" : "hover:bg-accent text-muted-foreground"

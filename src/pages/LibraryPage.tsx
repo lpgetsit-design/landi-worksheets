@@ -496,7 +496,7 @@ const LibraryPage = () => {
           </div>
           {editMode && (
             <div className="text-[11px] text-muted-foreground -mt-1">
-              Click any text to edit. Drag blocks to reorder among siblings. Structural changes are disabled.
+              Click text to edit. Click any block to select, then use the toolbar to duplicate, delete, or reorder. Drag to move blocks anywhere — including into other containers.
             </div>
           )}
         </DialogContent>

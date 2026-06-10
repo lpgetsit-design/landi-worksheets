@@ -352,6 +352,48 @@ const LibraryPage = () => {
           <DialogHeader>
             <DialogTitle>{previewItem?.title}</DialogTitle>
           </DialogHeader>
+          {previewItem && (
+            <div className="flex flex-wrap gap-2 -mt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => {
+                  const it = previewItem;
+                  setPreviewItem(null);
+                  handleResume(it);
+                }}
+              >
+                <ExternalLink className="h-3 w-3" /> Resume chat
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => {
+                  const it = previewItem;
+                  setPreviewItem(null);
+                  handleCloneToNewChat(it);
+                }}
+                disabled={cloning === previewItem.designId}
+              >
+                {cloning === previewItem.designId ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3" />
+                )}
+                New chat with this design
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => setShareItem(previewItem)}
+              >
+                <Share2 className="h-3 w-3" /> Share
+              </Button>
+            </div>
+          )}
           <div className="flex-1 min-h-0">
             {previewItem && <DesignPreview html={previewItem.latestHtml} />}
           </div>

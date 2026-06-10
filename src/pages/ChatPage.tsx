@@ -254,8 +254,9 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       toast.error("Could not save draft");
       return;
     }
+    const now = new Date().toISOString();
     setDesigns((prev) =>
-      prev.map((d) => (d.id === activeDesign.id ? { ...d, status: "saved" } : d)),
+      prev.map((d) => (d.id === activeDesign.id ? { ...d, status: "saved", updated_at: now } : d)),
     );
     toast.success("Draft saved — next design will start fresh");
   };

@@ -1,16 +1,14 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, Paintbrush, PenLine, Paperclip, HelpCircle } from "lucide-react";
+import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, PenLine, Paperclip, HelpCircle } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
 import AIChatPanel from "@/components/chat/AIChatPanel";
-import DesignPreview from "@/components/design/DesignPreview";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
@@ -27,29 +25,6 @@ import { worksheetSteps } from "@/components/tour/tourSteps";
 import { useTour } from "@/hooks/useTour";
 
 // ─── PDF helpers ───
-const openDesignPdf = (html: string) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) { alert('Please allow popups to download as PDF'); return; }
-  const printCss = `
-    @page { size: A4; margin: 0; }
-    @media print {
-      html, body { width: 210mm; min-height: 297mm; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-      * { box-shadow: none !important; }
-      .container, [class*="container"] { max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-    }
-    @media screen {
-      body::before { content: "Close this tab after saving your PDF"; display: block; background: #0e363c; color: #f9f9f9; text-align: center; padding: 8px; font-family: system-ui, sans-serif; font-size: 13px; }
-    }
-  `;
-  const printHtml = html.replace(
-    '</head>',
-    `<style>${printCss}</style><script>window.onload=function(){document.fonts.ready.then(function(){setTimeout(function(){window.print();},300);});};${'<'}/script></head>`
-  );
-  printWindow.document.open();
-  printWindow.document.write(printHtml);
-  printWindow.document.close();
-};
-
 const openEditorPdf = (editorRef: React.RefObject<WorksheetEditorHandle>, title: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) { alert('Please allow popups to download as PDF'); return; }

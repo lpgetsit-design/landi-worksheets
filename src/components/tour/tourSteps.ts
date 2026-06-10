@@ -11,7 +11,7 @@ export const dashboardSteps: TourStep[] = [
     target: "[data-tour='new-worksheet']",
     title: "Create a Worksheet",
     content:
-      "Start a new worksheet anytime. Think of worksheets as flexible documents — they can be notes, skills profiles, prompts, templates, or designed web pages. You decide what each one becomes.",
+      "Start a new worksheet anytime. Think of worksheets as flexible documents — they can be notes, skills profiles, prompts, or templates. You decide what each one becomes.",
     placement: "bottom",
   },
   {
@@ -66,17 +66,10 @@ export const worksheetSteps: TourStep[] = [
     placement: "bottom",
   },
   {
-    target: "[data-tour='design-toggle']",
-    title: "Design Mode",
-    content:
-      "Toggle the Design panel to have AI build a complete web page from your content — candidate profiles, job specs, branded documents. It creates full HTML with custom styling. Try clicking this button to open the design panel!",
-    placement: "bottom",
-  },
-  {
     target: "[data-tour='chat-toggle']",
     title: "AI Assistant",
     content:
-      "Your AI co-pilot lives here. Click this button to open the chat panel. The AI can edit your worksheet, build designs, look up CRM data, search candidates or jobs, and more.",
+      "Your AI co-pilot lives here. Click this button to open the chat panel. The AI can edit your worksheet, look up CRM data, search candidates or jobs, and more. To build full web pages, head to the Chat product in the top nav.",
     placement: "left",
   },
   {
@@ -87,15 +80,9 @@ export const worksheetSteps: TourStep[] = [
   },
   {
     target: "center",
-    title: "Switching to Design Chat Mode",
-    content:
-      "Inside the chat panel, you'll see a toggle at the bottom to switch between Editor mode and Design mode. In Design mode, the AI builds full HTML web pages instead of editing your text. Switch modes depending on what you want the AI to work on.",
-  },
-  {
-    target: "center",
     title: "Resizing Panels",
     content:
-      "When multiple panels are open (Editor, Design, Chat), you'll see drag handles between them. Grab any handle and drag left or right to resize panels to your preference. This lets you focus on what matters — make the editor larger when writing, or expand the design preview when reviewing.",
+      "When the chat panel is open you'll see a drag handle between it and the editor. Grab the handle and drag left or right to resize. Make the editor larger when writing, or widen the chat when iterating with the AI.",
   },
   {
     target: "[data-tour='attachments-toggle']",
@@ -108,13 +95,13 @@ export const worksheetSteps: TourStep[] = [
     target: "[data-tour='share-btn']",
     title: "Share Externally",
     content:
-      "Generate a secure, trackable link to share a worksheet or design with anyone outside the system. You can set expiry dates and track when recipients view it.",
+      "Generate a secure, trackable link to share a worksheet with anyone outside the system. You can set expiry dates and track when recipients view it.",
     placement: "bottom",
   },
   {
     target: "center",
     title: "You're Ready!",
     content:
-      "That's the tour! Remember: write freely, let AI handle the busy work. Use the editor for content, the design panel for web pages, and the chat for anything you need help with. Click the ? button in the bottom-right corner anytime to replay this tour.",
+      "That's the tour! Remember: write freely, let AI handle the busy work. Use the editor for content and the chat for anything you need help with. For building full web pages, switch to the Chat product in the top nav. Click the ? button in the bottom-right corner anytime to replay this tour.",
   },
 ];

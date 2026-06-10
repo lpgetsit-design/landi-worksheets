@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye, Share2, Link2 } from "lucide-react";
+import { Search, Loader2, Library as LibraryIcon, ExternalLink, Plus, Eye, Share2, Link2, MousePointerClick, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import DesignPreview from "@/components/design/DesignPreview";
+import DesignEditor, { type DesignEditorHandle } from "@/components/design/DesignEditor";
 import ShareDialog from "@/components/share/ShareDialog";
 
 interface LibraryItem {
@@ -57,6 +58,58 @@ const LibraryPage = () => {
   const [previewItem, setPreviewItem] = useState<LibraryItem | null>(null);
   const [cloning, setCloning] = useState<string | null>(null);
   const [shareItem, setShareItem] = useState<LibraryItem | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [savingEdits, setSavingEdits] = useState(false);
+  const editorRef = useRef<DesignEditorHandle>(null);
+
+  // Reset edit state whenever the preview target changes.
+  useEffect(() => {
+    setEditMode(false);
+    setSavingEdits(false);
+  }, [previewItem?.designId]);
+
+  const handleSavePreviewEdits = async () => {
+    if (!previewItem || !editorRef.current) return;
+    setSavingEdits(true);
+    try {
+      const html = await editorRef.current.getEditedHtml();
+      // Compute next revision index for this design
+      const { data: lastRev, error: rErr } = await supabase
+        .from("chat_design_revisions")
+        .select("revision_index")
+        .eq("design_id", previewItem.designId)
+        .order("revision_index", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (rErr) throw rErr;
+      const nextIdx = (lastRev?.revision_index ?? -1) + 1;
+      const { error: insErr } = await supabase.from("chat_design_revisions").insert([
+        { design_id: previewItem.designId, revision_index: nextIdx, html, prompt_message_id: null },
+      ]);
+      if (insErr) throw insErr;
+      await supabase
+        .from("chat_designs")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", previewItem.designId);
+
+      // Update local state
+      const updatedItem: LibraryItem = {
+        ...previewItem,
+        latestHtml: html,
+        visibleText: stripHtml(html),
+        updatedAt: new Date().toISOString(),
+      };
+      setItems((prev) => prev.map((p) => (p.designId === previewItem.designId ? updatedItem : p)));
+      setPreviewItem(updatedItem);
+      setEditMode(false);
+      toast.success("Edits saved as a new revision");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save edits");
+    } finally {
+      setSavingEdits(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -354,6 +407,42 @@ const LibraryPage = () => {
           </DialogHeader>
           {previewItem && (
             <div className="flex flex-wrap gap-2 -mt-1">
+              {editMode ? (
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={handleSavePreviewEdits}
+                    disabled={savingEdits}
+                  >
+                    {savingEdits ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="h-3 w-3" />
+                    )}
+                    Save edits
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setEditMode(false)}
+                    disabled={savingEdits}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setEditMode(true)}
+                >
+                  <MousePointerClick className="h-3 w-3" /> Edit
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -363,6 +452,7 @@ const LibraryPage = () => {
                   setPreviewItem(null);
                   handleResume(it);
                 }}
+                disabled={editMode}
               >
                 <ExternalLink className="h-3 w-3" /> Resume chat
               </Button>
@@ -375,7 +465,7 @@ const LibraryPage = () => {
                   setPreviewItem(null);
                   handleCloneToNewChat(it);
                 }}
-                disabled={cloning === previewItem.designId}
+                disabled={editMode || cloning === previewItem.designId}
               >
                 {cloning === previewItem.designId ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -389,14 +479,26 @@ const LibraryPage = () => {
                 size="sm"
                 className="h-7 text-xs gap-1.5"
                 onClick={() => setShareItem(previewItem)}
+                disabled={editMode}
               >
                 <Share2 className="h-3 w-3" /> Share
               </Button>
             </div>
           )}
           <div className="flex-1 min-h-0">
-            {previewItem && <DesignPreview html={previewItem.latestHtml} />}
+            {previewItem && (
+              editMode ? (
+                <DesignEditor ref={editorRef} html={previewItem.latestHtml} editMode={editMode} />
+              ) : (
+                <DesignPreview html={previewItem.latestHtml} />
+              )
+            )}
           </div>
+          {editMode && (
+            <div className="text-[11px] text-muted-foreground -mt-1">
+              Click any text to edit. Drag blocks to reorder among siblings. Structural changes are disabled.
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

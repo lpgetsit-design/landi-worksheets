@@ -1,6 +1,8 @@
-import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2, MousePointerClick, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import DesignPreview from "@/components/design/DesignPreview";
+import DesignEditor, { type DesignEditorHandle } from "@/components/design/DesignEditor";
 import { cn } from "@/lib/utils";
 
 export interface DesignRevision {
@@ -29,6 +31,8 @@ interface Props {
   savedDesigns: ChatDesign[];
   onOpenSaved: (designId: string) => void;
   onShare?: () => void;
+  /** Called when the user saves WYSIWYG edits — should append a new revision. */
+  onSaveEditedHtml?: (html: string) => Promise<void> | void;
 }
 
 const DesignPanel = ({
@@ -43,12 +47,29 @@ const DesignPanel = ({
   savedDesigns,
   onOpenSaved,
   onShare,
+  onSaveEditedHtml,
 }: Props) => {
   if (!open) return null;
 
   const revisions = design?.revisions ?? [];
   const total = revisions.length;
   const current = revisions[revisionIndex] ?? null;
+
+  const editorRef = useRef<DesignEditorHandle>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [savingEdits, setSavingEdits] = useState(false);
+
+  const handleSaveEdits = async () => {
+    if (!editorRef.current || !onSaveEditedHtml) return;
+    setSavingEdits(true);
+    try {
+      const html = await editorRef.current.getEditedHtml();
+      await onSaveEditedHtml(html);
+      setEditMode(false);
+    } finally {
+      setSavingEdits(false);
+    }
+  };
 
   return (
     <aside
@@ -74,6 +95,41 @@ const DesignPanel = ({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {current && onSaveEditedHtml && (
+            editMode ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={handleSaveEdits}
+                  disabled={savingEdits}
+                >
+                  {savingEdits ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  Save edits
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={() => setEditMode(false)}
+                  disabled={savingEdits}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => setEditMode(true)}
+                title="Edit text and reorder blocks"
+              >
+                <MousePointerClick className="h-3 w-3" /> Edit
+              </Button>
+            )
+          )}
           {design && total > 0 && onShare && (
             <Button
               size="sm"
@@ -85,7 +141,7 @@ const DesignPanel = ({
               <Share2 className="h-3 w-3" /> Share
             </Button>
           )}
-          {design && design.status === "active" && total > 0 && (
+          {design && design.status === "active" && total > 0 && !editMode && (
             <Button
               size="sm"
               variant="default"
@@ -144,13 +200,22 @@ const DesignPanel = ({
 
       <div className="flex-1 overflow-hidden p-2 bg-muted/30">
         {current ? (
-          <DesignPreview html={current.html} />
+          editMode ? (
+            <DesignEditor ref={editorRef} html={current.html} editMode={editMode} />
+          ) : (
+            <DesignPreview html={current.html} />
+          )
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             Ask the assistant to build a webpage, report, or one-pager.
           </div>
         )}
       </div>
+      {editMode && (
+        <div className="border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40">
+          Click any text to edit. Drag blocks to reorder among siblings. Structural changes are disabled.
+        </div>
+      )}
 
       {savedDesigns.length > 0 && (
         <div className="border-t border-border p-2 max-h-48 overflow-y-auto">

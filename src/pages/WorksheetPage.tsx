@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import WorksheetEditor from "@/components/editor/WorksheetEditor";
 import type { WorksheetEditorHandle } from "@/components/editor/WorksheetEditor";
-import AIChatPanel from "@/components/chat/AIChatPanel";
+import AskLandiChat from "@/components/chat/AskLandiChat";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWorksheet, updateWorksheet, generateAndSaveSummary } from "@/lib/worksheets";
 import type { DocumentType } from "@/lib/worksheets";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { marked } from "marked";
@@ -147,6 +149,59 @@ const WorksheetPage = () => {
   const { user } = useAuth();
   const tour = useTour("worksheet");
 
+  // ── AskLandi session state (worksheet-scoped) ──
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
+  const chatBootstrappingRef = useRef(false);
+  const worksheetContentRef = useRef("");
+  useEffect(() => { worksheetContentRef.current = worksheetContent; }, [worksheetContent]);
+
+  // Bootstrap or reuse the most recent worksheet-scoped session when the user opens the panel.
+  useEffect(() => {
+    if (!chatOpen || !user || !id || activeChatSessionId || chatBootstrappingRef.current) return;
+    chatBootstrappingRef.current = true;
+    (async () => {
+      try {
+        const { data: existing } = await supabase
+          .from("chat_sessions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("worksheet_id", id)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        if (existing && existing.length > 0) {
+          setActiveChatSessionId(existing[0].id);
+          return;
+        }
+        const { data: created, error } = await supabase
+          .from("chat_sessions")
+          .insert([{ user_id: user.id, title: "New chat", worksheet_id: id }])
+          .select("id")
+          .single();
+        if (error || !created) {
+          toast.error("Could not start AskLandi");
+          return;
+        }
+        setActiveChatSessionId(created.id);
+      } finally {
+        chatBootstrappingRef.current = false;
+      }
+    })();
+  }, [chatOpen, user, id, activeChatSessionId]);
+
+  const handleChatNewChat = useCallback(async () => {
+    if (!user || !id) return;
+    const { data, error } = await supabase
+      .from("chat_sessions")
+      .insert([{ user_id: user.id, title: "New chat", worksheet_id: id }])
+      .select("id")
+      .single();
+    if (error || !data) {
+      toast.error("Could not start a new chat");
+      return;
+    }
+    setActiveChatSessionId(data.id);
+  }, [user, id]);
+
   const handleInsertFileBadge = useCallback((attachment: Attachment) => {
     if (!editorRef.current) return;
     const editor = (editorRef.current as any);
@@ -264,22 +319,30 @@ const WorksheetPage = () => {
 
   const canDownload = editorOpen && worksheetContent.trim().length > 0;
 
-  const chatPanel = (
-    <AIChatPanel
-      open={chatOpen}
-      onClose={() => setChatOpen(false)}
-      selectedText={selectedText}
+  const chatPanel = activeChatSessionId ? (
+    <AskLandiChat
+      key={activeChatSessionId}
+      sessionId={activeChatSessionId}
+      userId={user?.id}
+      onSelectSession={(sid) => setActiveChatSessionId(sid)}
+      onNewChat={handleChatNewChat}
       autoMessage={autoMessage}
       onAutoMessageConsumed={() => setAutoMessage(undefined)}
-      worksheetContent={worksheetContent}
-      worksheetTitle={worksheetTitle}
-      worksheetType={worksheetType}
-      worksheetId={worksheet.id}
-      onApplyEdit={handleApplyEdit}
-      onUpdateTitle={handleUpdateTitle}
-      onUpdateDocumentType={handleUpdateDocumentType}
-      attachments={attachmentInfos}
+      selectedText={selectedText}
+      worksheetScope={{
+        worksheetId: worksheet.id,
+        worksheetTitle,
+        worksheetType,
+        getContent: () => worksheetContentRef.current,
+        onApplyEdit: handleApplyEdit,
+        onUpdateTitle: handleUpdateTitle,
+        onUpdateDocumentType: handleUpdateDocumentType,
+      }}
     />
+  ) : (
+    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting AskLandi…
+    </div>
   );
 
   return (

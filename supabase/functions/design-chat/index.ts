@@ -6,7 +6,61 @@ const corsHeaders = {
 
 // ─── Tool Definitions ───
 
-const CLIENT_TOOLS = new Set(["replace_design_html", "update_worksheet_title"]);
+const CLIENT_TOOLS = new Set([
+  "replace_design_html",
+  "update_worksheet_title",
+  "apply_worksheet_edit",
+  "rename_current_worksheet",
+  "set_worksheet_document_type",
+]);
+
+const WORKSHEET_SCOPE_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "apply_worksheet_edit",
+      description: "Replace the content of the user's current worksheet with new markdown. Use this only when the user explicitly asks you to edit, rewrite, or update their worksheet document. Always include the full new markdown content.",
+      parameters: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "The complete new markdown content for the worksheet" },
+        },
+        required: ["content"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "rename_current_worksheet",
+      description: "Rename the user's current worksheet (the one open in the editor). Use this only when the user explicitly asks to rename the worksheet. Do not use this to rename a design draft — use update_worksheet_title for that.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "The new worksheet title" },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_worksheet_document_type",
+      description: "Change the document type of the user's current worksheet. Valid values: note, skill, prompt, template.",
+      parameters: {
+        type: "object",
+        properties: {
+          document_type: { type: "string", enum: ["note", "skill", "prompt", "template"], description: "The new document type" },
+        },
+        required: ["document_type"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
 
 const TOOLS = [
   // Client-side tools
@@ -326,6 +380,9 @@ EXAMPLES:
 const TOOL_LABELS: Record<string, string> = {
   replace_design_html: "Building webpage",
   update_worksheet_title: "Changing title",
+  apply_worksheet_edit: "Updating worksheet",
+  rename_current_worksheet: "Renaming worksheet",
+  set_worksheet_document_type: "Changing document type",
   search_bullhorn: "Searching CRM",
   get_candidate_profile: "Loading candidate",
   get_job_details: "Loading job details",
@@ -659,6 +716,7 @@ async function callAI(
   apiKey: string,
   send: (type: string, data: any) => void,
   streamTokens: boolean,
+  tools: any[] = TOOLS,
 ): Promise<StreamResult> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -669,7 +727,7 @@ async function callAI(
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: apiMessages,
-      tools: TOOLS,
+      tools,
       stream: true,
     }),
   });
@@ -754,7 +812,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, currentHtml, worksheetContent, referencedWorksheets } = await req.json();
+    const { messages, worksheetTitle, currentHtml, worksheetContent, referencedWorksheets, worksheetScope } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -795,6 +853,12 @@ Deno.serve(async (req) => {
       ? "\n\nWORKSHEET CONTENT (READ-ONLY REFERENCE):\nThis worksheet also has an editor panel with the following content. You can reference this to inform your designs (e.g. pull data, names, structure from the worksheet), but you CANNOT modify the worksheet from design mode.\n---\n" + worksheetContent + "\n---"
       : "";
 
+    // When opened inside a worksheet, enable worksheet-write tools and inject extra context.
+    const activeTools = worksheetScope ? [...TOOLS, ...WORKSHEET_SCOPE_TOOLS] : TOOLS;
+    const worksheetScopeContext = worksheetScope
+      ? `\n\nCURRENT WORKSHEET (the user is editing this — you may modify it with worksheet tools):\n- Title: "${worksheetScope.worksheetTitle || "Untitled"}"\n- Document type: ${worksheetScope.worksheetType || "note"}\n- Current content:\n---\n${worksheetScope.worksheetContent || "(empty)"}\n---\n\nWORKSHEET TOOLS:\n- apply_worksheet_edit: rewrite the worksheet body (markdown). Use only when the user asks you to edit, rewrite, or update the worksheet itself.\n- rename_current_worksheet: rename the worksheet. Do NOT confuse this with update_worksheet_title (which renames the design draft).\n- set_worksheet_document_type: change the doc type (note/skill/prompt/template).\n\nDo not call these tools unprompted — only when the user clearly asks you to change the worksheet.`
+      : "";
+
     const isChatSession = !worksheetTitle;
     const surfaceLabel = isChatSession ? "current design draft" : "worksheet";
 
@@ -805,7 +869,7 @@ Current ${surfaceLabel}:
 - Current HTML:
 \`\`\`html
 ${currentHtml || "<!-- empty - no page built yet -->"}
-\`\`\`${wsRefContext}${mentionContext}
+\`\`\`${wsRefContext}${worksheetScopeContext}${mentionContext}
 
 YOUR ROLE:
 - When the user asks a general question, answer conversationally with markdown — do NOT call replace_design_html.
@@ -999,7 +1063,7 @@ END OF BRAND IDENTITY GUIDELINES
 
             let result: StreamResult;
             try {
-              result = await callAI(apiMessages, LOVABLE_API_KEY, send, true);
+              result = await callAI(apiMessages, LOVABLE_API_KEY, send, true, activeTools);
             } catch (e: any) {
               keepAlive = false;
               clearInterval(pingInterval);

@@ -48,7 +48,16 @@ const EDITOR_SCRIPT = `
     '#__de_toolbar button{appearance:none;border:0;background:transparent;color:#fff;padding:3px 6px;border-radius:4px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;gap:4px;}'+
     '#__de_toolbar button:hover{background:rgba(255,255,255,.15);}'+
     '#__de_toolbar .de-sep{width:1px;background:rgba(255,255,255,.2);margin:2px 2px;}'+
-    '#__de_toolbar .de-danger:hover{background:#dc2626;}';
+    '#__de_toolbar .de-danger:hover{background:#dc2626;}'+
+    '#__de_text_toolbar{position:fixed;z-index:2147483647;display:none;gap:1px;padding:3px;background:#111827;color:#fff;border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,.3);font:500 12px system-ui,sans-serif;}'+
+    '#__de_text_toolbar button{appearance:none;border:0;background:transparent;color:#fff;min-width:26px;height:24px;padding:0 6px;border-radius:4px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;justify-content:center;}'+
+    '#__de_text_toolbar button:hover{background:rgba(255,255,255,.15);}'+
+    '#__de_text_toolbar button[data-active="1"]{background:#6366f1;}'+
+    '#__de_text_toolbar .de-sep{width:1px;background:rgba(255,255,255,.2);margin:2px 3px;}'+
+    '#__de_text_toolbar .de-b{font-weight:700;}'+
+    '#__de_text_toolbar .de-i{font-style:italic;}'+
+    '#__de_text_toolbar .de-u{text-decoration:underline;}'+
+    '#__de_text_toolbar .de-s{text-decoration:line-through;}';
 
   var styleEl = document.createElement('style');
   styleEl.id = '__de_style';
@@ -64,6 +73,8 @@ const EDITOR_SCRIPT = `
   var dragSrc = null;
   var selected = null;
   var toolbar = null;
+  var textToolbar = null;
+  var activeEditable = null;
 
   // ── Undo/redo (max 5 snapshots) ────────────────────────────────────────
   var UNDO_LIMIT = 5;
@@ -95,6 +106,8 @@ const EDITOR_SCRIPT = `
     // Remove the injected toolbar element from the snapshot.
     var tb = clone.querySelector('#__de_toolbar');
     if (tb) tb.remove();
+    var ttb = clone.querySelector('#__de_text_toolbar');
+    if (ttb) ttb.remove();
     return clone.innerHTML;
   }
 
@@ -118,12 +131,15 @@ const EDITOR_SCRIPT = `
 
   function restore(html){
     clearSelection();
+    hideTextToolbar();
     if (toolbar) { toolbar.remove(); toolbar = null; }
+    if (textToolbar) { textToolbar.remove(); textToolbar = null; }
     document.body.innerHTML = html;
     // Re-tag the new subtree and rebuild toolbar so editor stays usable.
     if (enabled) {
       tagSubtree(document.body);
       buildToolbar();
+      buildTextToolbar();
     }
   }
 
@@ -200,6 +216,117 @@ const EDITOR_SCRIPT = `
     document.body.appendChild(toolbar);
   }
 
+  function buildTextToolbar(){
+    textToolbar = document.createElement('div');
+    textToolbar.id = '__de_text_toolbar';
+    textToolbar.setAttribute('data-de-ui','1');
+    textToolbar.innerHTML =
+      '<button data-cmd="bold" class="de-b" title="Bold (Ctrl+B)">B</button>'+
+      '<button data-cmd="italic" class="de-i" title="Italic (Ctrl+I)">I</button>'+
+      '<button data-cmd="underline" class="de-u" title="Underline (Ctrl+U)">U</button>'+
+      '<button data-cmd="strikeThrough" class="de-s" title="Strikethrough">S</button>'+
+      '<div class="de-sep"></div>'+
+      '<button data-cmd="superscript" title="Superscript">x²</button>'+
+      '<button data-cmd="subscript" title="Subscript">x₂</button>'+
+      '<div class="de-sep"></div>'+
+      '<button data-cmd="createLink" title="Add link">🔗</button>'+
+      '<button data-cmd="unlink" title="Remove link">⛓̸</button>'+
+      '<div class="de-sep"></div>'+
+      '<button data-cmd="removeFormat" title="Clear formatting">⌫ₐ</button>';
+    // Prevent focus loss so selection is preserved when clicking buttons.
+    textToolbar.addEventListener('mousedown', function(e){ e.preventDefault(); e.stopPropagation(); });
+    textToolbar.addEventListener('click', function(e){
+      var b = e.target && e.target.closest && e.target.closest('button');
+      if (!b) return;
+      var cmd = b.getAttribute('data-cmd');
+      if (!cmd) return;
+      // Make sure the editable still owns the selection.
+      if (activeEditable) {
+        try { activeEditable.focus(); } catch(_){}
+      }
+      snapshot();
+      if (cmd === 'createLink') {
+        var url = window.prompt('Link URL', 'https://');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+      updateTextToolbarState();
+      e.stopPropagation();
+    });
+    document.body.appendChild(textToolbar);
+  }
+
+  function updateTextToolbarState(){
+    if (!textToolbar) return;
+    var cmds = ['bold','italic','underline','strikeThrough','superscript','subscript'];
+    var btns = textToolbar.querySelectorAll('button[data-cmd]');
+    for (var i=0;i<btns.length;i++){
+      var c = btns[i].getAttribute('data-cmd');
+      if (cmds.indexOf(c) === -1) { btns[i].removeAttribute('data-active'); continue; }
+      var on = false;
+      try { on = document.queryCommandState(c); } catch(_){}
+      if (on) btns[i].setAttribute('data-active','1'); else btns[i].removeAttribute('data-active');
+    }
+  }
+
+  function positionTextToolbar(){
+    if (!textToolbar || !activeEditable) return;
+    var sel = window.getSelection();
+    var rect = null;
+    if (sel && sel.rangeCount){
+      var range = sel.getRangeAt(0);
+      var rr = range.getClientRects();
+      if (rr && rr.length) rect = rr[0];
+      else { try { rect = range.getBoundingClientRect(); } catch(_){} }
+    }
+    if (!rect || (rect.width === 0 && rect.height === 0)){
+      rect = activeEditable.getBoundingClientRect();
+    }
+    var top = rect.top - 36;
+    if (top < 4) top = rect.bottom + 6;
+    var left = rect.left;
+    var maxLeft = window.innerWidth - 320;
+    if (left > maxLeft) left = Math.max(4, maxLeft);
+    if (left < 4) left = 4;
+    textToolbar.style.top = top + 'px';
+    textToolbar.style.left = left + 'px';
+    textToolbar.style.display = 'flex';
+    updateTextToolbarState();
+  }
+
+  function hideTextToolbar(){
+    if (textToolbar) textToolbar.style.display = 'none';
+    activeEditable = null;
+  }
+
+  function onFocusIn(e){
+    if (!enabled) return;
+    var t = e.target;
+    if (t && t.getAttribute && t.getAttribute('contenteditable') === 'true') {
+      activeEditable = t;
+      if (!textToolbar) buildTextToolbar();
+      positionTextToolbar();
+    }
+  }
+
+  function onFocusOut(e){
+    if (!enabled) return;
+    // Defer so clicks on the toolbar (which prevent default focus loss) still work.
+    setTimeout(function(){
+      var ae = document.activeElement;
+      if (!ae || !ae.getAttribute || ae.getAttribute('contenteditable') !== 'true') {
+        hideTextToolbar();
+      }
+    }, 0);
+  }
+
+  function onSelectionChange(){
+    if (!enabled || !activeEditable) return;
+    positionTextToolbar();
+  }
+
   function reindexParent(){ /* placeholder for future ordering hooks */ }
 
   function tagEl(el){
@@ -259,6 +386,7 @@ const EDITOR_SCRIPT = `
     if (enabled) return; enabled = true;
     tagSubtree(document.body);
     if (!toolbar) buildToolbar();
+    if (!textToolbar) buildTextToolbar();
     document.addEventListener('dragstart', onDragStart, true);
     document.addEventListener('dragover', onDragOver, true);
     document.addEventListener('dragleave', onDragLeave, true);
@@ -269,14 +397,21 @@ const EDITOR_SCRIPT = `
     document.addEventListener('click', onClick, true);
     document.addEventListener('mousedown', onMouseDown, true);
     document.addEventListener('input', onInput, true);
+    document.addEventListener('focusin', onFocusIn, true);
+    document.addEventListener('focusout', onFocusOut, true);
+    document.addEventListener('selectionchange', onSelectionChange, true);
+    document.addEventListener('keyup', onSelectionChange, true);
     window.addEventListener('scroll', positionToolbar, true);
     window.addEventListener('resize', positionToolbar, true);
+    window.addEventListener('scroll', positionTextToolbar, true);
+    window.addEventListener('resize', positionTextToolbar, true);
     postState();
   }
 
   function disable(){
     if (!enabled) return; enabled = false;
     clearSelection();
+    hideTextToolbar();
     document.querySelectorAll('[data-de-block]').forEach(function(el){
       el.removeAttribute('draggable');
       el.removeAttribute('data-de-block');
@@ -292,6 +427,7 @@ const EDITOR_SCRIPT = `
       el.removeAttribute('spellcheck');
     });
     if (toolbar) toolbar.style.display = 'none';
+    if (textToolbar) textToolbar.style.display = 'none';
     document.removeEventListener('dragstart', onDragStart, true);
     document.removeEventListener('dragover', onDragOver, true);
     document.removeEventListener('dragleave', onDragLeave, true);
@@ -302,8 +438,14 @@ const EDITOR_SCRIPT = `
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('mousedown', onMouseDown, true);
     document.removeEventListener('input', onInput, true);
+    document.removeEventListener('focusin', onFocusIn, true);
+    document.removeEventListener('focusout', onFocusOut, true);
+    document.removeEventListener('selectionchange', onSelectionChange, true);
+    document.removeEventListener('keyup', onSelectionChange, true);
     window.removeEventListener('scroll', positionToolbar, true);
     window.removeEventListener('resize', positionToolbar, true);
+    window.removeEventListener('scroll', positionTextToolbar, true);
+    window.removeEventListener('resize', positionTextToolbar, true);
   }
 
   function onInput(e){
@@ -481,10 +623,13 @@ const EDITOR_SCRIPT = `
     if (was) disable();
     if (toolbar) toolbar.remove();
     toolbar = null;
+    if (textToolbar) textToolbar.remove();
+    textToolbar = null;
     var html = '<!DOCTYPE html>\\n' + document.documentElement.outerHTML;
     // Strip our injected style tag regardless.
     html = html.replace(/<style[^>]*id="__de_style"[\\s\\S]*?<\\/style>/i, '');
     html = html.replace(/<div[^>]*id="__de_toolbar"[\\s\\S]*?<\\/div>/i, '');
+    html = html.replace(/<div[^>]*id="__de_text_toolbar"[\\s\\S]*?<\\/div>/i, '');
     if (was) enable();
     return html;
   }

@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2, MousePointerClick, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2, MousePointerClick, Loader2, Undo2, Redo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import DesignPreview from "@/components/design/DesignPreview";
-import DesignEditor, { type DesignEditorHandle } from "@/components/design/DesignEditor";
+import DesignEditor, { type DesignEditorHandle, type DesignEditorState } from "@/components/design/DesignEditor";
 import { cn } from "@/lib/utils";
 
 export interface DesignRevision {
@@ -58,6 +58,7 @@ const DesignPanel = ({
   const editorRef = useRef<DesignEditorHandle>(null);
   const [editMode, setEditMode] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
+  const [editorState, setEditorState] = useState<DesignEditorState>({ canUndo: false, canRedo: false });
 
   const handleSaveEdits = async () => {
     if (!editorRef.current || !onSaveEditedHtml) return;
@@ -98,6 +99,26 @@ const DesignPanel = ({
           {current && onSaveEditedHtml && (
             editMode ? (
               <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => editorRef.current?.undo()}
+                  disabled={!editorState.canUndo || savingEdits}
+                  title="Undo (Ctrl/Cmd+Z)"
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => editorRef.current?.redo()}
+                  disabled={!editorState.canRedo || savingEdits}
+                  title="Redo (Ctrl/Cmd+Shift+Z)"
+                >
+                  <Redo2 className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   size="sm"
                   variant="default"
@@ -201,7 +222,12 @@ const DesignPanel = ({
       <div className="flex-1 overflow-hidden p-2 bg-muted/30">
         {current ? (
           editMode ? (
-            <DesignEditor ref={editorRef} html={current.html} editMode={editMode} />
+            <DesignEditor
+              ref={editorRef}
+              html={current.html}
+              editMode={editMode}
+              onStateChange={setEditorState}
+            />
           ) : (
             <DesignPreview html={current.html} />
           )

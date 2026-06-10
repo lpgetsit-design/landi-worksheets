@@ -42,9 +42,6 @@ interface AIChatPanelProps {
   worksheetTitle?: string;
   worksheetType?: DocumentType;
   worksheetId?: string;
-  designActive?: boolean;
-  designHtml?: string;
-  onDesignHtmlChange?: (html: string) => void;
   onApplyEdit?: (content: string) => void;
   onUpdateTitle?: (title: string) => void;
   onUpdateDocumentType?: (type: DocumentType) => void;
@@ -52,7 +49,6 @@ interface AIChatPanelProps {
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-const DESIGN_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/design-chat`;
 
 const editorToolLabels: Record<string, string> = {
   replace_worksheet_content: "Updated worksheet content",
@@ -129,9 +125,6 @@ const AIChatPanel = ({
   worksheetTitle,
   worksheetType,
   worksheetId,
-  designActive,
-  designHtml,
-  onDesignHtmlChange,
   onApplyEdit,
   onUpdateTitle,
   onUpdateDocumentType,
@@ -141,23 +134,9 @@ const AIChatPanel = ({
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string>("");
-  const [chatDesignMode, setChatDesignMode] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const autoMessageSentRef = useRef<string | null>(null);
-  const designHtmlRef = useRef(designHtml || "");
-
-  // Keep ref in sync
-  useEffect(() => {
-    designHtmlRef.current = designHtml || "";
-  }, [designHtml]);
-
-  // Auto-enable design mode in chat when design panel is activated
-  useEffect(() => {
-    if (designActive) {
-      setChatDesignMode(true);
-    }
-  }, [designActive]);
 
   const scrollToBottom = () => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -176,27 +155,6 @@ const AIChatPanel = ({
         case "update_document_type":
           onUpdateDocumentType?.(parsed.document_type as DocumentType);
           return `Document type changed to "${parsed.document_type}".`;
-        case "replace_design_html":
-          onDesignHtmlChange?.(parsed.html);
-          // Persist to meta.design_html
-          if (worksheetId) {
-            try {
-              const { supabase } = await import("@/integrations/supabase/client");
-              const { data: current } = await supabase
-                .from("worksheets")
-                .select("meta")
-                .eq("id", worksheetId)
-                .single();
-              const existingMeta = (current?.meta as Record<string, any>) || {};
-              await supabase
-                .from("worksheets")
-                .update({ meta: { ...existingMeta, design_html: parsed.html } })
-                .eq("id", worksheetId);
-            } catch (e) {
-              console.error("Failed to save design HTML:", e);
-            }
-          }
-          return "Webpage updated successfully.";
         default:
           return `Unknown tool: ${name}`;
       }
@@ -217,23 +175,14 @@ const AIChatPanel = ({
       return base;
     });
 
-    const isDesign = chatDesignMode;
-    const url = isDesign ? DESIGN_CHAT_URL : CHAT_URL;
-    const body = isDesign
-      ? {
-          messages: apiMessages,
-          worksheetTitle: worksheetTitle || "",
-          currentHtml: designHtmlRef.current || "",
-          worksheetContent: worksheetContent || "",
-        }
-      : {
-          messages: apiMessages,
-          worksheetTitle: worksheetTitle || "",
-          worksheetContent: worksheetContent || "",
-          worksheetType: worksheetType || "note",
-          designHtml: designHtmlRef.current || "",
-          attachments: attachments || [],
-        };
+    const url = CHAT_URL;
+    const body = {
+      messages: apiMessages,
+      worksheetTitle: worksheetTitle || "",
+      worksheetContent: worksheetContent || "",
+      worksheetType: worksheetType || "note",
+      attachments: attachments || [],
+    };
 
     const resp = await fetch(url, {
       method: "POST",
@@ -492,9 +441,7 @@ const AIChatPanel = ({
         {messages.length === 0 && !streamingContent && !thinkingLabel ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-center text-sm text-muted-foreground">
-              {chatDesignMode
-                ? "Describe the webpage you want to build"
-                : "Ask questions or tell me to edit your worksheet"}
+              Ask questions or tell me to edit your worksheet
             </p>
           </div>
         ) : (
@@ -572,9 +519,6 @@ const AIChatPanel = ({
       <ChatInput
         onSend={(text, mentions) => handleSend(text, mentions)}
         isLoading={isLoading}
-        chatDesignMode={chatDesignMode}
-        designActive={!!designActive}
-        onToggleMode={(design) => setChatDesignMode(design)}
         worksheetId={worksheetId}
       />
     </div>

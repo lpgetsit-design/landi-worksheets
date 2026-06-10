@@ -106,6 +106,8 @@ const EDITOR_SCRIPT = `
     // Remove the injected toolbar element from the snapshot.
     var tb = clone.querySelector('#__de_toolbar');
     if (tb) tb.remove();
+    var ttb = clone.querySelector('#__de_text_toolbar');
+    if (ttb) ttb.remove();
     return clone.innerHTML;
   }
 
@@ -129,12 +131,15 @@ const EDITOR_SCRIPT = `
 
   function restore(html){
     clearSelection();
+    hideTextToolbar();
     if (toolbar) { toolbar.remove(); toolbar = null; }
+    if (textToolbar) { textToolbar.remove(); textToolbar = null; }
     document.body.innerHTML = html;
     // Re-tag the new subtree and rebuild toolbar so editor stays usable.
     if (enabled) {
       tagSubtree(document.body);
       buildToolbar();
+      buildTextToolbar();
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { MessageSquare, ArrowLeft, FileText, Loader2, RefreshCw, Download, Share2, PenLine, Paperclip, HelpCircle } from "lucide-react";
 import ShareDialog from "@/components/share/ShareDialog";
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,7 @@ const SummaryButton = ({
 const WorksheetPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(true);
@@ -154,6 +155,19 @@ const WorksheetPage = () => {
   const chatBootstrappingRef = useRef(false);
   const worksheetContentRef = useRef("");
   useEffect(() => { worksheetContentRef.current = worksheetContent; }, [worksheetContent]);
+
+  // Honor ?session=<id> deep links from the Library — open that session in the
+  // worksheet-scoped AskLandi panel instead of bootstrapping a new one.
+  useEffect(() => {
+    const sid = searchParams.get("session");
+    if (!sid) return;
+    setActiveChatSessionId(sid);
+    setChatOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("session");
+    next.delete("design");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Bootstrap or reuse the most recent worksheet-scoped session when the user opens the panel.
   useEffect(() => {

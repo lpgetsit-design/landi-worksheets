@@ -263,7 +263,8 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
 
   const renameTitle = async (title: string) => {
     if (!viewingDesign) return;
-    setDesigns((prev) => prev.map((d) => (d.id === viewingDesign.id ? { ...d, title } : d)));
+    const now = new Date().toISOString();
+    setDesigns((prev) => prev.map((d) => (d.id === viewingDesign.id ? { ...d, title, updated_at: now } : d)));
     await supabase.from("chat_designs").update({ title }).eq("id", viewingDesign.id);
   };
 

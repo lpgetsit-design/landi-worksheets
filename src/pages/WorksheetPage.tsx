@@ -207,10 +207,8 @@ const WorksheetPage = () => {
         setWorksheetType(docType);
       }
       const meta = worksheet.meta as Record<string, any> | null;
-      if (meta?.design_html) {
-        setDesignHtml(meta.design_html);
-        setDesignActive(true);
-      }
+      // design_html in meta is legacy; the design feature now lives in /chat
+      void meta;
     }
   }, [worksheet]);
 
@@ -242,10 +240,6 @@ const WorksheetPage = () => {
     }
   }, [id, queryClient]);
 
-  const handleDesignHtmlChange = useCallback((html: string) => {
-    setDesignHtml(html);
-  }, []);
-
   if (id === "new") { navigate("/"); return null; }
 
   if (isLoading) {
@@ -268,9 +262,7 @@ const WorksheetPage = () => {
     );
   }
 
-  const canDownloadEditor = editorOpen && worksheetContent.trim().length > 0;
-  const canDownloadDesign = designHtml.length > 0;
-  const canDownload = canDownloadEditor || canDownloadDesign;
+  const canDownload = editorOpen && worksheetContent.trim().length > 0;
 
   const chatPanel = (
     <AIChatPanel
@@ -283,18 +275,12 @@ const WorksheetPage = () => {
       worksheetTitle={worksheetTitle}
       worksheetType={worksheetType}
       worksheetId={worksheet.id}
-      designActive={designActive}
-      designHtml={designHtml}
-      onDesignHtmlChange={handleDesignHtmlChange}
       onApplyEdit={handleApplyEdit}
       onUpdateTitle={handleUpdateTitle}
       onUpdateDocumentType={handleUpdateDocumentType}
       attachments={attachmentInfos}
     />
   );
-
-  // Count visible content panels for sizing
-  const visiblePanels = (editorOpen ? 1 : 0) + (designActive ? 1 : 0);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -332,62 +318,23 @@ const WorksheetPage = () => {
             variant={editorOpen ? "secondary" : "outline"}
             size="sm"
             className="gap-1.5"
-            onClick={toggleEditor}
-            disabled={editorOpen && !designActive}
-            title={editorOpen && !designActive ? "At least one panel must be visible" : undefined}
+            onClick={() => setEditorOpen((v) => !v)}
           >
             <PenLine className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Editor</span>
           </Button>
-          {/* Design toggle */}
-          <Button
-            data-tour="design-toggle"
-            variant={designActive ? "secondary" : "outline"}
-            size="sm"
-            className="gap-1.5"
-            onClick={toggleDesign}
-            disabled={designActive && !editorOpen}
-            title={designActive && !editorOpen ? "At least one panel must be visible" : undefined}
-          >
-            <Paintbrush className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Design</span>
-          </Button>
           {/* PDF download */}
           {canDownload && (
-            canDownloadEditor && canDownloadDesign ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5" title="Download as PDF">
-                    <Download className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">PDF</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openEditorPdf(editorRef, worksheetTitle)}>
-                    <PenLine className="h-3.5 w-3.5 mr-2" />
-                    Editor content
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => openDesignPdf(designHtml)}>
-                    <Paintbrush className="h-3.5 w-3.5 mr-2" />
-                    Design webpage
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  if (canDownloadDesign) openDesignPdf(designHtml);
-                  else openEditorPdf(editorRef, worksheetTitle);
-                }}
-                title="Download as PDF"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">PDF</span>
-              </Button>
-            )
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => openEditorPdf(editorRef, worksheetTitle)}
+              title="Download as PDF"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
           )}
           <Button data-tour="share-btn" variant="outline" size="sm" className="gap-1.5" onClick={() => setShareOpen(true)}>
             <Share2 className="h-3.5 w-3.5" />
@@ -409,10 +356,10 @@ const WorksheetPage = () => {
       {/* Main content area: resizable panels */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Content panels (editor + design) */}
+          {/* Editor panel */}
           {editorOpen && (
             <ResizablePanel
-              defaultSize={designActive ? 50 : (chatOpen ? 70 : 100)}
+              defaultSize={chatOpen ? 70 : 100}
               minSize={20}
               order={1}
             >
@@ -438,20 +385,6 @@ const WorksheetPage = () => {
                     />
                   </div>
                 )}
-              </div>
-            </ResizablePanel>
-          )}
-
-          {editorOpen && designActive && <ResizableHandle withHandle />}
-
-          {designActive && (
-            <ResizablePanel
-              defaultSize={editorOpen ? 50 : (chatOpen ? 70 : 100)}
-              minSize={20}
-              order={2}
-            >
-              <div className="h-full overflow-hidden p-2">
-                <DesignPreview html={designHtml} />
               </div>
             </ResizablePanel>
           )}

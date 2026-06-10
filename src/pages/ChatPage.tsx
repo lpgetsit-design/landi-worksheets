@@ -121,6 +121,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
         id: d.id,
         title: d.title,
         status: d.status,
+        updated_at: d.updated_at,
         revisions: ((d.chat_design_revisions as any[]) || [])
           .map((r) => ({ id: r.id, revision_index: r.revision_index, html: r.html }))
           .sort((a, b) => a.revision_index - b.revision_index),
@@ -202,7 +203,8 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       .select()
       .single();
     if (error || !data) throw new Error("Could not create design draft");
-    const newDesign: ChatDesign = { id: data.id, title: data.title, status: "active", revisions: [] };
+    const now = new Date().toISOString();
+    const newDesign: ChatDesign = { id: data.id, title: data.title, status: "active", updated_at: now, revisions: [] };
     setDesigns((prev) => [...prev, newDesign]);
     return data.id;
   };
@@ -227,10 +229,11 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       return;
     }
     const newRev: DesignRevision = { id: data.id, revision_index: data.revision_index, html: data.html };
+    const now = new Date().toISOString();
     setDesigns((prev) =>
       prev.map((d) =>
         d.id === designId
-          ? { ...d, revisions: [...d.revisions, newRev] }
+          ? { ...d, revisions: [...d.revisions, newRev], updated_at: now }
           : d,
       ),
     );
@@ -251,15 +254,17 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       toast.error("Could not save draft");
       return;
     }
+    const now = new Date().toISOString();
     setDesigns((prev) =>
-      prev.map((d) => (d.id === activeDesign.id ? { ...d, status: "saved" } : d)),
+      prev.map((d) => (d.id === activeDesign.id ? { ...d, status: "saved", updated_at: now } : d)),
     );
     toast.success("Draft saved — next design will start fresh");
   };
 
   const renameTitle = async (title: string) => {
     if (!viewingDesign) return;
-    setDesigns((prev) => prev.map((d) => (d.id === viewingDesign.id ? { ...d, title } : d)));
+    const now = new Date().toISOString();
+    setDesigns((prev) => prev.map((d) => (d.id === viewingDesign.id ? { ...d, title, updated_at: now } : d)));
     await supabase.from("chat_designs").update({ title }).eq("id", viewingDesign.id);
   };
 
@@ -292,10 +297,11 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       toast.error("Could not reopen draft");
       return;
     }
+    const now = new Date().toISOString();
     setDesigns((prev) =>
       prev.map((d) => {
-        if (d.id === designId) return { ...d, status: "active" };
-        if (current && d.id === current.id) return { ...d, status: "saved" };
+        if (d.id === designId) return { ...d, status: "active", updated_at: now };
+        if (current && d.id === current.id) return { ...d, status: "saved", updated_at: now };
         return d;
       }),
     );

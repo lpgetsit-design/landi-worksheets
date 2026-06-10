@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DesignPreview from "@/components/design/DesignPreview";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ interface Props {
   onRenameTitle?: (title: string) => void;
   savedDesigns: ChatDesign[];
   onOpenSaved: (designId: string) => void;
+  onShare?: () => void;
 }
 
 const DesignPanel = ({
@@ -41,6 +42,7 @@ const DesignPanel = ({
   onRenameTitle,
   savedDesigns,
   onOpenSaved,
+  onShare,
 }: Props) => {
   if (!open) return null;
 
@@ -72,6 +74,17 @@ const DesignPanel = ({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {design && total > 0 && onShare && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 text-xs"
+              onClick={onShare}
+              title="Share with external recipient"
+            >
+              <Share2 className="h-3 w-3" /> Share
+            </Button>
+          )}
           {design && design.status === "active" && total > 0 && (
             <Button
               size="sm"

@@ -191,6 +191,7 @@ export type Database = {
       }
       public_share_links: {
         Row: {
+          chat_design_id: string | null
           created_at: string
           created_by: string
           expires_at: string | null
@@ -200,9 +201,10 @@ export type Database = {
           recipient_email: string | null
           recipient_name: string
           share_token: string
-          worksheet_id: string
+          worksheet_id: string | null
         }
         Insert: {
+          chat_design_id?: string | null
           created_at?: string
           created_by: string
           expires_at?: string | null
@@ -212,9 +214,10 @@ export type Database = {
           recipient_email?: string | null
           recipient_name: string
           share_token: string
-          worksheet_id: string
+          worksheet_id?: string | null
         }
         Update: {
+          chat_design_id?: string | null
           created_at?: string
           created_by?: string
           expires_at?: string | null
@@ -224,9 +227,16 @@ export type Database = {
           recipient_email?: string | null
           recipient_name?: string
           share_token?: string
-          worksheet_id?: string
+          worksheet_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "public_share_links_chat_design_id_fkey"
+            columns: ["chat_design_id"]
+            isOneToOne: false
+            referencedRelation: "chat_designs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "public_share_links_worksheet_id_fkey"
             columns: ["worksheet_id"]

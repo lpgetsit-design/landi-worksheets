@@ -139,6 +139,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          worksheet_id: string | null
         }
         Insert: {
           created_at?: string
@@ -146,6 +147,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id: string
+          worksheet_id?: string | null
         }
         Update: {
           created_at?: string
@@ -153,8 +155,17 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          worksheet_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

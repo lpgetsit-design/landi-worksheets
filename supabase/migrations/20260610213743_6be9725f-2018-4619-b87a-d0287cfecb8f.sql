@@ -1,0 +1,2 @@
+ALTER TABLE public.chat_sessions ADD COLUMN worksheet_id uuid NULL REFERENCES public.worksheets(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_worksheet_id ON public.chat_sessions(worksheet_id) WHERE worksheet_id IS NOT NULL;

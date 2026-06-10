@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { RotateCcw, MessageSquare, PanelRightOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -74,6 +74,7 @@ interface SessionViewProps {
 const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [designs, setDesigns] = useState<ChatDesign[]>([]);
@@ -93,6 +94,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   const lastUserTextRef = useRef<string>("");
   const [historyKey, setHistoryKey] = useState(0);
   const titledRef = useRef(false);
+  const reopenedFromParamRef = useRef(false);
 
   // ── Load session data
   useEffect(() => {
@@ -163,6 +165,27 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     () => designs.filter((d) => d.status === "saved"),
     [designs],
   );
+
+  // Honor ?design=<id> deep links from the Library — auto-reopen that saved
+  // draft once the session has loaded.
+  useEffect(() => {
+    if (!loaded || reopenedFromParamRef.current) return;
+    const wanted = searchParams.get("design");
+    if (!wanted) return;
+    const target = designs.find((d) => d.id === wanted);
+    if (!target) return;
+    reopenedFromParamRef.current = true;
+    if (target.status === "saved") {
+      reopenSavedDraft(wanted);
+    } else {
+      setViewingDesignId(wanted);
+      setRevisionIndex(Math.max(0, target.revisions.length - 1));
+      setPanelOpen(true);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("design");
+    setSearchParams(next, { replace: true });
+  }, [loaded, designs, searchParams, setSearchParams]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);

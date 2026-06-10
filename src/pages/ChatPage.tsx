@@ -39,7 +39,7 @@ const ChatPage = () => {
     (async () => {
       const { data, error } = await supabase
         .from("chat_sessions")
-        .insert({ user_id: user.id, title: "New chat" })
+        .insert([{ user_id: user.id, title: "New chat" }])
         .select()
         .single();
       if (error || !data) {
@@ -168,13 +168,13 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   const persistMessage = async (m: Omit<Message, "id"> & { id?: string }): Promise<string | null> => {
     const { data, error } = await supabase
       .from("chat_messages")
-      .insert({
+      .insert([{
         session_id: sessionId,
         role: m.role,
         content: m.content || "",
-        mentions: m.mentions || [],
+        mentions: (m.mentions || []) as any,
         tool_name: m.name || null,
-      })
+      }])
       .select("id")
       .single();
     if (error) {
@@ -190,7 +190,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     if (existing) return existing.id;
     const { data, error } = await supabase
       .from("chat_designs")
-      .insert({ session_id: sessionId, title: titleHint || "Untitled design", status: "active" })
+      .insert([{ session_id: sessionId, title: titleHint || "Untitled design", status: "active" }])
       .select()
       .single();
     if (error || !data) throw new Error("Could not create design draft");
@@ -205,12 +205,12 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     const nextIdx = (currentRevs[currentRevs.length - 1]?.revision_index ?? -1) + 1;
     const { data, error } = await supabase
       .from("chat_design_revisions")
-      .insert({
+      .insert([{
         design_id: designId,
         revision_index: nextIdx,
         html,
         prompt_message_id: promptMessageId,
-      })
+      }])
       .select()
       .single();
     if (error || !data) {
@@ -470,7 +470,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
     if (!user) return;
     const { data, error } = await supabase
       .from("chat_sessions")
-      .insert({ user_id: user.id, title: "New chat" })
+      .insert([{ user_id: user.id, title: "New chat" }])
       .select()
       .single();
     if (error || !data) {

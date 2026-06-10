@@ -754,25 +754,62 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, currentHtml, worksheetContent } = await req.json();
+    const { messages, worksheetTitle, currentHtml, worksheetContent, referencedWorksheets } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Fetch referenced worksheet contents (chat product @mentions)
+    let mentionContext = "";
+    if (Array.isArray(referencedWorksheets) && referencedWorksheets.length > 0) {
+      try {
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const authHeader = req.headers.get("authorization");
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: authHeader ? { Authorization: authHeader } : {} },
+        });
+        const ids = referencedWorksheets.map((r: any) => r.worksheetId);
+        const { data } = await supabase
+          .from("worksheets")
+          .select("id, title, document_type, content_md")
+          .in("id", ids);
+        const byId = new Map((data || []).map((w: any) => [w.id, w]));
+        const blocks = referencedWorksheets
+          .map((r: any, i: number) => {
+            const w = byId.get(r.worksheetId);
+            if (!w) return null;
+            return `--- Worksheet ${i + 1}: "${w.title}" (${w.document_type}) ---\n${w.content_md || "(empty)"}\n--- End worksheet ${i + 1} ---`;
+          })
+          .filter(Boolean)
+          .join("\n\n");
+        if (blocks) {
+          mentionContext = `\n\nThe user attached the following worksheet(s) as context. Use them to inform your responses or designs and cite them by title.\n\n${blocks}`;
+        }
+      } catch (e) {
+        console.error("Failed to load referenced worksheets:", e);
+      }
+    }
 
     const wsRefContext = worksheetContent
       ? "\n\nWORKSHEET CONTENT (READ-ONLY REFERENCE):\nThis worksheet also has an editor panel with the following content. You can reference this to inform your designs (e.g. pull data, names, structure from the worksheet), but you CANNOT modify the worksheet from design mode.\n---\n" + worksheetContent + "\n---"
       : "";
 
-    const systemPrompt = `You are an expert web designer and developer AI. You build complete, interactive, standalone HTML webpages inside a design worksheet.
+    const isChatSession = !worksheetTitle;
+    const surfaceLabel = isChatSession ? "current design draft" : "worksheet";
 
-Current worksheet:
-- Title: "${worksheetTitle || "Untitled"}"
-- Current HTML content:
+    const systemPrompt = `You are AskLandi — a helpful AI assistant. You can chat normally about any topic, and you can also build complete, interactive, standalone HTML webpages on demand using the replace_design_html tool. The rendered HTML appears in a side panel next to the chat.
+
+Current ${surfaceLabel}:
+- Title: "${worksheetTitle || "Untitled draft"}"
+- Current HTML:
 \`\`\`html
 ${currentHtml || "<!-- empty - no page built yet -->"}
-\`\`\`${wsRefContext}
+\`\`\`${wsRefContext}${mentionContext}
 
 YOUR ROLE:
-- You are a webpage builder. When the user asks you to create, modify, or build something, use the replace_design_html tool to output a COMPLETE standalone HTML document.
+- When the user asks a general question, answer conversationally with markdown — do NOT call replace_design_html.
+- When the user asks you to create, modify, or build a webpage / report / dossier / one-pager / brief, use the replace_design_html tool to output a COMPLETE standalone HTML document.
 - Always output a full <!DOCTYPE html> page with everything self-contained.
 - You can use CDN links for libraries like Tailwind CSS, Chart.js, Three.js, Alpine.js, GSAP, D3.js, etc.
 - Include all CSS in <style> tags or via CDN links.

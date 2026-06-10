@@ -28,7 +28,8 @@ interface ShareLink {
 interface ShareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  worksheetId: string;
+  worksheetId?: string;
+  chatDesignId?: string;
   worksheetTitle: string;
 }
 
@@ -38,7 +39,7 @@ const generateToken = () => {
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-const ShareDialog = ({ open, onOpenChange, worksheetId, worksheetTitle }: ShareDialogProps) => {
+const ShareDialog = ({ open, onOpenChange, worksheetId, chatDesignId, worksheetTitle }: ShareDialogProps) => {
   const { user } = useAuth();
   const [links, setLinks] = useState<ShareLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,11 +54,13 @@ const ShareDialog = ({ open, onOpenChange, worksheetId, worksheetTitle }: ShareD
   const fetchLinks = async () => {
     setLoading(true);
     try {
-      const { data: linksData } = await supabase
+      const query = supabase
         .from("public_share_links" as any)
         .select("*")
-        .eq("worksheet_id", worksheetId)
         .order("created_at", { ascending: false });
+      const { data: linksData } = chatDesignId
+        ? await query.eq("chat_design_id", chatDesignId)
+        : await query.eq("worksheet_id", worksheetId!);
 
       if (!linksData) { setLinks([]); setLoading(false); return; }
 
@@ -88,21 +91,23 @@ const ShareDialog = ({ open, onOpenChange, worksheetId, worksheetTitle }: ShareD
 
   useEffect(() => {
     if (open) fetchLinks();
-  }, [open, worksheetId]);
+  }, [open, worksheetId, chatDesignId]);
 
   const handleCreate = async () => {
     if (!name.trim() || !user) return;
     setCreating(true);
     try {
       const token = generateToken();
-      const { error } = await supabase.from("public_share_links" as any).insert({
-        worksheet_id: worksheetId,
+      const payload: any = {
         created_by: user.id,
         recipient_name: name.trim(),
         recipient_email: email.trim() || null,
         recipient_company: company.trim() || null,
         share_token: token,
-      } as any);
+      };
+      if (chatDesignId) payload.chat_design_id = chatDesignId;
+      else payload.worksheet_id = worksheetId;
+      const { error } = await supabase.from("public_share_links" as any).insert(payload);
       if (error) throw error;
 
       const shareUrl = `${window.location.origin}/s/${token}`;

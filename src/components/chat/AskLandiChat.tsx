@@ -165,6 +165,10 @@ const AskLandiChat = ({
     [designs],
   );
 
+  useEffect(() => {
+    onHasDesignChange?.(designs.length > 0);
+  }, [designs.length, onHasDesignChange]);
+
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }, []);

@@ -203,7 +203,8 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       .select()
       .single();
     if (error || !data) throw new Error("Could not create design draft");
-    const newDesign: ChatDesign = { id: data.id, title: data.title, status: "active", revisions: [] };
+    const now = new Date().toISOString();
+    const newDesign: ChatDesign = { id: data.id, title: data.title, status: "active", updated_at: now, revisions: [] };
     setDesigns((prev) => [...prev, newDesign]);
     return data.id;
   };

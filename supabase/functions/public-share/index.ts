@@ -55,7 +55,50 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch worksheet
+    // Log view (shared)
+    const viewerIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || null;
+    const userAgent = req.headers.get("user-agent") || null;
+
+    await supabaseAdmin.from("share_link_views").insert({
+      share_link_id: link.id,
+      viewer_ip: viewerIp,
+      user_agent: userAgent,
+    });
+
+    // Chat-design share
+    if (link.chat_design_id) {
+      const { data: design, error: dErr } = await supabaseAdmin
+        .from("chat_designs")
+        .select("id, title")
+        .eq("id", link.chat_design_id)
+        .single();
+      if (dErr || !design) {
+        return new Response(JSON.stringify({ error: "Design not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: rev } = await supabaseAdmin
+        .from("chat_design_revisions")
+        .select("html, revision_index")
+        .eq("design_id", design.id)
+        .order("revision_index", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return new Response(
+        JSON.stringify({
+          title: design.title || "Design",
+          document_type: "design",
+          content_html: null,
+          content_md: null,
+          design_html: rev?.html || null,
+          recipient_name: link.recipient_name,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Worksheet share
     const { data: worksheet, error: wsError } = await supabaseAdmin
       .from("worksheets")
       .select("id, title, document_type, content_html, content_md, meta")
@@ -68,16 +111,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Log view
-    const viewerIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || null;
-    const userAgent = req.headers.get("user-agent") || null;
-
-    await supabaseAdmin.from("share_link_views").insert({
-      share_link_id: link.id,
-      viewer_ip: viewerIp,
-      user_agent: userAgent,
-    });
 
     // Replace private attachment URLs in design_html with fresh signed URLs
     const meta = worksheet.meta as Record<string, unknown> | null;

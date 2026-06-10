@@ -1,82 +1,62 @@
+## Goal
+Add a second product alongside Worksheets: a standalone **Chat** page for general Q&A that can pull in worksheets as context via `@<worksheet-name>` mentions (live search popup). Add a nav bar in the header to switch between the two.
 
+## 1. Top Nav
 
-# Private Attachments with Shared Design Access
+Update `src/components/AppHeader.tsx`:
+- Replace the "Worksheets" title button with two nav links: **Worksheets** (`/`) and **Chat** (`/chat`).
+- Active route gets `text-foreground` + underline; inactive `text-muted-foreground`.
+- Keep theme toggle + sign-out on the right.
 
-## Problem
-Attachments are private (good), but when a design is shared via a public share link, embedded attachment URLs (e.g., images used in the design HTML) are inaccessible to the recipient because they require authentication.
+## 2. Routing
 
-## Approach
-Instead of physically copying files, the `public-share` edge function will generate fresh signed URLs for any attachments referenced in the design HTML. Access is gated by the share token — no token, no access. This achieves the same security model as copying (permissions match the share link) without duplicating storage.
+`src/App.tsx`: add a protected route `/chat` → `ChatPage`.
 
-```text
-Recipient visits /s/{token}
-        │
-        ▼
-public-share edge function
-        │
-   ┌────┴─────────────────┐
-   │ 1. Validate token    │
-   │ 2. Fetch design_html │
-   │ 3. Fetch attachments │
-   │ 4. Scan HTML for      │
-   │    attachment URLs    │
-   │ 5. Replace with fresh │
-   │    signed URLs (24h)  │
-   │ 6. Return HTML        │
-   └──────────────────────┘
-```
+(Single conversation, no persistence for v1 — matches existing worksheet chat behavior. We can add thread history later if desired.)
 
-## Changes
+## 3. New Chat Page
 
-### 1. Update `public-share` edge function
-- After fetching the worksheet, also fetch its `worksheet_attachments`
-- Scan `design_html` for any references to the attachments bucket (signed URL patterns or file paths)
-- Use service role to generate fresh signed URLs (24-hour expiry)
-- Replace all matching URLs in the HTML before returning
-- Also return attachment metadata so the public page can reference files
+New file `src/pages/ChatPage.tsx`:
+- Full-height layout below header.
+- Centered max-w-3xl column with:
+  - Message transcript (markdown via `marked`, same styling as `AIChatPanel`).
+  - Composer at bottom using a new `GeneralChatInput` (see §4).
+  - Reset button in a slim header row.
+- Streaming SSE consumption reusing the same parser pattern as `AIChatPanel.streamChat` (status / token / tool_calls / tool_result / done / error events).
+- Posts to a new edge function `general-chat` (see §5).
+- Builds a `referencedWorksheets` array from mentions and sends it in the request body so the server can inject worksheet content as context.
 
-### 2. Update `design-chat` edge function
-- When the AI generates design HTML using attachments, ensure it uses the signed URLs provided in the attachment context
-- These URLs will naturally appear in `design_html` stored in `meta`
+## 4. Composer with Worksheet @Mentions
 
-### 3. No database changes needed
-- The private bucket + RLS is already correct
-- The share token validation in `public-share` gates all access
-- No new tables or buckets required
+New file `src/components/chat/GeneralChatInput.tsx`:
+- Based on existing `src/components/chat/ChatInput.tsx`, but stripped down (no design-mode toggle, no CRM mentions — worksheet-only).
+- Reuses `WorksheetLinkMenu`-style live search via the existing `useWorksheetSearch` hook to populate a popup when the user types `@`.
+- Tracks selected mentions as chips above the textarea; submit sends `{ text, mentions: [{ worksheetId, title, documentType }] }`.
+- Enter to send, Shift+Enter newline, auto-resize.
 
-## Technical Detail
+(We keep this separate from the Tiptap-based `WorksheetLinkExtension` because the chat composer is a plain textarea, not Tiptap.)
 
-In `public-share/index.ts`, after fetching the worksheet:
+## 5. Edge Function: `general-chat`
 
-```typescript
-// Fetch attachments for this worksheet
-const { data: attachments } = await supabaseAdmin
-  .from("worksheet_attachments")
-  .select("*")
-  .eq("worksheet_id", link.worksheet_id);
+New file `supabase/functions/general-chat/index.ts`:
+- CORS + streaming SSE response, same shape the client already parses.
+- Uses Lovable AI Gateway (`LOVABLE_API_KEY`) with `google/gemini-2.5-flash` (same model family used elsewhere in this project).
+- Request body: `{ messages, referencedWorksheets: [{ id, title, documentType }] }`.
+- On entry: for each referenced worksheet, fetch `title`, `document_type`, `content_md` from `worksheets` using the service-role client, and prepend a system message:
+  ```
+  The user has attached the following worksheets as context:
+  --- Worksheet: "<title>" (<type>) ---
+  <content_md>
+  ```
+- System prompt: general helpful assistant; if worksheets are attached, ground answers in them and cite by title.
+- No client tools, no worksheet-editing tools. Optionally include the Tavily web-search tools so it can answer general questions that need fresh info (reuse the helpers from `chat/index.ts` — copy minimally rather than refactor to keep scope tight).
 
-// Generate signed URLs and replace in design_html
-let designHtml = meta?.design_html || null;
-if (designHtml && attachments?.length) {
-  for (const att of attachments) {
-    const { data: signed } = await supabaseAdmin.storage
-      .from("attachments")
-      .createSignedUrl(att.file_path, 86400); // 24 hours
-    if (signed?.signedUrl) {
-      // Replace any occurrence of the file path or old signed URL
-      designHtml = designHtml.replaceAll(
-        new RegExp(att.file_path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-        signed.signedUrl
-      );
-    }
-  }
-}
-```
+## 6. Minor
 
-## Files to Modify
+- Add a `data-tour` hook later if we want to extend the onboarding tour to the chat product (out of scope for this change).
+- No DB schema changes.
 
-| File | Change |
-|------|--------|
-| `supabase/functions/public-share/index.ts` | Fetch attachments, generate signed URLs, replace in design_html |
-| `supabase/functions/design-chat/index.ts` | Ensure attachment URLs in system prompt use identifiable paths for replacement |
-
+## Technical notes
+- Files created: `src/pages/ChatPage.tsx`, `src/components/chat/GeneralChatInput.tsx`, `supabase/functions/general-chat/index.ts`.
+- Files edited: `src/App.tsx`, `src/components/AppHeader.tsx`.
+- No migrations. No new secrets (`LOVABLE_API_KEY`, `TAVILY_API_KEY` already present).

@@ -213,7 +213,7 @@ const DesignPanel = ({
       </div>
       {editMode && (
         <div className="border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40">
-          Click any text to edit. Drag blocks to reorder among siblings. Structural changes are disabled.
+          Click text to edit. Click any block to select, then use the toolbar to duplicate, delete, or reorder. Drag to move blocks anywhere — including into other containers.
         </div>
       )}
 

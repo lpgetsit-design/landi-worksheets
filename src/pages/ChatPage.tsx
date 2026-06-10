@@ -9,6 +9,7 @@ import { useAuth } from "@/components/AuthProvider";
 import WorksheetMentionInput, { type WorksheetMention } from "@/components/chat/WorksheetMentionInput";
 import DesignPanel, { type ChatDesign, type DesignRevision } from "@/components/chat/DesignPanel";
 import ShareDialog from "@/components/share/ShareDialog";
+import SessionHistorySidebar from "@/components/chat/SessionHistorySidebar";
 
 interface ToolCall {
   id: string;
@@ -90,6 +91,8 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const lastUserTextRef = useRef<string>("");
+  const [historyKey, setHistoryKey] = useState(0);
+  const titledRef = useRef(false);
 
   // ── Load session data
   useEffect(() => {
@@ -186,6 +189,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       return null;
     }
     await supabase.from("chat_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
+    setHistoryKey((k) => k + 1);
     return data?.id ?? null;
   };
 
@@ -423,6 +427,14 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
       // Persist user message
       const userMsgId = await persistMessage({ role: "user", content: text, mentions });
 
+      // Auto-title the session from the first user message
+      if (!titledRef.current && messages.length === 0) {
+        titledRef.current = true;
+        const title = autoTitleFromText(text);
+        await supabase.from("chat_sessions").update({ title }).eq("id", sessionId);
+        setHistoryKey((k) => k + 1);
+      }
+
       // Build sticky mention pool across turns
       const allMentions = new Map<string, WorksheetMention>();
       for (const m of convo) for (const x of m.mentions || []) allMentions.set(x.worksheetId, x);
@@ -549,6 +561,12 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      <SessionHistorySidebar
+        userId={user?.id}
+        activeSessionId={sessionId}
+        refreshKey={historyKey}
+        onNewChat={startNewChat}
+      />
       {/* Chat column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="border-b border-border px-4 py-2 flex items-center justify-between">

@@ -505,9 +505,23 @@ const EDITOR_SCRIPT = `
 })();
 `;
 
-const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode }, ref) => {
+const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode, onStateChange }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const readyRef = useRef(false);
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+
+  // Listen for state messages from the iframe to surface undo/redo availability.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const d: any = e.data;
+      if (d && d.type === "__DE_STATE") {
+        onStateChangeRef.current?.({ canUndo: !!d.canUndo, canRedo: !!d.canRedo });
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   // (Re)write document whenever the source HTML changes.
   useEffect(() => {
@@ -563,6 +577,12 @@ const DesignEditor = forwardRef<DesignEditorHandle, Props>(({ html, editMode }, 
           reject(new Error("timeout reading edited html"));
         }, 3000);
       }),
+    undo: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: "__DE_UNDO" }, "*");
+    },
+    redo: () => {
+      iframeRef.current?.contentWindow?.postMessage({ type: "__DE_REDO" }, "*");
+    },
   }));
 
   return (

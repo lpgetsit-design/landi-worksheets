@@ -152,6 +152,7 @@ const WorksheetPage = () => {
 
   // ── AskLandi session state (worksheet-scoped) ──
   const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
+  const [designPanelOpen, setDesignPanelOpen] = useState(false);
   const chatBootstrappingRef = useRef(false);
   const worksheetContentRef = useRef("");
   useEffect(() => { worksheetContentRef.current = worksheetContent; }, [worksheetContent]);
@@ -352,6 +353,7 @@ const WorksheetPage = () => {
         onUpdateTitle: handleUpdateTitle,
         onUpdateDocumentType: handleUpdateDocumentType,
       }}
+      onDesignPanelOpenChange={setDesignPanelOpen}
     />
   ) : (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -432,11 +434,15 @@ const WorksheetPage = () => {
 
       {/* Main content area: resizable panels */}
       <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
+        <ResizablePanelGroup
+          key={`pg-${chatOpen ? "c" : "n"}-${designPanelOpen ? "d" : "n"}`}
+          direction="horizontal"
+          className="h-full"
+        >
           {/* Editor panel */}
           {editorOpen && (
             <ResizablePanel
-              defaultSize={chatOpen ? 70 : 100}
+              defaultSize={chatOpen ? (designPanelOpen ? 34 : 70) : 100}
               minSize={20}
               order={1}
             >
@@ -471,9 +477,9 @@ const WorksheetPage = () => {
             <>
               <ResizableHandle withHandle />
               <ResizablePanel
-                defaultSize={30}
+                defaultSize={designPanelOpen ? 66 : 30}
                 minSize={20}
-                maxSize={50}
+                maxSize={80}
                 order={3}
               >
                 {chatPanel}

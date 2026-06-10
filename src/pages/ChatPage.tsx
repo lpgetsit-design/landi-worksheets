@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import WorksheetMentionInput, { type WorksheetMention } from "@/components/chat/WorksheetMentionInput";
 import DesignPanel, { type ChatDesign, type DesignRevision } from "@/components/chat/DesignPanel";
+import ShareDialog from "@/components/share/ShareDialog";
 
 interface ToolCall {
   id: string;
@@ -654,7 +655,16 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
         onOpenSaved={(id) => {
           reopenSavedDraft(id);
         }}
+        onShare={viewingDesign ? () => setShareOpen(true) : undefined}
       />
+      {viewingDesign && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          chatDesignId={viewingDesign.id}
+          worksheetTitle={viewingDesign.title || "Design"}
+        />
+      )}
     </div>
   );
 };

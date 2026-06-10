@@ -155,11 +155,19 @@ const DesignPanel = ({
                 )}
               >
                 <div className="flex items-center gap-1 mb-1">
-                  <Check className="h-3 w-3 text-emerald-500" />
+                  <Check className="h-3 w-3 text-emerald-500 shrink-0" />
                   <span className="text-[11px] font-medium truncate flex-1">{d.title}</span>
                 </div>
                 <div className="text-[10px] text-muted-foreground">
                   {d.revisions.length} revision{d.revisions.length === 1 ? "" : "s"}
+                </div>
+                <div className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  {new Date(d.updated_at).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
                 </div>
               </button>
             ))}

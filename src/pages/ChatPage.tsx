@@ -121,6 +121,7 @@ const ChatSessionView = ({ sessionId }: SessionViewProps) => {
         id: d.id,
         title: d.title,
         status: d.status,
+        updated_at: d.updated_at,
         revisions: ((d.chat_design_revisions as any[]) || [])
           .map((r) => ({ id: r.id, revision_index: r.revision_index, html: r.html }))
           .sort((a, b) => a.revision_index - b.revision_index),

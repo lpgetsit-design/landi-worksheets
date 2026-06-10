@@ -80,7 +80,9 @@ const Dashboard = () => {
   }, [allEntities, entityFilters]);
 
   const filtered = useMemo(() => {
-    let list = typeFilter === "all" ? worksheets : worksheets.filter((ws) => ws.document_type === typeFilter);
+    // Hide legacy design-type worksheets — the design feature now lives in /chat.
+    const visible = worksheets.filter((ws) => ws.document_type !== "design");
+    let list = typeFilter === "all" ? visible : visible.filter((ws) => ws.document_type === typeFilter);
     if (entityFilters.length > 0) {
       list = list.filter((ws) => entityWorksheetIds.has(ws.id));
     }

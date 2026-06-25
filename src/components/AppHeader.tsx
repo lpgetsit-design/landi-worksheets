@@ -22,14 +22,17 @@ const AppHeader = () => {
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-full items-center justify-between px-4">
         <nav className="flex items-center gap-1">
-          <NavLink to="/" end className={linkClass}>
-            Worksheets
+          <NavLink to="/space" className={linkClass}>
+            My Space
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             Chat
           </NavLink>
           <NavLink to="/library" className={linkClass}>
-            Library
+            Designs
+          </NavLink>
+          <NavLink to="/worksheets" className={linkClass}>
+            Documents
           </NavLink>
         </nav>
 

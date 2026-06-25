@@ -1,73 +1,111 @@
-## Goal
+# Space MVP — Implementation Plan
 
-The AI panel inside a worksheet should be the **exact same AskLandi** that lives at `/chat`: same session history sidebar, same chat_sessions/chat_messages/chat_designs data model, same design panel with WYSIWYG editor, undo/redo, share, etc. The only differences when launched from a worksheet:
+Build the smallest version of Space that proves the model: one folder tree, type-filtered views, Save-to-Space from chat. Sharing UI, Projects, Templates, contact cards, and external links stay out of v1.
 
-1. The current worksheet is auto-attached to every turn as a sticky @mention (chip visible, removable).
-2. AskLandi still has the worksheet-specific tools: `apply_edit`, `update_title`, `update_document_type`.
-3. Sessions started inside a worksheet are scoped to that worksheet — they show up in the worksheet panel's history sidebar but are hidden from the global `/chat` sidebar.
+## Scope (in)
 
-## What changes
+1. `My Space` home with a folder tree (create / rename / delete / move).
+2. Every existing **worksheet** becomes a **Document** living in My Space (or a chosen folder).
+3. Every saved **chat design** becomes a **Design** living in My Space (or a chosen folder).
+4. **Designs** sidebar view: all designs across all folders.
+5. **Documents** sidebar view: all worksheets across all folders.
+6. **Save to Space** action in the chat design panel: title + folder picker (default My Space).
+7. Opening a Design from Space resumes its chat session (existing deep-link behavior).
+8. Opening a Document from Space opens the worksheet page (existing route).
 
-### 1. Extract the chat shell into a reusable component
-Refactor `src/pages/ChatPage.tsx`:
-- Move `ChatSessionView` and the surrounding session bootstrap into a new `src/components/chat/AskLandiChat.tsx` that accepts props:
-  - `scope: "global" | { worksheetId: string; worksheetTitle: string; worksheetType: DocumentType; getWorksheetContent: () => string }`
-  - `sessionId | null` plus `onSessionChange(id)` so the parent owns the URL/state.
-  - Optional editor write-back callbacks: `onApplyEdit`, `onUpdateTitle`, `onUpdateDocumentType` (only wired when `scope` is a worksheet).
-- `ChatPage` becomes a thin wrapper that handles `/chat/:sessionId` routing and renders `<AskLandiChat scope="global" sessionId={...} />`.
+## Scope (out, deferred)
 
-### 2. Session scoping (no schema migration needed)
-Add an optional `worksheet_id` column to `chat_sessions` so we can filter:
-- Worksheet panel lists & creates sessions where `worksheet_id = <current>`.
-- `/chat` sidebar lists sessions where `worksheet_id IS NULL`.
-- Existing sessions remain global (NULL), so nothing breaks.
+Projects view, project folders, Templates, LinkedIn/Bullhorn cards, the unified share dialog rewrite, external publish links beyond what exists today, drag-and-drop reordering, color tags on folders.
 
-A small migration adds the nullable column + index. RLS already restricts to owner; no policy change needed.
+## Data model (additive, no destructive migrations)
 
-### 3. Sticky worksheet mention
-In `AskLandiChat`, when `scope` is a worksheet:
-- Seed the mention pool with `{ worksheetId, title, documentType }` on every send.
-- Render a non-removable (or removable, with a "re-attach" affordance) chip above the input showing the current worksheet so the user sees it's in context.
-- Reuses the existing `referencedWorksheets` payload that `design-chat` already fetches and grounds on — no edge-function change required for context.
+New table `space_folders`:
 
-### 4. Editor write-back tools
-The `design-chat` edge function already accepts `tool_calls`. Today only the standalone chat handles `replace_design_html` / `update_worksheet_title` client-side. Add a worksheet-scope branch in `AskLandiChat` that, when `scope` is a worksheet, also handles:
-- `apply_edit(markdown)` → calls `onApplyEdit`
-- `update_title(title)` → calls `onUpdateTitle`
-- `update_document_type(type)` → calls `onUpdateDocumentType`
+```
+id uuid pk
+user_id uuid (auth.users)
+parent_id uuid null (self-fk; null = root under My Space)
+name text
+created_at, updated_at
+```
 
-Expose these tool definitions to the model only when `worksheet_id` is present (pass a `worksheetScope` flag to `design-chat` and conditionally include those tool schemas in the system/tool list).
+Plus standard GRANTs + RLS scoped to `user_id = auth.uid()`.
 
-### 5. WorksheetPage integration
-Replace the current `AIChatPanel` usage in `src/pages/WorksheetPage.tsx`:
-- Render `<AskLandiChat>` inside the right-side `ResizablePanel` (and mobile Sheet) with `scope` set to the worksheet, plus the editor callbacks.
-- Local state owns `activeSessionId` (no URL change for worksheets — we don't want to leave the worksheet URL). Sessions are picked from the in-panel history sidebar.
-- The existing `selectedText` / `autoMessage` flow (selection toolbar → "ask AI about this") is preserved: when set, prefill the composer with the selection and instruction.
+Add `folder_id uuid null` to two existing tables:
 
-### 6. Cleanup
-- `AIChatPanel.tsx`, `CrmChatContent.tsx` become unused once the worksheet panel switches over. Delete after verifying nothing else imports them.
-- `SessionHistorySidebar` accepts a `worksheetId?: string` filter prop so the same component serves both scopes.
+- `worksheets.folder_id` → `space_folders.id` (on delete set null).
+- `chat_designs.folder_id` → `space_folders.id` (on delete set null).
 
-## Files touched
+`null` folder_id = item sits at My Space root. No data migration needed; everything starts at root.
 
-- **New**: `src/components/chat/AskLandiChat.tsx` (the extracted shell)
-- **Edited**: `src/pages/ChatPage.tsx` (thin wrapper)
-- **Edited**: `src/pages/WorksheetPage.tsx` (use `AskLandiChat` instead of `AIChatPanel`)
-- **Edited**: `src/components/chat/SessionHistorySidebar.tsx` (worksheetId filter)
-- **Edited**: `supabase/functions/design-chat/index.ts` (conditionally expose worksheet-write tools when `worksheetScope` is sent)
-- **Migration**: add `chat_sessions.worksheet_id uuid null` + index
-- **Deleted** (after smoke test): `src/components/chat/AIChatPanel.tsx`, `src/components/chat/CrmChatContent.tsx`
+## Routes & UI
 
-## Out of scope
+- `/space` — replaces `/` dashboard as the home. Two-pane:
+  - Left: folder tree (My Space root + children, expand/collapse, "+ New folder", context menu rename/delete/move).
+  - Right: contents of selected folder = subfolders + designs + documents, sortable by name/updated.
+- `/space/designs` — flat grid of all designs (reuses LibraryPage card UI).
+- `/space/documents` — flat list of all worksheets (reuses Dashboard list UI).
+- Sidebar (AppHeader/AppSidebar): `My Space`, `Designs`, `Documents`, `Chat`.
+- Keep `/worksheet/:id`, `/chat`, `/library` working; `/library` redirects to `/space/designs`; `/` redirects to `/space`.
 
-- No changes to design editor, undo/redo, or revisions.
-- No changes to library/share flows.
-- Worksheet selection toolbar UX stays as-is.
+## Save to Space (chat design panel)
+
+In `DesignPanel.tsx`, replace/augment the existing save flow with a small dialog:
+
+- Title (prefilled from current design title).
+- Folder picker (tree popover, default My Space).
+- Confirm → updates `chat_designs.status='saved'`, sets `folder_id`, sets title.
+
+Existing "Resume Chat" deep-link from a design card keeps working unchanged.
+
+## Worksheet → Document mapping
+
+No schema change to `worksheets` beyond `folder_id`. In Space views and pickers, worksheets are labeled "Document". Document creation from Space uses the existing worksheet-create mutation but passes the selected `folder_id`.
+
+## Folder operations
+
+- Create: insert under `parent_id` (null = root).
+- Rename: update `name`.
+- Delete: only allowed if folder is empty (subfolders + documents + designs all empty); otherwise dialog says "Move or delete contents first." Keeps v1 simple, no cascade rules.
+- Move item (design or document) to folder: update `folder_id`. Available via right-click / "Move…" menu on the card.
+
+## File-by-file work
+
+```
+supabase/migrations/<ts>_space_folders.sql   create table, grants, RLS, add folder_id columns
+src/integrations/supabase/types.ts            regenerated by migration
+
+src/lib/space.ts                              CRUD helpers: folders, move item
+src/hooks/useSpaceTree.ts                     react-query tree + invalidation
+
+src/pages/SpacePage.tsx                       new — folder tree + folder contents
+src/pages/SpaceDesignsPage.tsx                new — wraps existing LibraryPage grid
+src/pages/SpaceDocumentsPage.tsx              new — wraps existing Dashboard list
+src/components/space/FolderTree.tsx           tree UI, context menu
+src/components/space/FolderPickerDialog.tsx   reusable picker (used by Save to Space + Move)
+src/components/space/NewFolderDialog.tsx
+src/components/space/MoveToFolderMenuItem.tsx
+
+src/components/chat/DesignPanel.tsx           add "Save to Space" with folder picker
+src/components/AppHeader.tsx (or sidebar)     add Space / Designs / Documents nav
+src/App.tsx                                   add routes; redirect / → /space, /library → /space/designs
+src/pages/Dashboard.tsx                       keep underlying list logic, expose via SpaceDocumentsPage
+src/pages/LibraryPage.tsx                     keep grid logic, expose via SpaceDesignsPage
+```
 
 ## Verification
 
-- Open a worksheet → AskLandi panel shows empty session list scoped to that worksheet; create one; the worksheet appears as a sticky chip; send a message; design appears in the panel.
-- Reload worksheet → session list restored; click a past session → restores messages + active design.
-- Open `/chat` → only global (non-worksheet) sessions appear.
-- Ask AskLandi to "rename this worksheet to X" → title updates via `update_title` tool.
-- Select text in editor → "Ask AI" → composer prefilled in the panel.
+- Migration applies; new tables/columns visible; RLS blocks cross-user reads.
+- Create folder → appears in tree; create nested folder → appears under parent.
+- Save a design from chat into a chosen folder → appears in that folder and in `/space/designs`.
+- Create a worksheet from a folder → opens worksheet editor; appears in that folder and in `/space/documents`.
+- Move a design between folders → both views reflect immediately.
+- Delete non-empty folder → blocked with clear message.
+- Existing chat resume / share / publish flows still work.
+
+## Open questions before I start
+
+1. Is replacing `/` with `/space` (and redirecting `/library` → `/space/designs`) acceptable, or do you want the old dashboard kept accessible for one release?
+2. When deleting a non-empty folder, do you prefer the block-and-explain behavior above, or a "delete folder and move contents to parent" cascade?
+
+If both answers are "yes to the defaults, go," I'll start with the migration + folder CRUD + `/space` page, then layer Save-to-Space and the type views.

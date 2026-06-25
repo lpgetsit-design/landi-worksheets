@@ -253,23 +253,27 @@ const AskLandiChat = ({
     setPanelOpen(true);
   };
 
-  const saveDraft = async () => {
+  const saveDraftToSpace = async (folderId: string | null, title: string) => {
     if (!activeDesign) return;
     setSaving(true);
     const { error } = await supabase
       .from("chat_designs")
-      .update({ status: "saved" })
+      .update({ status: "saved", folder_id: folderId, title })
       .eq("id", activeDesign.id);
     setSaving(false);
     if (error) {
-      toast.error("Could not save draft");
+      toast.error("Could not save to Space");
       return;
     }
     const now = new Date().toISOString();
     setDesigns((prev) =>
-      prev.map((d) => (d.id === activeDesign.id ? { ...d, status: "saved", updated_at: now } : d)),
+      prev.map((d) =>
+        d.id === activeDesign.id
+          ? { ...d, status: "saved", title, updated_at: now }
+          : d,
+      ),
     );
-    toast.success("Draft saved — next design will start fresh");
+    toast.success("Saved to Space — next design will start fresh");
   };
 
   const renameTitle = async (title: string) => {
@@ -705,7 +709,7 @@ const AskLandiChat = ({
         design={viewingDesign}
         revisionIndex={revisionIndex}
         onChangeRevision={setRevisionIndex}
-        onSave={saveDraft}
+        onSaveToSpace={saveDraftToSpace}
         saving={saving}
         onRenameTitle={renameTitle}
         savedDesigns={savedDesigns}

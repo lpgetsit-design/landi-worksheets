@@ -59,6 +59,7 @@ export type Database = {
       chat_designs: {
         Row: {
           created_at: string
+          folder_id: string | null
           id: string
           session_id: string
           status: string
@@ -67,6 +68,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           session_id: string
           status?: string
@@ -75,6 +77,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           session_id?: string
           status?: string
@@ -82,6 +85,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_designs_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "space_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_designs_session_id_fkey"
             columns: ["session_id"]
@@ -288,6 +298,41 @@ export type Database = {
             columns: ["share_link_id"]
             isOneToOne: false
             referencedRelation: "public_share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      space_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "space_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "space_folders"
             referencedColumns: ["id"]
           },
         ]
@@ -589,6 +634,7 @@ export type Database = {
           content_md: string | null
           created_at: string
           document_type: Database["public"]["Enums"]["document_type"]
+          folder_id: string | null
           id: string
           meta: Json | null
           title: string
@@ -601,6 +647,7 @@ export type Database = {
           content_md?: string | null
           created_at?: string
           document_type?: Database["public"]["Enums"]["document_type"]
+          folder_id?: string | null
           id?: string
           meta?: Json | null
           title?: string
@@ -613,13 +660,22 @@ export type Database = {
           content_md?: string | null
           created_at?: string
           document_type?: Database["public"]["Enums"]["document_type"]
+          folder_id?: string | null
           id?: string
           meta?: Json | null
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "worksheets_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "space_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

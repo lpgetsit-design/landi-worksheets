@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import WorksheetPage from "./pages/WorksheetPage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
+import SpacePage from "./pages/SpacePage";
 import AuthPage from "./pages/AuthPage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFound from "./pages/NotFound";
@@ -47,7 +48,10 @@ const AuthenticatedLayout = () => {
       <Routes>
         <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
         <Route path="/pending" element={<PendingRoute><PendingApprovalPage /></PendingRoute>} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
+        <Route path="/space" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
+        <Route path="/space/folder/:folderId" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
+        <Route path="/worksheets" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/chat/:sessionId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

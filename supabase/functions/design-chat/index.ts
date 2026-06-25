@@ -8,59 +8,27 @@ const corsHeaders = {
 
 const CLIENT_TOOLS = new Set([
   "replace_design_html",
+  "replace_worksheet_content",
   "update_worksheet_title",
-  "apply_worksheet_edit",
-  "rename_current_worksheet",
-  "set_worksheet_document_type",
 ]);
 
-const WORKSHEET_SCOPE_TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "apply_worksheet_edit",
-      description: "Replace the content of the user's current worksheet with new markdown. Use this only when the user explicitly asks you to edit, rewrite, or update their worksheet document. Always include the full new markdown content.",
-      parameters: {
-        type: "object",
-        properties: {
-          content: { type: "string", description: "The complete new markdown content for the worksheet" },
-        },
-        required: ["content"],
-        additionalProperties: false,
+// Worksheet artifact tool (sibling of replace_design_html).
+const WORKSHEET_TOOL = {
+  type: "function",
+  function: {
+    name: "replace_worksheet_content",
+    description:
+      "Create or rewrite a worksheet/document artifact for the current chat session. Output the COMPLETE new body as GitHub-flavored markdown. The rendered worksheet appears in the right-side panel alongside the conversation. Use this whenever the user asks you to draft, write, or update a note, report, brief, summary, dossier, proposal, document, or other long-form text content that should live as a worksheet (not a webpage).",
+    parameters: {
+      type: "object",
+      properties: {
+        content_md: { type: "string", description: "The complete new worksheet body in GitHub-flavored markdown." },
       },
+      required: ["content_md"],
+      additionalProperties: false,
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "rename_current_worksheet",
-      description: "Rename the user's current worksheet (the one open in the editor). Use this only when the user explicitly asks to rename the worksheet. Do not use this to rename a design draft — use update_worksheet_title for that.",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "The new worksheet title" },
-        },
-        required: ["title"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "set_worksheet_document_type",
-      description: "Change the document type of the user's current worksheet. Valid values: note, skill, prompt, template.",
-      parameters: {
-        type: "object",
-        properties: {
-          document_type: { type: "string", enum: ["note", "skill", "prompt", "template"], description: "The new document type" },
-        },
-        required: ["document_type"],
-        additionalProperties: false,
-      },
-    },
-  },
-];
+};
 
 const TOOLS = [
   // Client-side tools
@@ -84,7 +52,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "update_worksheet_title",
-      description: "Change the worksheet title.",
+      description: "Change the title of the currently-viewed artifact (design draft or worksheet).",
       parameters: {
         type: "object",
         properties: {
@@ -379,10 +347,8 @@ EXAMPLES:
 
 const TOOL_LABELS: Record<string, string> = {
   replace_design_html: "Building webpage",
+  replace_worksheet_content: "Drafting worksheet",
   update_worksheet_title: "Changing title",
-  apply_worksheet_edit: "Updating worksheet",
-  rename_current_worksheet: "Renaming worksheet",
-  set_worksheet_document_type: "Changing document type",
   search_bullhorn: "Searching CRM",
   get_candidate_profile: "Loading candidate",
   get_job_details: "Loading job details",
@@ -812,7 +778,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { messages, worksheetTitle, currentHtml, worksheetContent, referencedWorksheets, worksheetScope } = await req.json();
+    const { messages, worksheetTitle, currentHtml, worksheetContent, referencedWorksheets, activeWorksheet } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -853,11 +819,11 @@ Deno.serve(async (req) => {
       ? "\n\nWORKSHEET CONTENT (READ-ONLY REFERENCE):\nThis worksheet also has an editor panel with the following content. You can reference this to inform your designs (e.g. pull data, names, structure from the worksheet), but you CANNOT modify the worksheet from design mode.\n---\n" + worksheetContent + "\n---"
       : "";
 
-    // When opened inside a worksheet, enable worksheet-write tools and inject extra context.
-    const activeTools = worksheetScope ? [...TOOLS, ...WORKSHEET_SCOPE_TOOLS] : TOOLS;
-    const worksheetScopeContext = worksheetScope
-      ? `\n\nCURRENT WORKSHEET (the user is editing this — you may modify it with worksheet tools):\n- Title: "${worksheetScope.worksheetTitle || "Untitled"}"\n- Document type: ${worksheetScope.worksheetType || "note"}\n- Current content:\n---\n${worksheetScope.worksheetContent || "(empty)"}\n---\n\nWORKSHEET TOOLS:\n- apply_worksheet_edit: rewrite the worksheet body (markdown). Use only when the user asks you to edit, rewrite, or update the worksheet itself.\n- rename_current_worksheet: rename the worksheet. Do NOT confuse this with update_worksheet_title (which renames the design draft).\n- set_worksheet_document_type: change the doc type (note/skill/prompt/template).\n\nDo not call these tools unprompted — only when the user clearly asks you to change the worksheet.`
-      : "";
+    // Worksheet artifact tool is always available. If an active worksheet exists, expose its current content.
+    const activeTools = [...TOOLS, WORKSHEET_TOOL];
+    const worksheetScopeContext = activeWorksheet
+      ? `\n\nCURRENT WORKSHEET ARTIFACT (open in the right-side panel — call replace_worksheet_content to revise it):\n- Title: "${activeWorksheet.title || "Untitled"}"\n- Current content:\n---\n${activeWorksheet.contentMarkdown || "(empty)"}\n---\n\nWhen revising, include the COMPLETE new markdown body, preserving anything the user did not ask you to change.`
+      : "\n\nWORKSHEET ARTIFACTS: If the user asks you to write, draft, or update a note / report / brief / dossier / proposal / document, call replace_worksheet_content with the full markdown body. Do not use replace_design_html for plain text documents — that tool is for full HTML webpages.";
 
     const isChatSession = !worksheetTitle;
     const surfaceLabel = isChatSession ? "current design draft" : "worksheet";

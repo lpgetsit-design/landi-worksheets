@@ -28,11 +28,8 @@ const AppHeader = () => {
           <NavLink to="/chat" className={linkClass}>
             Chat
           </NavLink>
-          <NavLink to="/library" className={linkClass}>
-            Designs
-          </NavLink>
-          <NavLink to="/worksheets" className={linkClass}>
-            Documents
+          <NavLink to="/artifacts" className={linkClass}>
+            Artifacts
           </NavLink>
         </nav>
 

@@ -109,8 +109,9 @@ const SpacePage = () => {
     queryFn: async (): Promise<WorksheetItem[]> => {
       const q = supabase
         .from("worksheets")
-        .select("id,title,document_type,updated_at")
+        .select("id,title,document_type,updated_at,session_id")
         .neq("document_type", "design")
+        .eq("status", "saved")
         .order("updated_at", { ascending: false });
       const { data, error } = selectedId
         ? await q.eq("folder_id", selectedId)
@@ -154,12 +155,19 @@ const SpacePage = () => {
   const handleNewDocument = async () => {
     if (!user) return;
     try {
-      const ws = await createWorksheet(user.id);
-      // Place in current folder.
-      if (selectedId) {
-        await supabase.from("worksheets").update({ folder_id: selectedId }).eq("id", ws.id);
-      }
-      navigate(`/worksheet/${ws.id}`);
+      // Create chat session + active worksheet and route into the chat with the worksheet panel open.
+      const { data: ses, error: sesErr } = await supabase
+        .from("chat_sessions")
+        .insert({ user_id: user.id, title: "New worksheet" })
+        .select("id")
+        .single();
+      if (sesErr || !ses) throw new Error(sesErr?.message || "Could not start session");
+      const ws = await createWorksheet(user.id, "Untitled worksheet", "note", {
+        session_id: ses.id,
+        status: "active",
+        folder_id: selectedId,
+      });
+      navigate(`/chat/${ses.id}?worksheet=${ws.id}`);
     } catch (e: any) {
       toast.error(e.message || "Failed to create document");
     }
@@ -291,11 +299,7 @@ const SpacePage = () => {
                   <button
                     key={d.id}
                     onClick={() => {
-                      if (d.worksheet_id) {
-                        navigate(`/worksheet/${d.worksheet_id}?session=${d.session_id}&design=${d.id}`);
-                      } else {
-                        navigate(`/chat/${d.session_id}?design=${d.id}`);
-                      }
+                      navigate(`/chat/${d.session_id}?design=${d.id}`);
                     }}
                     className="text-left rounded-lg border border-border bg-card hover:border-primary/40 transition-colors overflow-hidden"
                   >

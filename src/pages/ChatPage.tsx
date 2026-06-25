@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import AskLandiChat from "@/components/chat/AskLandiChat";
+import AskLandiChat, { type ArtifactRef } from "@/components/chat/AskLandiChat";
 
 const ChatPage = () => {
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
@@ -52,15 +52,21 @@ const ChatPage = () => {
     [navigate],
   );
 
-  // Honor ?design=<id> deep links — pass through unchanged for now; AskLandiChat
-  // will reopen the design once it loads. We strip it after one tick.
+  // Resolve `?design=<id>` or `?worksheet=<id>` once into an initial artifact ref,
+  // then strip the param to avoid re-triggering on later renders.
+  const initialArtifact = useMemo<ArtifactRef | null>(() => {
+    const d = searchParams.get("design");
+    if (d) return { kind: "design", id: d };
+    const w = searchParams.get("worksheet");
+    if (w) return { kind: "worksheet", id: w };
+    return null;
+  }, [searchParams]);
+
   useEffect(() => {
-    if (!searchParams.get("design")) return;
-    // The deep-link feature was previously handled inline; leave the param so
-    // AskLandiChat can still see it via window.location if needed, but clean it
-    // up to avoid re-triggering.
+    if (!searchParams.get("design") && !searchParams.get("worksheet")) return;
     const next = new URLSearchParams(searchParams);
     next.delete("design");
+    next.delete("worksheet");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -78,6 +84,7 @@ const ChatPage = () => {
         key={routeSessionId}
         sessionId={routeSessionId}
         userId={user?.id}
+        initialArtifact={initialArtifact}
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
       />

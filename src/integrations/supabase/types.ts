@@ -592,6 +592,54 @@ export type Database = {
           },
         ]
       }
+      worksheet_revisions: {
+        Row: {
+          content_html: string | null
+          content_json: Json | null
+          content_md: string | null
+          created_at: string
+          id: string
+          prompt_message_id: string | null
+          revision_index: number
+          worksheet_id: string
+        }
+        Insert: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          prompt_message_id?: string | null
+          revision_index: number
+          worksheet_id: string
+        }
+        Update: {
+          content_html?: string | null
+          content_json?: Json | null
+          content_md?: string | null
+          created_at?: string
+          id?: string
+          prompt_message_id?: string | null
+          revision_index?: number
+          worksheet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheet_revisions_prompt_message_id_fkey"
+            columns: ["prompt_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worksheet_revisions_worksheet_id_fkey"
+            columns: ["worksheet_id"]
+            isOneToOne: false
+            referencedRelation: "worksheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worksheet_versions: {
         Row: {
           content_html: string | null
@@ -637,6 +685,8 @@ export type Database = {
           folder_id: string | null
           id: string
           meta: Json | null
+          session_id: string | null
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -650,6 +700,8 @@ export type Database = {
           folder_id?: string | null
           id?: string
           meta?: Json | null
+          session_id?: string | null
+          status?: string
           title?: string
           updated_at?: string
           user_id: string
@@ -663,6 +715,8 @@ export type Database = {
           folder_id?: string | null
           id?: string
           meta?: Json | null
+          session_id?: string | null
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -673,6 +727,13 @@ export type Database = {
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "space_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worksheets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
         ]

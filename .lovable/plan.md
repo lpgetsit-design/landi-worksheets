@@ -1,111 +1,76 @@
-# Space MVP — Implementation Plan
+## Goal
 
-Build the smallest version of Space that proves the model: one folder tree, type-filtered views, Save-to-Space from chat. Sharing UI, Projects, Templates, contact cards, and external links stay out of v1.
+Worksheets become a second artifact type inside an AskLandi chat session, with the same lifecycle as designs: AI iterates by appending revisions, the user manually edits inside an embedded TipTap editor, saves to Space (folder picker), and shares via the existing public share infrastructure. The standalone `/worksheet/:id` route, the global `Documents` tab, and the worksheet-scope variant of AskLandi all go away.
 
-## Scope (in)
+## Lifecycle parity with designs
 
-1. `My Space` home with a folder tree (create / rename / delete / move).
-2. Every existing **worksheet** becomes a **Document** living in My Space (or a chosen folder).
-3. Every saved **chat design** becomes a **Design** living in My Space (or a chosen folder).
-4. **Designs** sidebar view: all designs across all folders.
-5. **Documents** sidebar view: all worksheets across all folders.
-6. **Save to Space** action in the chat design panel: title + folder picker (default My Space).
-7. Opening a Design from Space resumes its chat session (existing deep-link behavior).
-8. Opening a Document from Space opens the worksheet page (existing route).
+For every worksheet (analogous to every design):
+- One `chat_sessions` row hosts the conversation.
+- One worksheet artifact per session at a time can be `status='active'`; the rest are `saved`.
+- Each AI edit appends an immutable revision (no destructive overwrite).
+- Manual edits in the embedded TipTap editor also append a revision (matches design "Save edits").
+- "Save to Space" prompts the existing `FolderPickerDialog`, sets `status='saved'` + `folder_id`, locks further AI edits from extending it, and starts the next worksheet fresh in the same session.
+- "Share" opens the same `ShareDialog` already wired for `public_share_links.worksheet_id` and renders externally at `/s/:token` via the existing `public-share` Edge Function.
 
-## Scope (out, deferred)
+## Data model
 
-Projects view, project folders, Templates, LinkedIn/Bullhorn cards, the unified share dialog rewrite, external publish links beyond what exists today, drag-and-drop reordering, color tags on folders.
+Schema migration (one migration call, with GRANTs + RLS):
+- `worksheets`: add `session_id uuid NULL REFERENCES chat_sessions(id) ON DELETE SET NULL` and `status text NOT NULL DEFAULT 'saved'` constrained to `('active','saved')`.
+- New `worksheet_revisions(id, worksheet_id, revision_index, content_json jsonb, content_md text, content_html text, prompt_message_id uuid NULL, created_at)`; uniqueness on `(worksheet_id, revision_index)`; RLS scoped via the existing `is_worksheet_owner` (and the existing `has_worksheet_access` helper for read by grantees).
+- Backfill: for every existing `worksheets` row create a `chat_sessions` row (title = worksheet title, `worksheet_id` left NULL — this column was the "this session is locked to one worksheet page" flag and is no longer used), set `worksheets.session_id` to it, status `saved`, and insert one `worksheet_revisions` row (`revision_index=0`) carrying the current `content_json/md/html`.
+- Drop unused columns / leave for now: keep `worksheet_entities` (CRM badges) and `worksheet_access_grants` (internal sharing) intact. Stop using `worksheet_embeddings`, `worksheet_versions`, and the summary/keyword pipelines from the UI (tables remain so existing rows do not disappear; can be cleaned up later).
 
-## Data model (additive, no destructive migrations)
+## Routing changes
 
-New table `space_folders`:
+- Remove `/worksheets` (the old Dashboard) and the `Documents` nav link in `AppHeader`.
+- `/worksheet/:id`: kept only as a redirect resolver. If current user owns the worksheet, navigate to `/chat/<session_id>?worksheet=<id>`. If the user is a grantee (via `worksheet_access_grants`), render a new read-only viewer (`WorksheetReadOnlyPage`) that shows the latest revision with the existing TipTap renderer plus a download/share-back affordance.
+- `/library` renamed to `/artifacts` (keep `/library` as an alias redirect). Nav label becomes `Artifacts`.
+- My Space tree, breadcrumbs and item lists already query both tables; only labels need to change ("Documents" -> "Worksheets").
 
-```
-id uuid pk
-user_id uuid (auth.users)
-parent_id uuid null (self-fk; null = root under My Space)
-name text
-created_at, updated_at
-```
+## Chat right-side panels
 
-Plus standard GRANTs + RLS scoped to `user_id = auth.uid()`.
+The chat right pane today is always `DesignPanel`. It becomes a panel host that can render either:
+- `DesignPanel` (unchanged)
+- `WorksheetPanel` (new) – embeds the existing `WorksheetEditor` (TipTap) in read-only mode by default with an Edit toggle. Header: title (rename), revision arrows (prev/next), Undo/Redo (TipTap built-in history), Save edits (appends a revision), Save to Space (`FolderPickerDialog`), Share (`ShareDialog`), Open in PDF.
 
-Add `folder_id uuid null` to two existing tables:
+If a session has both a design and a worksheet, the panel header shows tabs `Design • Worksheet` to switch. Saved artifacts of both kinds appear in the bottom "Saved" strip (already present for designs).
 
-- `worksheets.folder_id` → `space_folders.id` (on delete set null).
-- `chat_designs.folder_id` → `space_folders.id` (on delete set null).
+## AI tools and Edge Function
 
-`null` folder_id = item sits at My Space root. No data migration needed; everything starts at root.
+`design-chat` Edge Function gains worksheet tools while keeping the design ones:
+- `replace_worksheet_content(content_md, content_html, content_json?)` – analog of `replace_design_html`. On the client this calls the new `appendWorksheetRevision` (mirror of `appendRevision`).
+- `update_worksheet_title(title)` already exists; repoint to the active worksheet.
+- Retire the page-scoped `apply_worksheet_edit`, `rename_current_worksheet`, `set_worksheet_document_type` tools and the `worksheetScope` request shape. The Edge Function reads the active worksheet for the session directly to seed `currentWorksheetMarkdown` analogous to `currentHtml`.
+- System prompt: when an active worksheet exists, allow the model to choose between a normal chat reply, design tools, and worksheet tools; describe the difference (HTML page vs. structured document).
 
-## Routes & UI
+@worksheet mentions in the composer are removed (per the worksheet-only features choice). `WorksheetMentionInput` becomes a plain composer; remove `referencedWorksheets` plumbing.
 
-- `/space` — replaces `/` dashboard as the home. Two-pane:
-  - Left: folder tree (My Space root + children, expand/collapse, "+ New folder", context menu rename/delete/move).
-  - Right: contents of selected folder = subfolders + designs + documents, sortable by name/updated.
-- `/space/designs` — flat grid of all designs (reuses LibraryPage card UI).
-- `/space/documents` — flat list of all worksheets (reuses Dashboard list UI).
-- Sidebar (AppHeader/AppSidebar): `My Space`, `Designs`, `Documents`, `Chat`.
-- Keep `/worksheet/:id`, `/chat`, `/library` working; `/library` redirects to `/space/designs`; `/` redirects to `/space`.
+## Components touched / added / removed
 
-## Save to Space (chat design panel)
+Added
+- `src/components/chat/WorksheetPanel.tsx` – right-pane TipTap host with revision navigation, edit/save/share/PDF actions.
+- `src/pages/ArtifactsPage.tsx` – new combined list (rename of `LibraryPage`) with a `Type` badge (Design / Worksheet), unified search and sort, share-stats per artifact, Resume / New chat with this artifact / Share / Open. Resume for a worksheet goes to `/chat/<session>?worksheet=<id>`.
+- `src/pages/WorksheetReadOnlyPage.tsx` – grantee viewer for `/worksheet/:id` when the current user is not the owner.
+- `src/lib/worksheets.ts` helpers: `ensureActiveWorksheet(sessionId, titleHint)`, `appendWorksheetRevision(worksheetId, content)`, `saveWorksheetToSpace(worksheetId, folderId, title)`, `reopenSavedWorksheet`.
 
-In `DesignPanel.tsx`, replace/augment the existing save flow with a small dialog:
+Repurposed
+- `src/pages/WorksheetPage.tsx` – becomes a thin redirect/grantee guard (owner → chat; grantee → `WorksheetReadOnlyPage`). All header/editor/attachments/summary chrome removed.
+- `src/components/chat/AskLandiChat.tsx` – manage worksheets array alongside designs; drop `worksheetScope` prop and its sticky-mention/tool behavior; add panel-tab switching when both artifact types exist.
+- `src/pages/SpacePage.tsx` – relabel "Documents" → "Worksheets"; cards link into the session (`/chat/<session>?worksheet=<id>`).
+- `src/components/AppHeader.tsx` – nav becomes `My Space`, `Chat`, `Artifacts`.
+- `src/App.tsx` – route table updates per Routing section above.
 
-- Title (prefilled from current design title).
-- Folder picker (tree popover, default My Space).
-- Confirm → updates `chat_designs.status='saved'`, sets `folder_id`, sets title.
+Removed
+- `src/pages/Dashboard.tsx` and its `/worksheets` route entry.
+- `src/components/chat/WorksheetMentionInput.tsx` `@`-search popover and `useWorksheetSearch` hook usage in chat (replaced with a plain textarea composer).
+- Worksheet-page-only chrome from the old `WorksheetPage`: `SummaryButton`, `AttachmentPanel`, PDF / share top-bar wiring (PDF + share move into `WorksheetPanel`; attachments/summary removed per the chosen feature scope).
 
-Existing "Resume Chat" deep-link from a design card keeps working unchanged.
+## Migration ordering (single deployable change)
 
-## Worksheet → Document mapping
+1. SQL migration (schema add + revisions table + backfill, all in one transaction).
+2. Edge Function update (`design-chat` learns the new worksheet tools; existing design behavior unchanged).
+3. Frontend changes shipped together so the legacy Dashboard never loads against the new schema.
 
-No schema change to `worksheets` beyond `folder_id`. In Space views and pickers, worksheets are labeled "Document". Document creation from Space uses the existing worksheet-create mutation but passes the selected `folder_id`.
+## Out of scope for this change
 
-## Folder operations
-
-- Create: insert under `parent_id` (null = root).
-- Rename: update `name`.
-- Delete: only allowed if folder is empty (subfolders + documents + designs all empty); otherwise dialog says "Move or delete contents first." Keeps v1 simple, no cascade rules.
-- Move item (design or document) to folder: update `folder_id`. Available via right-click / "Move…" menu on the card.
-
-## File-by-file work
-
-```
-supabase/migrations/<ts>_space_folders.sql   create table, grants, RLS, add folder_id columns
-src/integrations/supabase/types.ts            regenerated by migration
-
-src/lib/space.ts                              CRUD helpers: folders, move item
-src/hooks/useSpaceTree.ts                     react-query tree + invalidation
-
-src/pages/SpacePage.tsx                       new — folder tree + folder contents
-src/pages/SpaceDesignsPage.tsx                new — wraps existing LibraryPage grid
-src/pages/SpaceDocumentsPage.tsx              new — wraps existing Dashboard list
-src/components/space/FolderTree.tsx           tree UI, context menu
-src/components/space/FolderPickerDialog.tsx   reusable picker (used by Save to Space + Move)
-src/components/space/NewFolderDialog.tsx
-src/components/space/MoveToFolderMenuItem.tsx
-
-src/components/chat/DesignPanel.tsx           add "Save to Space" with folder picker
-src/components/AppHeader.tsx (or sidebar)     add Space / Designs / Documents nav
-src/App.tsx                                   add routes; redirect / → /space, /library → /space/designs
-src/pages/Dashboard.tsx                       keep underlying list logic, expose via SpaceDocumentsPage
-src/pages/LibraryPage.tsx                     keep grid logic, expose via SpaceDesignsPage
-```
-
-## Verification
-
-- Migration applies; new tables/columns visible; RLS blocks cross-user reads.
-- Create folder → appears in tree; create nested folder → appears under parent.
-- Save a design from chat into a chosen folder → appears in that folder and in `/space/designs`.
-- Create a worksheet from a folder → opens worksheet editor; appears in that folder and in `/space/documents`.
-- Move a design between folders → both views reflect immediately.
-- Delete non-empty folder → blocked with clear message.
-- Existing chat resume / share / publish flows still work.
-
-## Open questions before I start
-
-1. Is replacing `/` with `/space` (and redirecting `/library` → `/space/designs`) acceptable, or do you want the old dashboard kept accessible for one release?
-2. When deleting a non-empty folder, do you prefer the block-and-explain behavior above, or a "delete folder and move contents to parent" cascade?
-
-If both answers are "yes to the defaults, go," I'll start with the migration + folder CRUD + `/space` page, then layer Save-to-Space and the type views.
+Hybrid search / embeddings / @worksheet mentions / file attachments / AI summaries / keyword extraction (per user's feature-scope choice). Their tables remain so nothing is destroyed; the UI surfaces are simply removed.

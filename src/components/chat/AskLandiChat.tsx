@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, MessageSquare, PanelRightOpen, Loader2 } from "lucide-react";
+import { RotateCcw, MessageSquare, PanelRightOpen, Loader2, FileText, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { marked } from "marked";
 import { supabase } from "@/integrations/supabase/client";
 import WorksheetMentionInput, { type WorksheetMention } from "@/components/chat/WorksheetMentionInput";
 import DesignPanel, { type ChatDesign, type DesignRevision } from "@/components/chat/DesignPanel";
+import WorksheetPanel from "@/components/chat/WorksheetPanel";
+import {
+  loadSessionWorksheets,
+  ensureActiveWorksheet,
+  appendWorksheetRevision,
+  renameWorksheet,
+  saveWorksheetToSpace,
+  reopenSavedWorksheet,
+  type ChatWorksheet,
+} from "@/lib/worksheetArtifacts";
 import ShareDialog from "@/components/share/ShareDialog";
 import SessionHistorySidebar from "@/components/chat/SessionHistorySidebar";
-import type { DocumentType } from "@/lib/worksheets";
 
 interface ToolCall {
   id: string;
@@ -27,24 +36,18 @@ interface Message {
 
 const DESIGN_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/design-chat`;
 
-export interface WorksheetScope {
-  worksheetId: string;
-  worksheetTitle: string;
-  worksheetType: DocumentType;
-  /** Read-only access to the latest worksheet content for the model. */
-  getContent: () => string;
-  /** Editor write-back callbacks. */
-  onApplyEdit?: (markdown: string) => void;
-  onUpdateTitle?: (title: string) => void;
-  onUpdateDocumentType?: (type: DocumentType) => void;
-}
+export type ArtifactRef =
+  | { kind: "design"; id: string }
+  | { kind: "worksheet"; id: string };
 
 interface Props {
   /** Always render in the context of an existing session id. Parent handles bootstrap. */
   sessionId: string;
   userId: string | undefined;
-  /** When set, the chat is scoped to a worksheet: history sidebar filters by this id, the worksheet is a sticky @mention, and worksheet-edit tools are enabled. */
-  worksheetScope?: WorksheetScope;
+  /** When set, scopes the history sidebar to a worksheet-bound session list. */
+  worksheetId?: string | null;
+  /** Opens the given artifact in the right panel on mount, if it exists. */
+  initialArtifact?: ArtifactRef | null;
   /** Called when the user clicks an entry in the history sidebar. */
   onSelectSession: (sessionId: string) => void;
   /** Called when the user wants to start a new chat. Should create the session and call onSelectSession with the new id. */
@@ -54,29 +57,33 @@ interface Props {
   onAutoMessageConsumed?: () => void;
   /** Optional selection context shown above the composer. */
   selectedText?: string;
-  /** Notified whenever this session has at least one design (active or saved).
-   * Lets the parent (e.g. WorksheetPage) widen the chat column so the design
-   * and conversation can sit side-by-side. */
-  onHasDesignChange?: (hasDesign: boolean) => void;
+  /** Notified whenever this session has at least one artifact (design or worksheet). */
+  onHasArtifactChange?: (hasArtifact: boolean) => void;
 }
 
 const AskLandiChat = ({
   sessionId,
   userId,
-  worksheetScope,
+  worksheetId,
+  initialArtifact,
   onSelectSession,
   onNewChat,
   autoMessage,
   onAutoMessageConsumed,
   selectedText,
-  onHasDesignChange,
+  onHasArtifactChange,
 }: Props) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [designs, setDesigns] = useState<ChatDesign[]>([]);
+  const [worksheets, setWorksheets] = useState<ChatWorksheet[]>([]);
   const [viewingDesignId, setViewingDesignId] = useState<string | null>(null);
+  const [viewingWorksheetId, setViewingWorksheetId] = useState<string | null>(null);
+  const [panelArtifact, setPanelArtifact] = useState<"design" | "worksheet">("design");
   const [revisionIndex, setRevisionIndex] = useState(0);
+  const [worksheetRevisionIndex, setWorksheetRevisionIndex] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareWorksheetOpen, setShareWorksheetOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [thinking, setThinking] = useState<string | null>(null);
@@ -96,7 +103,7 @@ const AskLandiChat = ({
     let cancelled = false;
     (async () => {
       setLoaded(false);
-      const [msgsRes, designsRes] = await Promise.all([
+      const [msgsRes, designsRes, worksheetsList] = await Promise.all([
         supabase
           .from("chat_messages")
           .select("*")
@@ -108,6 +115,10 @@ const AskLandiChat = ({
           .select("*, chat_design_revisions(*)")
           .eq("session_id", sessionId)
           .order("created_at"),
+        loadSessionWorksheets(sessionId).catch((e) => {
+          console.error("loadSessionWorksheets failed", e);
+          return [] as ChatWorksheet[];
+        }),
       ]);
       if (cancelled) return;
       if (msgsRes.error) toast.error("Failed to load chat messages");
@@ -130,18 +141,49 @@ const AskLandiChat = ({
       }));
       setMessages(loadedMessages);
       setDesigns(loadedDesigns);
+      setWorksheets(worksheetsList);
       titledRef.current = loadedMessages.length > 0;
 
-      const active = loadedDesigns.find((d) => d.status === "active");
-      if (active) {
-        setViewingDesignId(active.id);
-        setRevisionIndex(Math.max(0, active.revisions.length - 1));
-        setPanelOpen(true);
+      const activeDes = loadedDesigns.find((d) => d.status === "active") || null;
+      const activeWs = worksheetsList.find((w) => w.status === "active") || null;
+
+      if (activeDes) {
+        setViewingDesignId(activeDes.id);
+        setRevisionIndex(Math.max(0, activeDes.revisions.length - 1));
       } else if (loadedDesigns.length > 0) {
         setViewingDesignId(loadedDesigns[loadedDesigns.length - 1].id);
-        setPanelOpen(false);
+      }
+      if (activeWs) {
+        setViewingWorksheetId(activeWs.id);
+        setWorksheetRevisionIndex(Math.max(0, activeWs.revisions.length - 1));
+      } else if (worksheetsList.length > 0) {
+        setViewingWorksheetId(worksheetsList[worksheetsList.length - 1].id);
+      }
+
+      // Decide initial panel & visibility honoring `initialArtifact`.
+      if (initialArtifact?.kind === "worksheet") {
+        const w = worksheetsList.find((x) => x.id === initialArtifact.id);
+        if (w) {
+          setViewingWorksheetId(w.id);
+          setWorksheetRevisionIndex(Math.max(0, w.revisions.length - 1));
+          setPanelArtifact("worksheet");
+          setPanelOpen(true);
+        }
+      } else if (initialArtifact?.kind === "design") {
+        const d = loadedDesigns.find((x) => x.id === initialArtifact.id);
+        if (d) {
+          setViewingDesignId(d.id);
+          setRevisionIndex(Math.max(0, d.revisions.length - 1));
+          setPanelArtifact("design");
+          setPanelOpen(true);
+        }
+      } else if (activeDes) {
+        setPanelArtifact("design");
+        setPanelOpen(true);
+      } else if (activeWs) {
+        setPanelArtifact("worksheet");
+        setPanelOpen(true);
       } else {
-        setViewingDesignId(null);
         setPanelOpen(false);
       }
       setLoaded(true);
@@ -149,7 +191,7 @@ const AskLandiChat = ({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, initialArtifact?.kind, initialArtifact?.id]);
 
   // ── Derived
   const viewingDesign = useMemo(
@@ -164,10 +206,22 @@ const AskLandiChat = ({
     () => designs.filter((d) => d.status === "saved"),
     [designs],
   );
+  const viewingWorksheet = useMemo(
+    () => worksheets.find((w) => w.id === viewingWorksheetId) || null,
+    [worksheets, viewingWorksheetId],
+  );
+  const activeWorksheet = useMemo(
+    () => worksheets.find((w) => w.status === "active") || null,
+    [worksheets],
+  );
+  const savedWorksheets = useMemo(
+    () => worksheets.filter((w) => w.status === "saved"),
+    [worksheets],
+  );
 
   useEffect(() => {
-    onHasDesignChange?.(designs.length > 0);
-  }, [designs.length, onHasDesignChange]);
+    onHasArtifactChange?.(designs.length + worksheets.length > 0);
+  }, [designs.length, worksheets.length, onHasArtifactChange]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -250,7 +304,157 @@ const AskLandiChat = ({
     );
     setViewingDesignId(designId);
     setRevisionIndex(currentRevs.length);
+    setPanelArtifact("design");
     setPanelOpen(true);
+  };
+
+  // ── Worksheet artifact helpers
+  const appendWsRevision = async (
+    content: { content_md?: string | null; content_html?: string | null },
+    promptMessageId: string | null,
+  ): Promise<void> => {
+    if (!userId) {
+      toast.error("Not signed in");
+      return;
+    }
+    const active = await ensureActiveWorksheet(sessionId, userId, lastUserTextRef.current);
+    try {
+      const rev = await appendWorksheetRevision(active.id, content, promptMessageId);
+      // Refresh local state for that worksheet.
+      setWorksheets((prev) => {
+        const found = prev.find((w) => w.id === active.id);
+        const now = new Date().toISOString();
+        if (found) {
+          return prev.map((w) =>
+            w.id === active.id
+              ? {
+                  ...w,
+                  updated_at: now,
+                  content_md: rev.content_md,
+                  content_html: rev.content_html,
+                  content_json: rev.content_json,
+                  revisions: [...w.revisions, rev],
+                }
+              : w,
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: active.id,
+            title: active.title,
+            status: "active",
+            folder_id: null,
+            updated_at: now,
+            content_md: rev.content_md,
+            content_html: rev.content_html,
+            content_json: rev.content_json,
+            revisions: [rev],
+          },
+        ];
+      });
+      setViewingWorksheetId(active.id);
+      setWorksheetRevisionIndex((prev) => {
+        const w = worksheets.find((x) => x.id === active.id);
+        return w ? w.revisions.length : 0;
+      });
+      setPanelArtifact("worksheet");
+      setPanelOpen(true);
+    } catch (e) {
+      console.error("appendWsRevision failed", e);
+      toast.error("Failed to save worksheet revision");
+    }
+  };
+
+  const renameWorksheetTitle = async (worksheetId: string, title: string) => {
+    setWorksheets((prev) =>
+      prev.map((w) => (w.id === worksheetId ? { ...w, title, updated_at: new Date().toISOString() } : w)),
+    );
+    try {
+      await renameWorksheet(worksheetId, title);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveWorksheetDraftToSpace = async (folderId: string | null, title: string) => {
+    if (!activeWorksheet) return;
+    setSaving(true);
+    try {
+      await saveWorksheetToSpace(activeWorksheet.id, folderId, title);
+      const now = new Date().toISOString();
+      setWorksheets((prev) =>
+        prev.map((w) =>
+          w.id === activeWorksheet.id ? { ...w, status: "saved", title, folder_id: folderId, updated_at: now } : w,
+        ),
+      );
+      toast.success("Saved to Space — next worksheet will start fresh");
+    } catch (e) {
+      toast.error("Could not save to Space");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reopenSavedWorksheetLocal = async (wsId: string) => {
+    const target = worksheets.find((w) => w.id === wsId);
+    if (!target) return;
+    if (target.status === "active") {
+      setViewingWorksheetId(wsId);
+      setWorksheetRevisionIndex(Math.max(0, target.revisions.length - 1));
+      setPanelArtifact("worksheet");
+      setPanelOpen(true);
+      return;
+    }
+    try {
+      await reopenSavedWorksheet(sessionId, wsId);
+      const now = new Date().toISOString();
+      const current = worksheets.find((w) => w.status === "active");
+      setWorksheets((prev) =>
+        prev.map((w) => {
+          if (w.id === wsId) return { ...w, status: "active", updated_at: now };
+          if (current && w.id === current.id) return { ...w, status: "saved", updated_at: now };
+          return w;
+        }),
+      );
+      setViewingWorksheetId(wsId);
+      setWorksheetRevisionIndex(Math.max(0, target.revisions.length - 1));
+      setPanelArtifact("worksheet");
+      setPanelOpen(true);
+      toast.success("Worksheet reopened — new edits will add a revision");
+    } catch {
+      toast.error("Could not reopen worksheet");
+    }
+  };
+
+  const saveWorksheetEditedSnapshot = async (html: string, md: string, json: any) => {
+    if (!viewingWorksheet) return;
+    try {
+      const rev = await appendWorksheetRevision(viewingWorksheet.id, {
+        content_html: html,
+        content_md: md,
+        content_json: json,
+      });
+      const now = new Date().toISOString();
+      setWorksheets((prev) =>
+        prev.map((w) =>
+          w.id === viewingWorksheet.id
+            ? {
+                ...w,
+                updated_at: now,
+                content_html: html,
+                content_md: md,
+                content_json: json,
+                revisions: [...w.revisions, rev],
+              }
+            : w,
+        ),
+      );
+      setWorksheetRevisionIndex((prev) => (viewingWorksheet.revisions.length));
+      toast.success("Saved as new revision");
+    } catch {
+      toast.error("Could not save edits");
+    }
   };
 
   const saveDraftToSpace = async (folderId: string | null, title: string) => {
@@ -333,12 +537,12 @@ const AskLandiChat = ({
       currentHtml,
       referencedWorksheets,
     };
-    if (worksheetScope) {
-      body.worksheetScope = {
-        worksheetId: worksheetScope.worksheetId,
-        worksheetTitle: worksheetScope.worksheetTitle,
-        worksheetType: worksheetScope.worksheetType,
-        worksheetContent: worksheetScope.getContent(),
+    if (activeWorksheet) {
+      const latestRev = activeWorksheet.revisions[activeWorksheet.revisions.length - 1];
+      body.activeWorksheet = {
+        id: activeWorksheet.id,
+        title: activeWorksheet.title,
+        contentMarkdown: latestRev?.content_md || activeWorksheet.content_md || "",
       };
     }
 
@@ -516,18 +720,20 @@ const AskLandiChat = ({
                 if (tc.function.name === "replace_design_html") {
                   await appendRevision(parsed.html, userMsgId);
                   resultText = "Design updated successfully.";
+                } else if (tc.function.name === "replace_worksheet_content") {
+                  // The model returns markdown; render it to HTML for storage.
+                  const md: string = parsed.content_md || parsed.content || "";
+                  const html = marked.parse(md, { async: false }) as string;
+                  await appendWsRevision({ content_md: md, content_html: html }, userMsgId);
+                  resultText = "Worksheet updated successfully.";
                 } else if (tc.function.name === "update_worksheet_title") {
-                  await renameTitle(parsed.title);
+                  // Renames the currently-viewed artifact (worksheet preferred when active).
+                  if (panelArtifact === "worksheet" && viewingWorksheet) {
+                    await renameWorksheetTitle(viewingWorksheet.id, parsed.title);
+                  } else if (viewingDesign) {
+                    await renameTitle(parsed.title);
+                  }
                   resultText = `Title changed to "${parsed.title}".`;
-                } else if (tc.function.name === "apply_worksheet_edit" && worksheetScope?.onApplyEdit) {
-                  worksheetScope.onApplyEdit(parsed.content);
-                  resultText = "Worksheet content updated.";
-                } else if (tc.function.name === "rename_current_worksheet" && worksheetScope?.onUpdateTitle) {
-                  worksheetScope.onUpdateTitle(parsed.title);
-                  resultText = `Worksheet renamed to "${parsed.title}".`;
-                } else if (tc.function.name === "set_worksheet_document_type" && worksheetScope?.onUpdateDocumentType) {
-                  worksheetScope.onUpdateDocumentType(parsed.document_type as DocumentType);
-                  resultText = `Document type set to "${parsed.document_type}".`;
                 } else {
                   resultText = `Unknown tool: ${tc.function.name}`;
                 }
@@ -562,7 +768,7 @@ const AskLandiChat = ({
         abortRef.current = null;
       }
     },
-    [messages, isLoading, activeDesign, designs, sessionId, worksheetScope],
+    [messages, isLoading, activeDesign, activeWorksheet, designs, worksheets, sessionId, panelArtifact, viewingDesign, viewingWorksheet],
   );
 
   // Auto-send selection-toolbar handoff messages
@@ -589,7 +795,7 @@ const AskLandiChat = ({
         activeSessionId={sessionId}
         refreshKey={historyKey}
         onNewChat={() => onNewChat()}
-        worksheetId={worksheetScope?.worksheetId ?? null}
+        worksheetId={worksheetId ?? null}
         onSelectSession={onSelectSession}
       />
       {/* Chat column */}
@@ -600,14 +806,43 @@ const AskLandiChat = ({
             <span className="text-sm font-medium">AskLandi</span>
           </div>
           <div className="flex items-center gap-1">
-            {designs.length > 0 && !panelOpen && (
+            {designs.length > 0 && (
+              <Button
+                variant={panelOpen && panelArtifact === "design" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => {
+                  setPanelArtifact("design");
+                  setPanelOpen(true);
+                }}
+                title="Show designs"
+              >
+                <LayoutGrid className="h-3 w-3" /> Designs ({designs.length})
+              </Button>
+            )}
+            {worksheets.length > 0 && (
+              <Button
+                variant={panelOpen && panelArtifact === "worksheet" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => {
+                  setPanelArtifact("worksheet");
+                  setPanelOpen(true);
+                }}
+                title="Show worksheets"
+              >
+                <FileText className="h-3 w-3" /> Worksheets ({worksheets.length})
+              </Button>
+            )}
+            {panelOpen && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 gap-1.5 text-xs"
-                onClick={() => setPanelOpen(true)}
+                onClick={() => setPanelOpen(false)}
+                title="Hide artifact panel"
               >
-                <PanelRightOpen className="h-3 w-3" /> Designs ({designs.length})
+                <PanelRightOpen className="h-3 w-3" /> Hide
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => onNewChat()} className="h-7 gap-1.5 text-xs">
@@ -615,15 +850,6 @@ const AskLandiChat = ({
             </Button>
           </div>
         </div>
-
-        {worksheetScope && (
-          <div className="border-b border-border bg-muted/40 px-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="uppercase tracking-wider">In context</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-background border border-border px-2 py-0.5 text-foreground">
-              📄 {worksheetScope.worksheetTitle || "Untitled worksheet"}
-            </span>
-          </div>
-        )}
 
         {selectedText && (
           <div className="border-b border-border px-4 py-2">
@@ -703,30 +929,56 @@ const AskLandiChat = ({
         <WorksheetMentionInput onSend={handleSend} isLoading={isLoading} />
       </div>
 
-      <DesignPanel
-        open={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        design={viewingDesign}
-        revisionIndex={revisionIndex}
-        onChangeRevision={setRevisionIndex}
-        onSaveToSpace={saveDraftToSpace}
-        saving={saving}
-        onRenameTitle={renameTitle}
-        savedDesigns={savedDesigns}
-        onOpenSaved={(id) => {
-          reopenSavedDraft(id);
-        }}
-        onShare={viewingDesign ? () => setShareOpen(true) : undefined}
-        onSaveEditedHtml={viewingDesign ? async (html) => {
-          await appendRevision(html, null);
-        } : undefined}
-      />
+      {panelOpen && panelArtifact === "design" && (
+        <DesignPanel
+          open={panelOpen}
+          onClose={() => setPanelOpen(false)}
+          design={viewingDesign}
+          revisionIndex={revisionIndex}
+          onChangeRevision={setRevisionIndex}
+          onSaveToSpace={saveDraftToSpace}
+          saving={saving}
+          onRenameTitle={renameTitle}
+          savedDesigns={savedDesigns}
+          onOpenSaved={(id) => {
+            reopenSavedDraft(id);
+          }}
+          onShare={viewingDesign ? () => setShareOpen(true) : undefined}
+          onSaveEditedHtml={viewingDesign ? async (html) => {
+            await appendRevision(html, null);
+          } : undefined}
+        />
+      )}
+      {panelOpen && panelArtifact === "worksheet" && (
+        <WorksheetPanel
+          open={panelOpen}
+          onClose={() => setPanelOpen(false)}
+          worksheet={viewingWorksheet}
+          revisionIndex={worksheetRevisionIndex}
+          onChangeRevision={setWorksheetRevisionIndex}
+          onRenameTitle={(t) => viewingWorksheet && renameWorksheetTitle(viewingWorksheet.id, t)}
+          onSaveEdits={saveWorksheetEditedSnapshot}
+          onSaveToSpace={saveWorksheetDraftToSpace}
+          onShare={viewingWorksheet ? () => setShareWorksheetOpen(true) : undefined}
+          savedWorksheets={savedWorksheets}
+          onOpenSaved={(id) => reopenSavedWorksheetLocal(id)}
+          saving={saving}
+        />
+      )}
       {viewingDesign && (
         <ShareDialog
           open={shareOpen}
           onOpenChange={setShareOpen}
           chatDesignId={viewingDesign.id}
           worksheetTitle={viewingDesign.title || "Design"}
+        />
+      )}
+      {viewingWorksheet && (
+        <ShareDialog
+          open={shareWorksheetOpen}
+          onOpenChange={setShareWorksheetOpen}
+          worksheetId={viewingWorksheet.id}
+          worksheetTitle={viewingWorksheet.title || "Worksheet"}
         />
       )}
     </div>

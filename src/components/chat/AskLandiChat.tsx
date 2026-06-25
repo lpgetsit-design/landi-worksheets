@@ -653,15 +653,8 @@ const AskLandiChat = ({
         setHistoryKey((k) => k + 1);
       }
 
-      // Build sticky mention pool across turns; seed with the worksheet scope if present.
+      // Build sticky mention pool across turns.
       const allMentions = new Map<string, WorksheetMention>();
-      if (worksheetScope) {
-        allMentions.set(worksheetScope.worksheetId, {
-          worksheetId: worksheetScope.worksheetId,
-          title: worksheetScope.worksheetTitle,
-          documentType: worksheetScope.worksheetType,
-        });
-      }
       for (const m of convo) for (const x of m.mentions || []) allMentions.set(x.worksheetId, x);
 
       try {

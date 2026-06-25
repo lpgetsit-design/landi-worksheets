@@ -14,12 +14,36 @@ export interface Worksheet {
   meta: Json | null;
   created_at: string;
   updated_at: string;
+  session_id?: string | null;
+  status?: "active" | "saved";
+  folder_id?: string | null;
 }
 
-export const createWorksheet = async (userId: string, title = "Untitled", documentType: DocumentType = "note") => {
+export interface WorksheetRevision {
+  id: string;
+  revision_index: number;
+  content_json: Json | null;
+  content_md: string | null;
+  content_html: string | null;
+  created_at: string;
+}
+
+export const createWorksheet = async (
+  userId: string,
+  title = "Untitled",
+  documentType: DocumentType = "note",
+  opts: { session_id?: string | null; folder_id?: string | null; status?: "active" | "saved" } = {},
+) => {
   const { data, error } = await supabase
     .from("worksheets")
-    .insert({ user_id: userId, title, document_type: documentType })
+    .insert({
+      user_id: userId,
+      title,
+      document_type: documentType,
+      session_id: opts.session_id ?? null,
+      folder_id: opts.folder_id ?? null,
+      status: opts.status ?? "saved",
+    })
     .select()
     .single();
   if (error) throw error;

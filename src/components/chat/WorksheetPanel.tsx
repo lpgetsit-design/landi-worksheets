@@ -202,7 +202,9 @@ const WorksheetPanel = ({
             key={worksheet.id}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
-            initialContent={(current.content_json ?? worksheet.content_json) as any}
+            initialContent={
+              (current.content_json ?? worksheet.content_json ?? current.content_html ?? worksheet.content_html ?? "") as any
+            }
             initialDocumentType={"note"}
             editorRef={editorRef as any}
           />

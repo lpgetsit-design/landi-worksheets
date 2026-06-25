@@ -299,11 +299,7 @@ const SpacePage = () => {
                   <button
                     key={d.id}
                     onClick={() => {
-                      if (d.worksheet_id) {
-                        navigate(`/worksheet/${d.worksheet_id}?session=${d.session_id}&design=${d.id}`);
-                      } else {
-                        navigate(`/chat/${d.session_id}?design=${d.id}`);
-                      }
+                      navigate(`/chat/${d.session_id}?design=${d.id}`);
                     }}
                     className="text-left rounded-lg border border-border bg-card hover:border-primary/40 transition-colors overflow-hidden"
                   >

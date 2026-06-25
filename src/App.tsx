@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import AppHeader from "@/components/AppHeader";
-import Dashboard from "./pages/Dashboard";
 import WorksheetPage from "./pages/WorksheetPage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
@@ -51,11 +50,11 @@ const AuthenticatedLayout = () => {
         <Route path="/" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
         <Route path="/space" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
         <Route path="/space/folder/:folderId" element={<ProtectedRoute><SpacePage /></ProtectedRoute>} />
-        <Route path="/worksheets" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/worksheet/:id" element={<ProtectedRoute><WorksheetPage /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/chat/:sessionId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+        <Route path="/artifacts" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

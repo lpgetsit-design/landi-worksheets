@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2, MousePointerClick, Loader2, Undo2, Redo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, ExternalLink, X, Check, Pencil, Share2, MousePointerClick, Loader2, Undo2, Redo2, FolderPlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import DesignPreview from "@/components/design/DesignPreview";
 import DesignEditor, { type DesignEditorHandle, type DesignEditorState } from "@/components/design/DesignEditor";
+import FolderPickerDialog from "@/components/space/FolderPickerDialog";
 import { cn } from "@/lib/utils";
 
 export interface DesignRevision {
@@ -25,7 +26,8 @@ interface Props {
   design: ChatDesign | null;
   revisionIndex: number;
   onChangeRevision: (i: number) => void;
-  onSave: () => void;
+  /** Persist the active draft into Space at the given folder (null = My Space root). */
+  onSaveToSpace: (folderId: string | null, title: string) => Promise<void> | void;
   saving?: boolean;
   onRenameTitle?: (title: string) => void;
   savedDesigns: ChatDesign[];
@@ -41,7 +43,7 @@ const DesignPanel = ({
   design,
   revisionIndex,
   onChangeRevision,
-  onSave,
+  onSaveToSpace,
   saving,
   onRenameTitle,
   savedDesigns,
@@ -59,6 +61,7 @@ const DesignPanel = ({
   const [editMode, setEditMode] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
   const [editorState, setEditorState] = useState<DesignEditorState>({ canUndo: false, canRedo: false });
+  const [savePickerOpen, setSavePickerOpen] = useState(false);
 
   const handleSaveEdits = async () => {
     if (!editorRef.current || !onSaveEditedHtml) return;
@@ -167,10 +170,11 @@ const DesignPanel = ({
               size="sm"
               variant="default"
               className="h-7 gap-1.5 text-xs"
-              onClick={onSave}
+              onClick={() => setSavePickerOpen(true)}
               disabled={saving}
+              title="Save to Space"
             >
-              <Save className="h-3 w-3" /> Save draft
+              <FolderPlus className="h-3 w-3" /> Save to Space
             </Button>
           )}
           {current && (
@@ -278,6 +282,17 @@ const DesignPanel = ({
           </div>
         </div>
       )}
+
+      <FolderPickerDialog
+        open={savePickerOpen}
+        onOpenChange={setSavePickerOpen}
+        withTitle
+        defaultTitle={design?.title}
+        confirmLabel="Save to Space"
+        onConfirm={async (folderId, title) => {
+          await onSaveToSpace(folderId, title || design?.title || "Untitled");
+        }}
+      />
     </aside>
   );
 };

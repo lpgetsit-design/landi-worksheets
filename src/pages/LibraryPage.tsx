@@ -215,12 +215,6 @@ const LibraryPage = () => {
   }, [items, query, sort]);
 
   const handleResume = (item: LibraryItem) => {
-    if (item.worksheetId) {
-      navigate(
-        `/worksheet/${item.worksheetId}?session=${item.sessionId}&design=${item.designId}`,
-      );
-      return;
-    }
     navigate(`/chat/${item.sessionId}?design=${item.designId}`);
   };
 

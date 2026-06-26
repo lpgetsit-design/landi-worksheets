@@ -340,7 +340,7 @@ const SpacePage = () => {
 
       {/* Right rail: collapsible folder tree */}
       <aside
-        className={`hidden md:flex flex-col border-l border-border/60 bg-gradient-to-b from-card/60 to-background/40 backdrop-blur-sm transition-all duration-300 ease-in-out ${
+        className={`hidden md:flex flex-col border-l border-border/60 bg-gradient-to-b from-card/60 to-background/40 backdrop-blur-sm overflow-hidden transition-all duration-300 ease-in-out ${
           sideOpen ? "w-72" : "w-12"
         }`}
       >

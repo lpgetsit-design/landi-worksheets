@@ -47,12 +47,15 @@ const NodeRow = ({
     <div>
       <div
         className={cn(
-          "group flex items-center gap-1 rounded-md pr-1 hover:bg-accent/50 cursor-pointer",
-          isSel && "bg-accent",
+          "group relative flex items-center gap-1 rounded-lg pr-1 cursor-pointer transition-colors",
+          isSel ? "bg-primary/10 text-foreground" : "hover:bg-accent/40",
         )}
         style={{ paddingLeft: depth * 12 }}
         onClick={() => onSelect(node.id)}
       >
+        {isSel && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -66,7 +69,9 @@ const NodeRow = ({
             <span className="w-3" />
           )}
         </button>
-        {open ? <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" /> : <Folder className="h-3.5 w-3.5 text-muted-foreground" />}
+        {open
+          ? <FolderOpen className={cn("h-3.5 w-3.5", isSel ? "text-primary" : "text-muted-foreground")} />
+          : <Folder className={cn("h-3.5 w-3.5", isSel ? "text-primary" : "text-muted-foreground")} />}
         {editingId === node.id ? (
           <Input
             autoFocus
@@ -176,12 +181,15 @@ const FolderTree = ({ tree, selectedId, onSelect, onCreate, onRename, onDelete }
     <div className="text-sm">
       <div
         className={cn(
-          "group flex items-center gap-1.5 rounded-md px-1.5 py-1 cursor-pointer hover:bg-accent/50",
-          selectedId === null && "bg-accent",
+          "group relative flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors",
+          selectedId === null ? "bg-primary/10" : "hover:bg-accent/40",
         )}
         onClick={() => onSelect(null)}
       >
-        <Home className="h-3.5 w-3.5 text-muted-foreground" />
+        {selectedId === null && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+        )}
+        <Home className={cn("h-3.5 w-3.5", selectedId === null ? "text-primary" : "text-muted-foreground")} />
         <span className="font-medium flex-1">My Space</span>
         <Button
           size="icon"

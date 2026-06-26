@@ -338,65 +338,15 @@ const SpacePage = () => {
         </div>
       </main>
 
-      {/* Right rail: collapsible folder tree */}
-      <aside
-        className={`hidden md:flex flex-col border-l border-border/60 bg-gradient-to-b from-card/60 to-background/40 backdrop-blur-sm overflow-hidden transition-all duration-300 ease-in-out ${
-          sideOpen ? "w-72" : "w-12"
-        }`}
-      >
-        <div className="px-2 pt-3 pb-2 flex items-center justify-between">
-          {sideOpen && (
-            <div className="px-2">
-              <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
-                Workspace
-              </div>
-              <div className="text-sm font-semibold mt-0.5">Folders</div>
-            </div>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 rounded-full shrink-0"
-            title={sideOpen ? "Collapse folders" : "Expand folders"}
-            onClick={() => setSideOpen((o) => !o)}
-          >
-            {sideOpen ? (
-              <ChevronRightIcon className="h-3.5 w-3.5" />
-            ) : (
-              <PanelRight className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          {sideOpen && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 rounded-full shrink-0"
-              title="New folder at root"
-              onClick={() => {
-                const name = window.prompt("Folder name", "New folder");
-                if (name && name.trim()) handleCreate(null, name.trim());
-              }}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-        {sideOpen && <div className="h-px mx-4 bg-border/60" />}
-        <div className={`flex-1 overflow-y-auto px-2 py-2 ${sideOpen ? "" : "hidden"}`}>
-          {foldersLoading ? (
-            <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
-          ) : (
-            <FolderTree
-              tree={tree}
-              selectedId={selectedId}
-              onSelect={selectFolder}
-              onCreate={handleCreate}
-              onRename={handleRename}
-              onDelete={handleDeleteFolder}
-            />
-          )}
-        </div>
-      </aside>
+      <FolderRail
+        tree={tree}
+        selectedId={selectedId}
+        onSelect={selectFolder}
+        onCreate={handleCreate}
+        onRename={handleRename}
+        onDelete={handleDeleteFolder}
+        isLoading={foldersLoading}
+      />
     </div>
   );
 };

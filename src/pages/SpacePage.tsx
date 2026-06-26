@@ -22,7 +22,6 @@ import {
   Plus,
   Loader2,
   PanelRight,
-  ChevronLeft,
   ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import DesignPreview from "@/components/design/DesignPreview";

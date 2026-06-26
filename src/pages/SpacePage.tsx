@@ -57,6 +57,7 @@ const SpacePage = () => {
   const qc = useQueryClient();
 
   const { tree, folders, isLoading: foldersLoading } = useSpaceTree();
+  const [sideOpen, setSideOpen] = useState(true);
   const selectedId = routeFolderId ?? null;
 
   const selectFolder = (id: string | null) => {

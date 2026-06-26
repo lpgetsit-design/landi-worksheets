@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,8 +21,6 @@ import {
   ChevronRight,
   Plus,
   Loader2,
-  PanelRight,
-  ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import DesignPreview from "@/components/design/DesignPreview";
 import {
@@ -56,7 +54,6 @@ const SpacePage = () => {
   const qc = useQueryClient();
 
   const { tree, folders, isLoading: foldersLoading } = useSpaceTree();
-  const [sideOpen, setSideOpen] = useState(true);
   const selectedId = routeFolderId ?? null;
 
   const selectFolder = (id: string | null) => {

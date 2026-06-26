@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useSpaceTree } from "@/hooks/useSpaceTree";
-import FolderTree from "@/components/space/FolderTree";
+import FolderRail from "@/components/space/FolderRail";
 import {
   createFolder,
   renameFolder,

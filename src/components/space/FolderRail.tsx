@@ -47,7 +47,7 @@ export function FolderRail({
       {/* Expanded folder tree panel */}
       <div
         className={cn(
-          "absolute right-full top-1/2 -translate-y-1/2 mr-2 w-64 h-[min(600px,calc(100vh-6rem))] flex flex-col rounded-3xl bg-card/95 backdrop-blur-md border border-border/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-4 transition-all duration-300 ease-out z-40",
+          "absolute right-full top-1/2 -translate-y-1/2 mr-2 w-64 h-[min(600px,calc(100vh_-_6rem))] flex flex-col rounded-3xl bg-card/95 backdrop-blur-md border border-border/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-4 transition-all duration-300 ease-out z-40",
           open
             ? "opacity-100 translate-x-0 pointer-events-auto"
             : "opacity-0 translate-x-2 pointer-events-none"
@@ -78,7 +78,7 @@ export function FolderRail({
       {/* Floating micro-rail */}
       <aside
         className={cn(
-          "relative flex flex-col items-center w-14 h-[min(600px,calc(100vh-6rem))] rounded-full bg-card/80 backdrop-blur-md border border-border/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] py-4 transition-all duration-300 ease-out z-50",
+          "relative flex flex-col items-center w-14 h-[min(600px,calc(100vh_-_6rem))] rounded-full bg-card/80 backdrop-blur-md border border-border/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] py-4 transition-all duration-300 ease-out z-50",
           open && "bg-card/95"
         )}
       >

@@ -382,7 +382,7 @@ const SpacePage = () => {
           )}
         </div>
         {sideOpen && <div className="h-px mx-4 bg-border/60" />}
-        <div className={`flex-1 overflow-y-auto px-2 py-2 ${sideOpen ? "" : "sr-only"}`}>
+        <div className={`flex-1 overflow-y-auto px-2 py-2 ${sideOpen ? "" : "hidden"}`}>
           {foldersLoading ? (
             <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
           ) : (

@@ -218,7 +218,7 @@ const WorksheetEditor = ({ worksheetId, initialTitle, initialContent, initialDoc
       content: (initialContent as any) || "",
       editorProps: {
         attributes: {
-          class: "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-sans",
+          class: "prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[60vh] font-sans leading-relaxed [&_p]:leading-relaxed [&_li]:leading-relaxed [&_h1]:leading-tight [&_h2]:leading-tight [&_h3]:leading-tight",
         },
       },
       onUpdate: ({ editor }) => {

@@ -539,10 +539,13 @@ const AskLandiChat = ({
     };
     if (activeWorksheet) {
       const latestRev = activeWorksheet.revisions[activeWorksheet.revisions.length - 1];
+      const live = liveEditRef.current;
+      const liveMd = live && live.id === activeWorksheet.id ? live.markdown : null;
       body.activeWorksheet = {
         id: activeWorksheet.id,
         title: activeWorksheet.title,
-        contentMarkdown: latestRev?.content_md || activeWorksheet.content_md || "",
+        contentMarkdown: liveMd ?? latestRev?.content_md ?? activeWorksheet.content_md ?? "",
+        editedByUser: Boolean(liveMd),
       };
     }
 

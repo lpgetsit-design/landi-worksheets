@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, MessageSquare, PanelRightOpen, Loader2, FileText, LayoutGrid } from "lucide-react";
+import { RotateCcw, MessageSquare, PanelRightOpen, Loader2, FileText, LayoutGrid, FilePlus2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { marked } from "marked";
@@ -895,6 +895,9 @@ const AskLandiChat = ({
                 <PanelRightOpen className="h-3 w-3" /> Hide
               </Button>
             )}
+            <Button variant="ghost" size="sm" onClick={createBlankDraft} className="h-7 gap-1.5 text-xs" title="Create a blank draft">
+              <FilePlus2 className="h-3 w-3" /> New draft
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => onNewChat()} className="h-7 gap-1.5 text-xs">
               <RotateCcw className="h-3 w-3" /> New chat
             </Button>

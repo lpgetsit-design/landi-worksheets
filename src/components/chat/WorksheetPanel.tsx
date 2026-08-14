@@ -125,7 +125,7 @@ const WorksheetPanel = ({
           )}
         </div>
         <div className="flex items-center gap-1">
-          {current && isLatest && (
+          {worksheet && (total === 0 || isLatest) && (
             <Button
               size="sm"
               variant="outline"
@@ -204,17 +204,17 @@ const WorksheetPanel = ({
       )}
 
       <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
-        {!current ? (
+        {!worksheet ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             Ask the assistant to draft a worksheet, note, or document.
           </div>
-        ) : isLatest && worksheet ? (
+        ) : total === 0 || isLatest ? (
           <WorksheetEditor
             key={worksheet.id}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={
-              (current.content_json ?? worksheet.content_json ?? current.content_html ?? worksheet.content_html ?? "") as any
+              (current?.content_json ?? worksheet.content_json ?? current?.content_html ?? worksheet.content_html ?? "") as any
             }
             initialDocumentType={"note"}
             editorRef={editorRef as any}
@@ -226,7 +226,7 @@ const WorksheetPanel = ({
         ) : (
           <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: current.content_html || "" }}
+            dangerouslySetInnerHTML={{ __html: current?.content_html || "" }}
           />
         )}
       </div>

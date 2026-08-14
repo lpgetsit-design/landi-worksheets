@@ -487,8 +487,24 @@ const AskLandiChat = ({
             : w,
         ),
       );
-      setWorksheetRevisionIndex((prev) => (viewingWorksheet.revisions.length));
-      toast.success("Saved as new revision");
+      setWorksheetRevisionIndex(viewingWorksheet.revisions.length);
+
+      // First save of a manual draft starts the session: title it from the content
+      // (and give the untitled draft a real name) so it shows up in history.
+      const isFirstSave = viewingWorksheet.revisions.length === 0;
+      const derived = autoTitleFromText(md || "");
+      if (isFirstSave && derived) {
+        if (!viewingWorksheet.title || /^untitled/i.test(viewingWorksheet.title)) {
+          renameWorksheetTitle(viewingWorksheet.id, derived);
+        }
+        if (!titledRef.current && messages.length === 0) {
+          titledRef.current = true;
+          await supabase.from("chat_sessions").update({ title: derived }).eq("id", sessionId);
+        }
+      }
+      await supabase.from("chat_sessions").update({ updated_at: now }).eq("id", sessionId);
+      setHistoryKey((k) => k + 1);
+      toast.success(isFirstSave ? "Draft saved — session started" : "Saved as new revision");
     } catch {
       toast.error("Could not save edits");
     }

@@ -125,17 +125,17 @@ const WorksheetPanel = ({
           )}
         </div>
         <div className="flex items-center gap-1">
-          {worksheet && (total === 0 || isLatest) && (
+          {worksheet && (
             <Button
               size="sm"
               variant="outline"
               className="h-7 gap-1.5 text-xs"
               onClick={handleSaveEdits}
               disabled={savingEdits}
-              title="Snapshot the current edits as a new revision"
+              title={isLatest || total === 0 ? "Snapshot the current edits as a new revision" : "Save these edits as a new latest revision"}
             >
               {savingEdits ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Save edits
+              {total === 0 || isLatest ? "Save edits" : "Save as new revision"}
             </Button>
           )}
           {worksheet && total > 0 && onShare && (
@@ -208,9 +208,9 @@ const WorksheetPanel = ({
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             Ask the assistant to draft a worksheet, note, or document.
           </div>
-        ) : total === 0 || isLatest ? (
+        ) : (
           <WorksheetEditor
-            key={worksheet.id}
+            key={`${worksheet.id}:${revisionIndex}`}
             worksheetId={worksheet.id}
             initialTitle={worksheet.title}
             initialContent={
@@ -222,11 +222,6 @@ const WorksheetPanel = ({
               setLiveDirty(true);
               onLiveEdit?.(worksheet.id, md);
             }}
-          />
-        ) : (
-          <div
-            className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: current?.content_html || "" }}
           />
         )}
       </div>

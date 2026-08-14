@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Plus, PanelLeftClose, PanelLeftOpen, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, PanelLeftClose, PanelLeftOpen, Trash2, FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SessionRow {
@@ -16,13 +16,15 @@ interface Props {
   /** Bumped by parent whenever the current session changes (new msg, new title) so we refetch. */
   refreshKey?: number;
   onNewChat: () => void;
+  /** Create a blank draft in the current session without sending a message. */
+  onNewDraft?: () => void;
   /** When set, only sessions tied to this worksheet are shown. When omitted, only sessions with no worksheet (global /chat) are shown. */
   worksheetId?: string | null;
   /** Called when the user picks a session from the list. Parent decides whether to navigate or swap state. */
   onSelectSession?: (sessionId: string) => void;
 }
 
-const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat, worksheetId, onSelectSession }: Props) => {
+const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat, onNewDraft, worksheetId, onSelectSession }: Props) => {
   const [open, setOpen] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,10 +108,21 @@ const SessionHistorySidebar = ({ userId, activeSessionId, refreshKey, onNewChat,
           <PanelLeftClose className="h-3.5 w-3.5" />
         </Button>
       </div>
-      <div className="p-2">
-        <Button variant="outline" size="sm" className="w-full h-8 gap-1.5 text-xs" onClick={onNewChat}>
+      <div className="p-2 flex items-center gap-1.5">
+        <Button variant="outline" size="sm" className="flex-1 h-8 gap-1.5 text-xs" onClick={onNewChat}>
           <Plus className="h-3.5 w-3.5" /> New chat
         </Button>
+        {onNewDraft && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={onNewDraft}
+            title="New draft"
+          >
+            <FilePlus2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
         {loading && sessions.length === 0 ? (

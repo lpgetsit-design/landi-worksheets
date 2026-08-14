@@ -32,6 +32,8 @@ interface Props {
   savedWorksheets: ChatWorksheet[];
   onOpenSaved: (id: string) => void;
   saving?: boolean;
+  /** Fires on every keystroke in the editor so the chat can send live content to the model. */
+  onLiveEdit?: (worksheetId: string, markdown: string) => void;
 }
 
 const openWorksheetPdf = (html: string, title: string) => {
@@ -62,6 +64,7 @@ const WorksheetPanel = ({
   savedWorksheets,
   onOpenSaved,
   saving,
+  onLiveEdit,
 }: Props) => {
   if (!open) return null;
 
@@ -73,10 +76,12 @@ const WorksheetPanel = ({
 
   const [savePickerOpen, setSavePickerOpen] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
+  const [liveDirty, setLiveDirty] = useState(false);
 
   // Reset editor ref on revision change (we remount via key below).
   useEffect(() => {
     editorRef.current = null;
+    setLiveDirty(false);
   }, [worksheet?.id, revisionIndex]);
 
   const handleSaveEdits = async () => {
@@ -88,6 +93,7 @@ const WorksheetPanel = ({
     setSavingEdits(true);
     try {
       await onSaveEdits(html, md, null);
+      setLiveDirty(false);
     } finally {
       setSavingEdits(false);
     }
@@ -110,6 +116,11 @@ const WorksheetPanel = ({
           {worksheet?.status === "saved" && (
             <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               Saved
+            </span>
+          )}
+          {liveDirty && (
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground shrink-0">
+              Live · shared with chat
             </span>
           )}
         </div>
@@ -207,6 +218,10 @@ const WorksheetPanel = ({
             }
             initialDocumentType={"note"}
             editorRef={editorRef as any}
+            onContentChange={(md) => {
+              setLiveDirty(true);
+              onLiveEdit?.(worksheet.id, md);
+            }}
           />
         ) : (
           <div

@@ -18,7 +18,7 @@ const WORKSHEET_TOOL = {
   function: {
     name: "replace_worksheet_content",
     description:
-      "Create or rewrite a worksheet/document artifact for the current chat session. Output the COMPLETE new body as GitHub-flavored markdown. The rendered worksheet appears in the right-side panel alongside the conversation. Use this whenever the user asks you to draft, write, or update a note, report, brief, summary, dossier, proposal, document, or other long-form text content that should live as a worksheet (not a webpage).",
+      "Create or rewrite the text-document artifact for the current chat session. Output the COMPLETE new body as GitHub-flavored markdown. It is rendered in a rich-text (WYSIWYG) editor panel beside the conversation, where the user can edit it directly. Use this whenever the user asks you to draft, write, or update long-form text: an email, a quick report, a note, brief, summary, dossier, proposal, agenda, job description, outreach message, or any document — including as an intermediate content stage before a design/webpage is created. Do not use replace_design_html for plain text content.",
     parameters: {
       type: "object",
       properties: {
@@ -822,8 +822,8 @@ Deno.serve(async (req) => {
     // Worksheet artifact tool is always available. If an active worksheet exists, expose its current content.
     const activeTools = [...TOOLS, WORKSHEET_TOOL];
     const worksheetScopeContext = activeWorksheet
-      ? `\n\nCURRENT WORKSHEET ARTIFACT (open in the right-side panel — call replace_worksheet_content to revise it):\n- Title: "${activeWorksheet.title || "Untitled"}"\n- Current content:\n---\n${activeWorksheet.contentMarkdown || "(empty)"}\n---\n\nWhen revising, include the COMPLETE new markdown body, preserving anything the user did not ask you to change.`
-      : "\n\nWORKSHEET ARTIFACTS: If the user asks you to write, draft, or update a note / report / brief / dossier / proposal / document, call replace_worksheet_content with the full markdown body. Do not use replace_design_html for plain text documents — that tool is for full HTML webpages.";
+      ? `\n\nCURRENT TEXT DOCUMENT (open in the WYSIWYG editor panel — call replace_worksheet_content to revise it):\n- Title: "${activeWorksheet.title || "Untitled"}"\n- Current content${activeWorksheet.editedByUser ? " (INCLUDES the user's latest unsaved edits made directly in the editor — treat this as the source of truth and respect their manual changes)" : ""}:\n---\n${activeWorksheet.contentMarkdown || "(empty)"}\n---\n\nWhen revising, include the COMPLETE new markdown body, preserving anything the user did not ask you to change. When the user asks about "the document", "this email", "the draft" or similar, they mean this content.`
+      : "\n\nTEXT DOCUMENTS: If the user asks you to write, draft, or update an email, quick report, note, brief, dossier, proposal or any long-form text, call replace_worksheet_content with the full markdown body — it opens in an editable rich-text panel. Do not use replace_design_html for plain text documents — that tool is for full HTML webpages.";
 
     const isChatSession = !worksheetTitle;
     const surfaceLabel = isChatSession ? "current design draft" : "worksheet";

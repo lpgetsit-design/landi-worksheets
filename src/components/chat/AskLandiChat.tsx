@@ -214,6 +214,8 @@ const AskLandiChat = ({
     () => worksheets.find((w) => w.status === "active") || null,
     [worksheets],
   );
+  /** Latest in-editor content (may be ahead of the last saved revision). */
+  const liveEditRef = useRef<{ id: string; markdown: string } | null>(null);
   const savedWorksheets = useMemo(
     () => worksheets.filter((w) => w.status === "saved"),
     [worksheets],
@@ -539,10 +541,13 @@ const AskLandiChat = ({
     };
     if (activeWorksheet) {
       const latestRev = activeWorksheet.revisions[activeWorksheet.revisions.length - 1];
+      const live = liveEditRef.current;
+      const liveMd = live && live.id === activeWorksheet.id ? live.markdown : null;
       body.activeWorksheet = {
         id: activeWorksheet.id,
         title: activeWorksheet.title,
-        contentMarkdown: latestRev?.content_md || activeWorksheet.content_md || "",
+        contentMarkdown: liveMd ?? latestRev?.content_md ?? activeWorksheet.content_md ?? "",
+        editedByUser: Boolean(liveMd),
       };
     }
 
@@ -956,6 +961,9 @@ const AskLandiChat = ({
           savedWorksheets={savedWorksheets}
           onOpenSaved={(id) => reopenSavedWorksheetLocal(id)}
           saving={saving}
+          onLiveEdit={(id, markdown) => {
+            liveEditRef.current = { id, markdown };
+          }}
         />
       )}
       {viewingDesign && (

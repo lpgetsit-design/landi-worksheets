@@ -414,17 +414,6 @@ const AskLandiChat = ({
     }
   };
 
-  const renameWorksheetTitleUnused = async (worksheetId: string, title: string) => {
-    setWorksheets((prev) =>
-      prev.map((w) => (w.id === worksheetId ? { ...w, title, updated_at: new Date().toISOString() } : w)),
-    );
-    try {
-      await renameWorksheet(worksheetId, title);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const saveWorksheetDraftToSpace = async (folderId: string | null, title: string) => {
     if (!activeWorksheet) return;
     setSaving(true);

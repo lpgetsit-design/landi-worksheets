@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, MessageSquare, PanelRightOpen, Loader2, FileText, LayoutGrid } from "lucide-react";
+import { RotateCcw, MessageSquare, PanelRightOpen, Loader2, FileText, LayoutGrid, FilePlus2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { marked } from "marked";

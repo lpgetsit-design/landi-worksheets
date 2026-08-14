@@ -379,6 +379,52 @@ const AskLandiChat = ({
     }
   };
 
+  /** Manually create (or open) a blank draft without sending a message. */
+  const createBlankDraft = async () => {
+    if (!userId) {
+      toast.error("Not signed in");
+      return;
+    }
+    try {
+      const active = await ensureActiveWorksheet(sessionId, userId, "Untitled draft");
+      setWorksheets((prev) => {
+        if (prev.some((w) => w.id === active.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: active.id,
+            title: active.title,
+            status: "active",
+            folder_id: null,
+            updated_at: new Date().toISOString(),
+            content_md: null,
+            content_html: null,
+            content_json: null,
+            revisions: [],
+          },
+        ];
+      });
+      setViewingWorksheetId(active.id);
+      setWorksheetRevisionIndex(0);
+      setPanelArtifact("worksheet");
+      setPanelOpen(true);
+    } catch (e) {
+      console.error("createBlankDraft failed", e);
+      toast.error("Could not create draft");
+    }
+  };
+
+  const renameWorksheetTitleUnused = async (worksheetId: string, title: string) => {
+    setWorksheets((prev) =>
+      prev.map((w) => (w.id === worksheetId ? { ...w, title, updated_at: new Date().toISOString() } : w)),
+    );
+    try {
+      await renameWorksheet(worksheetId, title);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const saveWorksheetDraftToSpace = async (folderId: string | null, title: string) => {
     if (!activeWorksheet) return;
     setSaving(true);
@@ -793,6 +839,7 @@ const AskLandiChat = ({
         activeSessionId={sessionId}
         refreshKey={historyKey}
         onNewChat={() => onNewChat()}
+        onNewDraft={createBlankDraft}
         worksheetId={worksheetId ?? null}
         onSelectSession={onSelectSession}
       />

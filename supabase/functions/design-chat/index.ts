@@ -18,7 +18,7 @@ const WORKSHEET_TOOL = {
   function: {
     name: "replace_worksheet_content",
     description:
-      "Create or rewrite a worksheet/document artifact for the current chat session. Output the COMPLETE new body as GitHub-flavored markdown. The rendered worksheet appears in the right-side panel alongside the conversation. Use this whenever the user asks you to draft, write, or update a note, report, brief, summary, dossier, proposal, document, or other long-form text content that should live as a worksheet (not a webpage).",
+      "Create or rewrite the text-document artifact for the current chat session. Output the COMPLETE new body as GitHub-flavored markdown. It is rendered in a rich-text (WYSIWYG) editor panel beside the conversation, where the user can edit it directly. Use this whenever the user asks you to draft, write, or update long-form text: an email, a quick report, a note, brief, summary, dossier, proposal, agenda, job description, outreach message, or any document — including as an intermediate content stage before a design/webpage is created. Do not use replace_design_html for plain text content.",
     parameters: {
       type: "object",
       properties: {

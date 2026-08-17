@@ -128,6 +128,15 @@ export default function TranscriptDetail({
           </div>
         )}
       </div>
+
+      <TranscriptChatOverlay
+        transcript={transcript}
+        summary={summary}
+        onSummaryUpdate={async (sections) => {
+          setLocalSummary(sections);
+          await onSummaryUpdate?.(sections);
+        }}
+      />
     </div>
   );
 }

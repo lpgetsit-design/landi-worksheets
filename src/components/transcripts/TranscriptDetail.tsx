@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, RotateCw, ArrowUpRight, Download } from "lucide-react";
+import { Mail, RotateCw, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,6 @@ type Tab = (typeof tabs)[number];
 export default function TranscriptDetail({ transcript }: { transcript: Transcript }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("summary");
-  const [ask, setAsk] = useState("");
 
   const summary: SummarySection[] = useMemo(() => {
     const preset = DEMO_SUMMARIES[transcript.id];
@@ -25,17 +24,12 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
     }];
   }, [transcript]);
 
-  const askAboutMeeting = () => {
-    if (!ask.trim()) return;
-    navigate(`/chat?q=${encodeURIComponent(`About "${transcript.title}": ${ask.trim()}`)}`);
-  };
-
   const dateLabel = new Date(transcript.occurred_at ?? transcript.created_at)
     .toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-6 pb-28 pt-6">
+      <div className="flex-1 overflow-y-auto px-6 pb-8 pt-6">
         <div className="mb-3 flex items-start justify-between gap-4">
           <span className="text-sm text-muted-foreground">{dateLabel}</span>
           <Button variant="outline" size="sm" className="rounded-full"
@@ -116,18 +110,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
           </div>
         )}
 
-      </div>
-
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="flex h-11 flex-1 items-center gap-2 rounded-full border border-border bg-card pl-4 pr-1.5">
-          <input value={ask} onChange={(e) => setAsk(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && askAboutMeeting()}
-            placeholder="Ask about this meeting..."
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-          <Button size="icon" className="h-8 w-8 rounded-full" onClick={askAboutMeeting} aria-label="Ask">
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

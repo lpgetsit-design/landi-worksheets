@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.general-chat]
 verify_jwt = false
+
+[functions.transcript-chat]
+verify_jwt = false

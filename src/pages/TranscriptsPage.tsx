@@ -190,7 +190,9 @@ export default function TranscriptsPage() {
   const rcLinked = integrations.some((l) => l.provider === "ringcentral");
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
+    <main className="w-full px-4 py-8">
+      <div className={cn("flex w-full flex-col gap-6 lg:flex-row", selected ? "mx-auto max-w-[1600px]" : "mx-auto max-w-5xl")}>
+        <section className={cn("min-w-0", selected ? "lg:w-[42%] lg:shrink-0" : "w-full")}>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Transcripts</h1>

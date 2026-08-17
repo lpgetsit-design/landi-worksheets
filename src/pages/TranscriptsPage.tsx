@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import TranscriptDetail from "@/components/transcripts/TranscriptDetail";
 import {
   fetchTranscripts, uploadTranscriptFile, deleteTranscript, downloadTranscript,
   syncTeams, syncRingCentral, fetchIntegrations, saveIntegration,
@@ -84,7 +86,11 @@ export default function TranscriptsPage() {
   // Auto-sync in the background on open, then every 5 minutes. Failures stay quiet.
   const autoSync = useCallback(async () => {
     setAutoSyncing(true);
-    await Promise.allSettled([syncTeams(), syncRingCentral()]);
+    const links = await fetchIntegrations().catch(() => [] as IntegrationLink[]);
+    const jobs: Promise<unknown>[] = [];
+    if (links.some((l) => l.provider === "microsoft")) jobs.push(syncTeams());
+    if (links.some((l) => l.provider === "ringcentral")) jobs.push(syncRingCentral());
+    await Promise.allSettled(jobs);
     setLastSynced(new Date());
     setAutoSyncing(false);
     load();
@@ -293,7 +299,7 @@ export default function TranscriptsPage() {
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </span>
-                <button className="min-w-0 flex-1 text-left" onClick={() => t.status === "ready" && navigate(`/transcripts/${t.id}`)}>
+                <button className="min-w-0 flex-1 text-left" onClick={() => t.status === "ready" && setSelected(t)}>
                   <p className="truncate text-sm font-medium">{t.title}</p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>{label}</span>
@@ -332,31 +338,12 @@ export default function TranscriptsPage() {
         </ul>
       )}
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selected?.title}</DialogTitle>
-            <DialogDescription>
-              {selected && `${sourceMeta[selected.source].label} · ${formatDate(selected.occurred_at ?? selected.created_at)}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 text-sm leading-relaxed">
-            {selected?.segments.length
-              ? selected.segments.map((s, i) => (
-                  <p key={i}>
-                    <span className="font-medium text-foreground">{s.speaker}: </span>
-                    <span className="text-muted-foreground">{s.text}</span>
-                  </p>
-                ))
-              : <p className="whitespace-pre-wrap text-muted-foreground">{selected?.content_text}</p>}
-          </div>
-          {selected && (
-            <Button variant="outline" size="sm" onClick={() => handleDownload(selected)}>
-              <Download className="mr-1.5 h-4 w-4" />Download
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-xl lg:max-w-2xl">
+          {selected && <TranscriptDetail transcript={selected} />}
+        </SheetContent>
+      </Sheet>
+
     </main>
   );
 }

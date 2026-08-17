@@ -1,26 +1,29 @@
 import { useMemo, useState } from "react";
-import { RotateCw, Download } from "lucide-react";
-import { toast } from "sonner";
+import { Download, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { downloadTranscript, type Transcript } from "@/lib/transcripts";
-import { DEMO_SUMMARIES, type SummarySection } from "@/lib/transcriptDemo";
+import { downloadTranscript, type SummarySection, type Transcript } from "@/lib/transcripts";
+import { DEMO_SUMMARIES } from "@/lib/transcriptDemo";
 
 const tabs = ["summary", "transcript"] as const;
 type Tab = (typeof tabs)[number];
 
-export default function TranscriptDetail({ transcript }: { transcript: Transcript }) {
+export default function TranscriptDetail({
+  transcript,
+  promptName,
+}: {
+  transcript: Transcript;
+  promptName?: string | null;
+}) {
   const [tab, setTab] = useState<Tab>("summary");
 
   const summary: SummarySection[] = useMemo(() => {
     const preset = DEMO_SUMMARIES[transcript.id];
     if (preset) return preset;
-    if (!transcript.segments.length) return [];
-    return [{
-      heading: "Conversation Highlights",
-      bullets: transcript.segments.slice(0, 6).map((s) => ({ text: `${s.speaker}: ${s.text}` })),
-    }];
+    return transcript.summary_sections ?? [];
   }, [transcript]);
+
+  const status = DEMO_SUMMARIES[transcript.id] ? "ready" : transcript.summary_status ?? "pending";
 
   const dateLabel = new Date(transcript.occurred_at ?? transcript.created_at)
     .toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
@@ -46,43 +49,55 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-muted-foreground"
-              onClick={() => toast.info("Regenerating the summary is coming soon")}>
-              <RotateCw className="mr-1.5 h-4 w-4" />Regenerate
-            </Button>
-          </div>
+          {promptName && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+              <Sparkles className="h-3 w-3" />
+              {promptName}
+            </span>
+          )}
         </div>
 
         {tab === "summary" && (
           <div className="mt-8 space-y-9">
-            {summary.length === 0 ? (
+            {status === "running" || (status === "pending" && summary.length === 0) ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Summarising this conversation — the Transcript tab is ready now.
+              </p>
+            ) : status === "failed" ? (
+              <p className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                {transcript.summary_error ?? "The summary could not be generated."}
+              </p>
+            ) : summary.length === 0 ? (
               <p className="text-sm text-muted-foreground">No summary yet for this conversation.</p>
-            ) : summary.map((section) => (
-              <section key={section.heading}>
-                <h2 className="text-xl font-semibold tracking-tight">{section.heading}</h2>
-                <ul className="mt-4 space-y-3">
-                  {section.bullets.map((b, i) => (
-                    <li key={i}>
-                      <div className="flex gap-3">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-                        <p className="text-[15px] leading-relaxed">{b.text}</p>
-                      </div>
-                      {b.children && (
-                        <ul className="ml-6 mt-3 space-y-3">
-                          {b.children.map((c, j) => (
-                            <li key={j} className="flex gap-3">
-                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/35" />
-                              <p className="text-[15px] leading-relaxed text-muted-foreground">{c}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
+            ) : (
+              summary.map((section) => (
+                <section key={section.heading}>
+                  <h2 className="text-xl font-semibold tracking-tight">{section.heading}</h2>
+                  <ul className="mt-4 space-y-3">
+                    {section.bullets.map((b, i) => (
+                      <li key={i}>
+                        <div className="flex gap-3">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+                          <p className="text-[15px] leading-relaxed">{b.text}</p>
+                        </div>
+                        {b.children && (
+                          <ul className="ml-6 mt-3 space-y-3">
+                            {b.children.map((c, j) => (
+                              <li key={j} className="flex gap-3">
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/35" />
+                                <p className="text-[15px] leading-relaxed text-muted-foreground">{c}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))
+            )}
           </div>
         )}
 
@@ -103,7 +118,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
             </Button>
           </div>
         )}
-
       </div>
     </div>
   );

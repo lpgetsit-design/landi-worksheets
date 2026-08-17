@@ -11,6 +11,7 @@ const tabs = ["summary", "transcript"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function TranscriptDetail({ transcript }: { transcript: Transcript }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("summary");
 
   const summary: SummarySection[] = useMemo(() => {
@@ -109,18 +110,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
           </div>
         )}
 
-      </div>
-
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="flex h-11 flex-1 items-center gap-2 rounded-full border border-border bg-card pl-4 pr-1.5">
-          <input value={ask} onChange={(e) => setAsk(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && askAboutMeeting()}
-            placeholder="Ask about this meeting..."
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-          <Button size="icon" className="h-8 w-8 rounded-full" onClick={askAboutMeeting} aria-label="Ask">
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

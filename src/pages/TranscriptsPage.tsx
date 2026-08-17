@@ -296,7 +296,10 @@ export default function TranscriptsPage() {
             const duration = formatDuration(t.duration_seconds);
             return (
               <li key={t.id}
-                className="group flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-accent/40">
+                className={cn(
+                  "group flex items-start gap-3 rounded-xl border bg-card px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-accent/40",
+                  selected?.id === t.id ? "border-primary/60 bg-accent/40" : "border-border",
+                )}>
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </span>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, RotateCw, Copy, Play, ArrowUpRight, Download } from "lucide-react";
+import { Mail, RotateCw, ArrowUpRight, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

@@ -340,12 +340,25 @@ export default function TranscriptsPage() {
         </ul>
       )}
 
-      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-xl lg:max-w-2xl">
-          {selected && <TranscriptDetail transcript={selected} />}
-        </SheetContent>
-      </Sheet>
+        </section>
 
+        {selected && (
+          <aside className="min-w-0 flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <div className="relative flex h-full min-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-card">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 z-10 h-8 w-8"
+                aria-label="Close transcript"
+                onClick={() => setSelected(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <TranscriptDetail transcript={selected} />
+            </div>
+          </aside>
+        )}
+      </div>
     </main>
   );
 }

@@ -25,11 +25,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
     }];
   }, [transcript]);
 
-  const plainSummary = useMemo(
-    () => summary.map((s) => [s.heading, ...s.bullets.flatMap((b) => [`• ${b.text}`, ...(b.children ?? []).map((c) => `   – ${c}`)])].join("\n")).join("\n\n"),
-    [summary],
-  );
-
   const askAboutMeeting = () => {
     if (!ask.trim()) return;
     navigate(`/chat?q=${encodeURIComponent(`About "${transcript.title}": ${ask.trim()}`)}`);
@@ -37,7 +32,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
 
   const dateLabel = new Date(transcript.occurred_at ?? transcript.created_at)
     .toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-  const words = (transcript.content_text ?? "").split(/\s+/).filter(Boolean).length;
 
   return (
     <div className="flex h-full flex-col">

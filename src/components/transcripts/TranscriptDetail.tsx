@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, RotateCw, Copy, Play, ArrowUpRight, Download } from "lucide-react";
+import { Mail, RotateCw, ArrowUpRight, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { downloadTranscript, type Transcript } from "@/lib/transcripts";
 import { DEMO_SUMMARIES, type SummarySection } from "@/lib/transcriptDemo";
 
-const tabs = ["summary", "transcript", "usage"] as const;
+const tabs = ["summary", "transcript"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function TranscriptDetail({ transcript }: { transcript: Transcript }) {
@@ -25,11 +25,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
     }];
   }, [transcript]);
 
-  const plainSummary = useMemo(
-    () => summary.map((s) => [s.heading, ...s.bullets.flatMap((b) => [`• ${b.text}`, ...(b.children ?? []).map((c) => `   – ${c}`)])].join("\n")).join("\n\n"),
-    [summary],
-  );
-
   const askAboutMeeting = () => {
     if (!ask.trim()) return;
     navigate(`/chat?q=${encodeURIComponent(`About "${transcript.title}": ${ask.trim()}`)}`);
@@ -37,7 +32,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
 
   const dateLabel = new Date(transcript.occurred_at ?? transcript.created_at)
     .toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-  const words = (transcript.content_text ?? "").split(/\s+/).filter(Boolean).length;
 
   return (
     <div className="flex h-full flex-col">
@@ -68,10 +62,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
             <Button variant="ghost" size="sm" className="text-muted-foreground"
               onClick={() => toast.info("Regenerating the summary is coming soon")}>
               <RotateCw className="mr-1.5 h-4 w-4" />Regenerate
-            </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground"
-              onClick={() => { navigator.clipboard.writeText(plainSummary); toast.success("Summary copied"); }}>
-              <Copy className="mr-1.5 h-4 w-4" />Copy summary
             </Button>
           </div>
         </div>
@@ -126,30 +116,9 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
           </div>
         )}
 
-        {tab === "usage" && (
-          <dl className="mt-8 grid gap-3 sm:grid-cols-2">
-            {[
-              ["Source", transcript.source === "teams" ? "Teams meeting" : transcript.source === "ringcentral" ? "Phone call" : "Uploaded file"],
-              ["Duration", transcript.duration_seconds ? `${Math.round(transcript.duration_seconds / 60)} min` : "—"],
-              ["Participants", transcript.participants.length ? transcript.participants.join(", ") : "—"],
-              ["Speaker turns", String(transcript.segments.length)],
-              ["Words transcribed", words.toLocaleString()],
-              ["Status", transcript.status],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-xl border border-border bg-card px-4 py-3">
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">{k}</dt>
-                <dd className="mt-1 text-sm font-medium">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
       </div>
 
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <Button variant="outline" className="h-11 shrink-0 rounded-full px-4"
-          onClick={() => navigate(`/chat?q=${encodeURIComponent(`Continue working from the meeting "${transcript.title}".`)}`)}>
-          <Play className="mr-2 h-4 w-4" />Resume Session
-        </Button>
         <div className="flex h-11 flex-1 items-center gap-2 rounded-full border border-border bg-card pl-4 pr-1.5">
           <input value={ask} onChange={(e) => setAsk(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && askAboutMeeting()}

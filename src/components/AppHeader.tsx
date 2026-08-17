@@ -31,6 +31,9 @@ const AppHeader = () => {
           <NavLink to="/artifacts" className={linkClass}>
             Artifacts
           </NavLink>
+          <NavLink to="/transcripts" className={linkClass}>
+            Transcripts
+          </NavLink>
         </nav>
 
         <div className="flex items-center gap-2">

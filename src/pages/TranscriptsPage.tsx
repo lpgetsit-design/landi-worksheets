@@ -421,7 +421,22 @@ export default function TranscriptsPage() {
               >
                 <X className="h-4 w-4" />
               </Button>
-              <TranscriptDetail transcript={selected} promptName={promptNameFor(selected)} />
+              <TranscriptDetail
+                transcript={selected}
+                promptName={promptNameFor(selected)}
+                onSummaryUpdate={async (sections) => {
+                  if (isDemo(selected)) return;
+                  const { error } = await (supabase as any)
+                    .from("transcripts")
+                    .update({ summary_sections: sections, summary_status: "ready" })
+                    .eq("id", selected.id);
+                  if (error) { toast.error(error.message); return; }
+                  setItems((prev) => prev.map((i) =>
+                    i.id === selected.id
+                      ? { ...i, summary_sections: sections, summary_status: "ready" as const }
+                      : i));
+                }}
+              />
             </div>
           </aside>
         )}

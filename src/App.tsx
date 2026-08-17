@@ -13,6 +13,7 @@ import TranscriptsPage from "./pages/TranscriptsPage";
 import SpacePage from "./pages/SpacePage";
 import AuthPage from "./pages/AuthPage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
+import TranscriptViewPage from "./pages/TranscriptViewPage";
 import NotFound from "./pages/NotFound";
 import PublicSharePage from "./pages/PublicSharePage";
 
@@ -57,6 +58,7 @@ const AuthenticatedLayout = () => {
         <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
         <Route path="/artifacts" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
         <Route path="/transcripts" element={<ProtectedRoute><TranscriptsPage /></ProtectedRoute>} />
+        <Route path="/transcripts/:id" element={<ProtectedRoute><TranscriptViewPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

@@ -4,6 +4,7 @@ import {
   Search, Users, Clock, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ const isDemo = (t: Transcript) => t.id.startsWith("demo-");
 
 export default function TranscriptsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<Transcript[]>([]);
   const [demoItems, setDemoItems] = useState<Transcript[]>(DEMO_TRANSCRIPTS);
   const [loading, setLoading] = useState(true);
@@ -291,7 +293,7 @@ export default function TranscriptsPage() {
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </span>
-                <button className="min-w-0 flex-1 text-left" onClick={() => t.status === "ready" && setSelected(t)}>
+                <button className="min-w-0 flex-1 text-left" onClick={() => t.status === "ready" && navigate(`/transcripts/${t.id}`)}>
                   <p className="truncate text-sm font-medium">{t.title}</p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>{label}</span>

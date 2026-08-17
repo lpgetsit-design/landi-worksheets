@@ -337,6 +337,99 @@ export type Database = {
           },
         ]
       }
+      transcripts: {
+        Row: {
+          content_text: string | null
+          created_at: string
+          duration_seconds: number | null
+          error_message: string | null
+          external_id: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          occurred_at: string | null
+          participants: Json
+          provider_job_id: string | null
+          segments: Json
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_text?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          external_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          occurred_at?: string | null
+          participants?: Json
+          provider_job_id?: string | null
+          segments?: Json
+          source: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_text?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          external_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          occurred_at?: string | null
+          participants?: Json
+          provider_job_id?: string | null
+          segments?: Json
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_integrations: {
+        Row: {
+          created_at: string
+          external_email: string | null
+          external_user_id: string | null
+          id: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_email?: string | null
+          external_user_id?: string | null
+          id?: string
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          external_email?: string | null
+          external_user_id?: string | null
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workflow_cards: {
         Row: {
           assignee_id: string | null

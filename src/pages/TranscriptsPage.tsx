@@ -411,8 +411,8 @@ export default function TranscriptsPage() {
         </section>
 
         {selected && (
-          <aside className="min-w-0 flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-            <div className="relative flex h-full min-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <aside className="min-w-0 flex-1 lg:sticky lg:top-6 lg:h-[calc(100vh-7rem)]">
+            <div className="relative flex h-full min-h-[60vh] flex-col overflow-hidden rounded-xl border border-border bg-card">
               <Button
                 variant="ghost"
                 size="icon"

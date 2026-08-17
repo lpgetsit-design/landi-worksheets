@@ -2,10 +2,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type TranscriptSource = "upload" | "teams" | "ringcentral";
 export type TranscriptStatus = "ready" | "processing" | "failed";
+export type SummaryStatus = "pending" | "running" | "ready" | "failed";
 
 export interface TranscriptSegment {
   speaker: string;
   text: string;
+}
+
+export interface SummaryBullet {
+  text: string;
+  children?: string[];
+}
+
+export interface SummarySection {
+  heading: string;
+  bullets: SummaryBullet[];
 }
 
 export interface Transcript {
@@ -26,6 +37,12 @@ export interface Transcript {
   file_size: number | null;
   created_at: string;
   updated_at: string;
+  summary_prompt_id?: string | null;
+  summary_status?: SummaryStatus;
+  summary_sections?: SummarySection[];
+  summary_error?: string | null;
+  classified_reason?: string | null;
+  summarized_at?: string | null;
 }
 
 const TABLE = "transcripts" as const;
@@ -35,6 +52,8 @@ function normalize(row: any): Transcript {
     ...row,
     participants: Array.isArray(row.participants) ? row.participants : [],
     segments: Array.isArray(row.segments) ? row.segments : [],
+    summary_sections: Array.isArray(row.summary_sections) ? row.summary_sections : [],
+    summary_status: (row.summary_status ?? "pending") as SummaryStatus,
   } as Transcript;
 }
 

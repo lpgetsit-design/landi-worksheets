@@ -14,12 +14,14 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import TranscriptDetail from "@/components/transcripts/TranscriptDetail";
+import PromptLibraryDialog from "@/components/transcripts/PromptLibraryDialog";
 import {
   fetchTranscripts, uploadTranscriptFile, deleteTranscript, downloadTranscript,
   syncTeams, syncRingCentral, fetchIntegrations, saveIntegration,
   type Transcript, type IntegrationLink,
 } from "@/lib/transcripts";
-import { DEMO_TRANSCRIPTS } from "@/lib/transcriptDemo";
+import { fetchPrompts, summarizeTranscript, type SummaryPrompt } from "@/lib/summaryPrompts";
+import { DEMO_TRANSCRIPTS, DEMO_PROMPT_NAMES } from "@/lib/transcriptDemo";
 
 const sourceMeta: Record<Transcript["source"], { label: string; Icon: typeof FileText }> = {
   upload: { label: "Uploaded", Icon: FileText },
@@ -60,17 +62,24 @@ export default function TranscriptsPage() {
   const [filter, setFilter] = useState<(typeof filters)[number]["key"]>("all");
   const [selected, setSelected] = useState<Transcript | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationLink[]>([]);
+  const [prompts, setPrompts] = useState<SummaryPrompt[]>([]);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [msValue, setMsValue] = useState("");
   const [rcValue, setRcValue] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const autoRan = useRef(false);
+  const summarizing = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
-      const [rows, links] = await Promise.all([fetchTranscripts(), fetchIntegrations()]);
+      const [rows, links, promptRows] = await Promise.all([
+        fetchTranscripts(),
+        fetchIntegrations(),
+        fetchPrompts().catch(() => [] as SummaryPrompt[]),
+      ]);
       setItems(rows);
       setIntegrations(links);
+      setPrompts(promptRows);
       setMsValue(links.find((l) => l.provider === "microsoft")?.external_email ?? "");
       setRcValue(links.find((l) => l.provider === "ringcentral")?.external_user_id ?? "");
     } catch (e) {
@@ -81,6 +90,30 @@ export default function TranscriptsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-classify + summarise anything that has a transcript but no summary yet.
+  useEffect(() => {
+    const pending = items.filter(
+      (t) => t.status === "ready" &&
+        (t.summary_status === "pending" || t.summary_status === "running") &&
+        !summarizing.current.has(t.id),
+    );
+    if (pending.length === 0) return;
+    pending.forEach((t) => summarizing.current.add(t.id));
+    (async () => {
+      for (const t of pending) {
+        try {
+          await summarizeTranscript(t.id);
+        } catch {
+          /* surfaced on the transcript itself */
+        } finally {
+          summarizing.current.delete(t.id);
+        }
+      }
+      const rows = await fetchTranscripts().catch(() => null);
+      if (rows) setItems(rows);
+    })();
+  }, [items]);
 
   // Auto-sync in the background on open, then every 5 minutes. Failures stay quiet.
   const autoSync = useCallback(async () => {
@@ -120,6 +153,21 @@ export default function TranscriptsPage() {
   }, [allItems, filter, query]);
 
   const processingCount = useMemo(() => allItems.filter((i) => i.status === "processing").length, [allItems]);
+
+  // Keep the open panel in sync as summaries land.
+  useEffect(() => {
+    if (!selected || isDemo(selected)) return;
+    const fresh = items.find((i) => i.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [items, selected]);
+
+  const promptNameFor = useCallback((t: Transcript) => {
+    if (isDemo(t)) return DEMO_PROMPT_NAMES[t.id] ?? null;
+    return prompts.find((p) => p.id === t.summary_prompt_id)?.name ?? null;
+  }, [prompts]);
+
+  const summaryStateFor = (t: Transcript) =>
+    isDemo(t) ? "ready" : t.summary_status ?? "pending";
 
   const handleUpload = async (files: FileList | null) => {
     if (!files?.length || !user) return;
@@ -217,6 +265,7 @@ export default function TranscriptsPage() {
             <RefreshCw className={cn("mr-1.5 h-4 w-4", autoSyncing && "animate-spin")} />
             Sync now
           </Button>
+          <PromptLibraryDialog />
           <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm"><Plug className="mr-1.5 h-4 w-4" />Connections</Button>
@@ -321,6 +370,22 @@ export default function TranscriptsPage() {
                       “{t.segments[0].text}”
                     </p>
                   )}
+                  {t.status === "ready" && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {summaryStateFor(t) === "ready" ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          {promptNameFor(t) ?? "Summary ready"}
+                        </span>
+                      ) : summaryStateFor(t) === "failed" ? (
+                        <span className="text-destructive">Summary failed</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />Summarising…
+                        </span>
+                      )}
+                    </p>
+                  )}
                   {t.status === "processing" && <p className="mt-1.5 text-xs text-muted-foreground">Transcribing audio…</p>}
                   {t.status === "failed" && <p className="mt-1.5 text-xs text-destructive">{t.error_message ?? "Failed"}</p>}
                 </button>
@@ -356,7 +421,7 @@ export default function TranscriptsPage() {
               >
                 <X className="h-4 w-4" />
               </Button>
-              <TranscriptDetail transcript={selected} />
+              <TranscriptDetail transcript={selected} promptName={promptNameFor(selected)} />
             </div>
           </aside>
         )}

@@ -337,8 +337,45 @@ export type Database = {
           },
         ]
       }
+      summary_prompts: {
+        Row: {
+          body: string
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          match_hints: string | null
+          name: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          match_hints?: string | null
+          name: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          match_hints?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transcripts: {
         Row: {
+          classified_reason: string | null
           content_text: string | null
           created_at: string
           duration_seconds: number | null
@@ -354,11 +391,17 @@ export type Database = {
           segments: Json
           source: string
           status: string
+          summarized_at: string | null
+          summary_error: string | null
+          summary_prompt_id: string | null
+          summary_sections: Json
+          summary_status: string
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          classified_reason?: string | null
           content_text?: string | null
           created_at?: string
           duration_seconds?: number | null
@@ -374,11 +417,17 @@ export type Database = {
           segments?: Json
           source: string
           status?: string
+          summarized_at?: string | null
+          summary_error?: string | null
+          summary_prompt_id?: string | null
+          summary_sections?: Json
+          summary_status?: string
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          classified_reason?: string | null
           content_text?: string | null
           created_at?: string
           duration_seconds?: number | null
@@ -394,11 +443,24 @@ export type Database = {
           segments?: Json
           source?: string
           status?: string
+          summarized_at?: string | null
+          summary_error?: string | null
+          summary_prompt_id?: string | null
+          summary_sections?: Json
+          summary_status?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_summary_prompt_id_fkey"
+            columns: ["summary_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "summary_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_integrations: {
         Row: {

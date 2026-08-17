@@ -203,3 +203,13 @@ export const DEMO_SUMMARIES: Record<string, SummarySection[]> = {
     },
   ],
 };
+
+/** Prompt the classifier would have picked for each sample conversation. */
+export const DEMO_PROMPT_NAMES: Record<string, string> = {
+  "demo-1": "Client Intake Call",
+  "demo-2": "Candidate Screen",
+  "demo-3": "Internal Pipeline Review",
+  "demo-4": "Offer & Closing Call",
+  "demo-5": "Client Debrief",
+  "demo-6": "General Conversation",
+};

@@ -75,3 +75,131 @@ export const DEMO_TRANSCRIPTS: Transcript[] = [
   make("6", "ringcentral", "Voicemail — inbound candidate, unknown number", 12, 96,
     ["Unknown caller"], [], "processing"),
 ];
+
+export interface SummarySection {
+  heading: string;
+  bullets: { text: string; children?: string[] }[];
+}
+
+export const DEMO_SUMMARIES: Record<string, SummarySection[]> = {
+  "demo-1": [
+    {
+      heading: "Meeting Context",
+      bullets: [
+        { text: "Intake with Priya Raman (hiring manager) and Daniel Okafor (finance)" },
+        { text: "Backfill for a contractor who left in June — flagged urgent" },
+        { text: "Search kicks off this week, first slate expected within ten days" },
+      ],
+    },
+    {
+      heading: "Role Requirements",
+      bullets: [
+        {
+          text: "Core technical profile",
+          children: [
+            "Strong Go or Rust, production experience required",
+            "Must own a service end to end, not just feature work",
+            "Mentors two junior engineers on the team",
+          ],
+        },
+        {
+          text: "Logistics",
+          children: [
+            "Hybrid — two days per week in the Austin office, non-negotiable",
+            "Base band 145–165k plus equity, flexible for an exceptional candidate",
+          ],
+        },
+      ],
+    },
+    {
+      heading: "Next Steps",
+      bullets: [
+        { text: "Send calibration slate of three profiles by Thursday" },
+        { text: "Confirm interview loop format with Priya before first submission" },
+        { text: "Daniel to confirm the equity range in writing" },
+      ],
+    },
+  ],
+  "demo-2": [
+    {
+      heading: "Candidate Snapshot",
+      bullets: [
+        { text: "Marcus Bell — leads the payments integration squad at Cloudline" },
+        { text: "Four direct reports, primarily TypeScript and Go" },
+        { text: "Still hands-on; wants architecture ownership alongside coding" },
+      ],
+    },
+    {
+      heading: "Motivation & Compensation",
+      bullets: [
+        { text: "Leaving because the roadmap flattened out" },
+        { text: "Current base 152k; would move for 165k plus meaningful equity" },
+        { text: "Open to hybrid, prefers no more than three office days" },
+      ],
+    },
+    {
+      heading: "Recruiter Assessment",
+      bullets: [
+        { text: "Strong fit for the Northwind backend role on depth and seniority" },
+        { text: "Watch item: has not worked in a regulated environment before" },
+      ],
+    },
+  ],
+  "demo-3": [
+    {
+      heading: "Pipeline Status",
+      bullets: [
+        { text: "Northwind has two finals booked for Thursday from the same referral chain" },
+        { text: "Aperture Health search paused pending revised leadership criteria" },
+      ],
+    },
+    {
+      heading: "Risks",
+      bullets: [
+        {
+          text: "Competing offer pressure",
+          children: ["One finalist holds an offer expiring Friday", "Team agreed to pre-close today"],
+        },
+      ],
+    },
+    {
+      heading: "Actions",
+      bullets: [
+        { text: "Grace drafts the offer summary ahead of feedback" },
+        { text: "Tom runs the pre-close call this afternoon" },
+      ],
+    },
+  ],
+  "demo-4": [
+    {
+      heading: "Offer Conversation",
+      bullets: [
+        { text: "Helena Vos is positive on the role overall" },
+        { text: "Only open concern is the on-call rotation" },
+      ],
+    },
+    {
+      heading: "Actions",
+      bullets: [
+        { text: "Send the on-call policy in writing (one week in six, stipend paid)" },
+        { text: "Candidate indicated she will sign once confirmed" },
+      ],
+    },
+  ],
+  "demo-5": [
+    {
+      heading: "Client Debrief",
+      bullets: [
+        { text: "Aperture Health valued the depth on HL7 integrations" },
+        { text: "Rejected on leadership depth — want a lead of six or more" },
+      ],
+    },
+    {
+      heading: "Search Adjustment",
+      bullets: [
+        { text: "Prioritise team leads over senior individual contributors" },
+        { text: "Re-run sourcing with a management-scope filter" },
+      ],
+    },
+  ],
+};

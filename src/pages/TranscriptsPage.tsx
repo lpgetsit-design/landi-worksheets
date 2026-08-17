@@ -154,6 +154,13 @@ export default function TranscriptsPage() {
 
   const processingCount = useMemo(() => allItems.filter((i) => i.status === "processing").length, [allItems]);
 
+  // Keep the open panel in sync as summaries land.
+  useEffect(() => {
+    if (!selected || isDemo(selected)) return;
+    const fresh = items.find((i) => i.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [items, selected]);
+
   const promptNameFor = useCallback((t: Transcript) => {
     if (isDemo(t)) return DEMO_PROMPT_NAMES[t.id] ?? null;
     return prompts.find((p) => p.id === t.summary_prompt_id)?.name ?? null;

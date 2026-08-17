@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, RotateCw, ArrowUpRight, Download } from "lucide-react";
+import { Mail, RotateCw, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,7 @@ const tabs = ["summary", "transcript"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function TranscriptDetail({ transcript }: { transcript: Transcript }) {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("summary");
-  const [ask, setAsk] = useState("");
 
   const summary: SummarySection[] = useMemo(() => {
     const preset = DEMO_SUMMARIES[transcript.id];
@@ -24,11 +22,6 @@ export default function TranscriptDetail({ transcript }: { transcript: Transcrip
       bullets: transcript.segments.slice(0, 6).map((s) => ({ text: `${s.speaker}: ${s.text}` })),
     }];
   }, [transcript]);
-
-  const askAboutMeeting = () => {
-    if (!ask.trim()) return;
-    navigate(`/chat?q=${encodeURIComponent(`About "${transcript.title}": ${ask.trim()}`)}`);
-  };
 
   const dateLabel = new Date(transcript.occurred_at ?? transcript.created_at)
     .toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });

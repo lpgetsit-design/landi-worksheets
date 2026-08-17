@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload, RefreshCw, Loader2, Trash2, Download, FileAudio, Video, FileText, Plug, AlertTriangle,
-  Search, Users, Clock, Sparkles,
+  Search, Users, Clock, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import TranscriptDetail from "@/components/transcripts/TranscriptDetail";
 import {
   fetchTranscripts, uploadTranscriptFile, deleteTranscript, downloadTranscript,
@@ -190,7 +189,9 @@ export default function TranscriptsPage() {
   const rcLinked = integrations.some((l) => l.provider === "ringcentral");
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
+    <main className="w-full px-4 py-8">
+      <div className={cn("flex w-full flex-col gap-6 lg:flex-row", selected ? "mx-auto max-w-[1600px]" : "mx-auto max-w-5xl")}>
+        <section className={cn("min-w-0", selected ? "lg:w-[42%] lg:shrink-0" : "w-full")}>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Transcripts</h1>
@@ -295,7 +296,10 @@ export default function TranscriptsPage() {
             const duration = formatDuration(t.duration_seconds);
             return (
               <li key={t.id}
-                className="group flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-accent/40">
+                className={cn(
+                  "group flex items-start gap-3 rounded-xl border bg-card px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-accent/40",
+                  selected?.id === t.id ? "border-primary/60 bg-accent/40" : "border-border",
+                )}>
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </span>
@@ -338,12 +342,25 @@ export default function TranscriptsPage() {
         </ul>
       )}
 
-      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent side="right" className="w-full overflow-hidden p-0 sm:max-w-xl lg:max-w-2xl">
-          {selected && <TranscriptDetail transcript={selected} />}
-        </SheetContent>
-      </Sheet>
+        </section>
 
+        {selected && (
+          <aside className="min-w-0 flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+            <div className="relative flex h-full min-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-card">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 z-10 h-8 w-8"
+                aria-label="Close transcript"
+                onClick={() => setSelected(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <TranscriptDetail transcript={selected} />
+            </div>
+          </aside>
+        )}
+      </div>
     </main>
   );
 }

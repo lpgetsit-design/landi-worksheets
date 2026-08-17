@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload, RefreshCw, Loader2, Trash2, Download, FileAudio, Video, FileText, Plug, AlertTriangle,
-  Search, Users, Clock, Sparkles,
+  Search, Users, Clock, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import TranscriptDetail from "@/components/transcripts/TranscriptDetail";
 import {
   fetchTranscripts, uploadTranscriptFile, deleteTranscript, downloadTranscript,

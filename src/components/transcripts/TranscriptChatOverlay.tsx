@@ -166,7 +166,7 @@ export default function TranscriptChatOverlay({
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 pb-2">
           {messages.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              Ask a question, or say “tighten the summary” / “add a next-steps section” to edit it.
+              Ask a question, or say “shorten the overview” / “add the bonus to pay” to edit the summary. Undo is always there.
             </p>
           )}
           {messages.map((m, i) => (

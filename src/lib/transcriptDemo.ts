@@ -206,10 +206,42 @@ export const DEMO_SUMMARIES: Record<string, SummarySection[]> = {
 
 /** Prompt the classifier would have picked for each sample conversation. */
 export const DEMO_PROMPT_NAMES: Record<string, string> = {
-  "demo-1": "Client Intake Call",
-  "demo-2": "Candidate Screen",
-  "demo-3": "Internal Pipeline Review",
-  "demo-4": "Offer & Closing Call",
-  "demo-5": "Client Debrief",
-  "demo-6": "General Conversation",
+  "demo-1": "Job Intake + Client Interview Feedback",
+  "demo-2": "Candidate Screening",
+  "demo-3": "Job Match Meeting",
+  "demo-4": "Trial Close",
+  "demo-5": "Client Interview Feedback + Search Calibration",
+  "demo-6": "General",
+};
+
+/** Full framed summary for the mixed-call sample (matches the workflow example). */
+export const DEMO_FRAMED: Record<string, { overview: string; next_steps: string[]; sections: any[] }> = {
+  "demo-1": {
+    overview:
+      "Priya Raman (hiring manager, Northwind) and Daniel Okafor. New Senior Backend Engineer role to backfill a contractor who left in June, plus feedback on a candidate for another role.",
+    sections: [
+      {
+        category: "Job Intake", heading: "Role requirements", format: "table",
+        columns: ["Requirement", "Must-have or nice-to-have", "Client's words"],
+        rows: [
+          ["Go or Rust", "Must-have", "Strong Go or Rust"],
+          ["Own a service end to end", "Must-have", "Comfortable owning a service end to end"],
+          ["Mentoring", "Nice-to-have", "Someone who can mentor two juniors"],
+        ],
+      },
+      {
+        category: "Job Intake", heading: "Role setup and pay", format: "key_value",
+        pairs: [
+          { key: "Why the role is open", value: "Backfill for a contractor who left in June — urgent" },
+          { key: "Base range", value: "145–165, plus equity; flex for someone exceptional" },
+          { key: "Work model", value: "Hybrid, 2 days in the Austin office (non-negotiable)" },
+        ],
+      },
+      {
+        category: "Client Interview Feedback", heading: "Decision", format: "key_value",
+        pairs: [{ key: "Decision", value: "Next round" }],
+      },
+    ],
+    next_steps: ["LP sends 3 Senior Backend Engineer profiles by Friday"],
+  },
 };

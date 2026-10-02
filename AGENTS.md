@@ -1,0 +1,2 @@
+- Call summaries: call types live in `summary_prompts` (standard ones seeded by the summarize function from `supabase/functions/_shared/callCatalog.json`); detection picks up to 3 types per call with General as fallback, and every summary change pushes the old one to `transcripts.summary_history` — keeps one source for the catalog and makes undo universal.
+- Stuck summaries are detected from `summary_started_at` by the client (re-run after 10 min, max 3 tries) instead of a cron sweeper — avoids constant background database polling.

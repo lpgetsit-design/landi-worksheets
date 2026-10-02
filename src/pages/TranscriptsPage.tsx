@@ -6,7 +6,6 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +69,7 @@ export default function TranscriptsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const autoRan = useRef(false);
   const summarizing = useRef<Set<string>>(new Set());
+  const attempts = useRef<Map<string, { n: number; at: number }>>(new Map());
 
   const load = useCallback(async () => {
     try {
@@ -94,13 +94,24 @@ export default function TranscriptsPage() {
 
   // Auto-classify + summarise anything that has a transcript but no summary yet.
   useEffect(() => {
-    const pending = items.filter(
-      (t) => t.status === "ready" &&
-        (t.summary_status === "pending" || t.summary_status === "running") &&
-        !summarizing.current.has(t.id),
-    );
+    // Pending ones, plus any stuck "running" for over 10 minutes. Retries back off and stop after 3 tries.
+    const now = Date.now();
+    const stuck = (t: Transcript) =>
+      t.summary_status === "running" &&
+      now - new Date(t.summary_started_at ?? t.updated_at).getTime() > 10 * 60_000;
+    const pending = items.filter((t) => {
+      if (t.status !== "ready" || summarizing.current.has(t.id)) return false;
+      if (t.summary_status !== "pending" && !stuck(t)) return false;
+      const a = attempts.current.get(t.id);
+      if (a && (a.n >= 3 || now - a.at < 60_000 * a.n)) return false;
+      return true;
+    });
     if (pending.length === 0) return;
-    pending.forEach((t) => summarizing.current.add(t.id));
+    pending.forEach((t) => {
+      summarizing.current.add(t.id);
+      const a = attempts.current.get(t.id);
+      attempts.current.set(t.id, { n: (a?.n ?? 0) + 1, at: now });
+    });
     (async () => {
       for (const t of pending) {
         try {
@@ -164,6 +175,7 @@ export default function TranscriptsPage() {
 
   const promptNameFor = useCallback((t: Transcript) => {
     if (isDemo(t)) return DEMO_PROMPT_NAMES[t.id] ?? null;
+    if (t.summary_categories?.length) return t.summary_categories.map((c) => c.name).join(" + ");
     return prompts.find((p) => p.id === t.summary_prompt_id)?.name ?? null;
   }, [prompts]);
 
@@ -424,18 +436,9 @@ export default function TranscriptsPage() {
               </Button>
               <TranscriptDetail
                 transcript={selected}
-                promptName={promptNameFor(selected)}
-                onSummaryUpdate={async (sections) => {
-                  if (isDemo(selected)) return;
-                  const { error } = await (supabase as any)
-                    .from("transcripts")
-                    .update({ summary_sections: sections, summary_status: "ready" })
-                    .eq("id", selected.id);
-                  if (error) { toast.error(error.message); return; }
-                  setItems((prev) => prev.map((i) =>
-                    i.id === selected.id
-                      ? { ...i, summary_sections: sections, summary_status: "ready" as const }
-                      : i));
+                onChange={(t) => {
+                  setSelected(t);
+                  if (!isDemo(t)) setItems((prev) => prev.map((i) => (i.id === t.id ? t : i)));
                 }}
               />
             </div>

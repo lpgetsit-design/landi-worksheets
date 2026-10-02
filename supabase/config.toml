@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.transcript-chat]
 verify_jwt = false
+
+[functions.call-type-builder]
+verify_jwt = false

@@ -4,7 +4,8 @@ import { marked } from "marked";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { SummarySection, Transcript } from "@/lib/transcripts";
+import { supabase } from "@/integrations/supabase/client";
+import type { CallSummary, SummarySection, Transcript } from "@/lib/transcripts";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcript-chat`;
 
@@ -14,27 +15,40 @@ interface ChatMessage {
 }
 
 /** Pulls a ```summary fenced JSON block out of an assistant reply. */
-function extractSummary(text: string): { clean: string; sections: SummarySection[] | null } {
+function extractSummary(text: string, current: CallSummary): { clean: string; next: CallSummary | null } {
   const match = text.match(/```summary\s*([\s\S]*?)```/i);
-  if (!match) return { clean: text, sections: null };
-  let sections: SummarySection[] | null = null;
+  if (!match) {
+    // Hide a partially streamed block.
+    const open = text.search(/```summary/i);
+    return { clean: open >= 0 ? text.slice(0, open).trim() + "\n\n_Updating the summary…_" : text, next: null };
+  }
+  let next: CallSummary | null = null;
   try {
     const parsed = JSON.parse(match[1].trim());
-    if (Array.isArray(parsed)) sections = parsed as SummarySection[];
+    if (Array.isArray(parsed)) next = { ...current, sections: parsed as SummarySection[] };
+    else if (parsed && Array.isArray(parsed.sections)) {
+      next = {
+        overview: typeof parsed.overview === "string" ? parsed.overview : current.overview,
+        sections: parsed.sections,
+        next_steps: Array.isArray(parsed.next_steps) ? parsed.next_steps : current.next_steps,
+      };
+    }
   } catch {
     /* leave the block visible if it is not valid JSON */
   }
-  return { clean: sections ? text.replace(match[0], "").trim() : text, sections };
+  return { clean: next ? text.replace(match[0], "").trim() : text, next };
 }
 
 export default function TranscriptChatOverlay({
   transcript,
   summary,
+  topics,
   onSummaryUpdate,
 }: {
   transcript: Transcript;
-  summary: SummarySection[];
-  onSummaryUpdate: (sections: SummarySection[]) => void | Promise<void>;
+  summary: CallSummary;
+  topics: string[];
+  onSummaryUpdate: (next: CallSummary) => void | Promise<void>;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -62,11 +76,12 @@ export default function TranscriptChatOverlay({
     setCollapsed(false);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           messages: history,
@@ -75,7 +90,8 @@ export default function TranscriptChatOverlay({
             transcript.segments.length > 0
               ? transcript.segments.map((s) => `${s.speaker}: ${s.text}`).join("\n")
               : transcript.content_text,
-          summarySections: summary,
+          summary,
+          topics,
         }),
       });
 
@@ -104,7 +120,7 @@ export default function TranscriptChatOverlay({
             if (payload.error) throw new Error(payload.error);
             if (payload.content) {
               assistant += payload.content;
-              const view = extractSummary(assistant);
+              const view = extractSummary(assistant, summary);
               setMessages([...history, { role: "assistant", content: view.clean }]);
             }
           } catch (e) {
@@ -113,11 +129,11 @@ export default function TranscriptChatOverlay({
         }
       }
 
-      const final = extractSummary(assistant);
-      setMessages([...history, { role: "assistant", content: final.clean || "…" }]);
-      if (final.sections && final.sections.length > 0) {
-        await onSummaryUpdate(final.sections);
-        toast.success("Summary updated");
+      const final = extractSummary(assistant, summary);
+      setMessages([...history, { role: "assistant", content: final.clean || "Done." }]);
+      if (final.next && (final.next.sections.length > 0 || final.next.overview)) {
+        await onSummaryUpdate(final.next);
+        toast.success("Summary updated — Undo brings back the previous version");
       }
     } catch (e) {
       toast.error((e as Error).message);
@@ -187,7 +203,7 @@ export default function TranscriptChatOverlay({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about this meeting or refine the summary…"
+          placeholder="Ask about this call or ask Landi to edit the summary…"
           className="h-9 flex-1 rounded-full border border-border/60 bg-background/70 px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
         />
         <Button type="submit" size="icon" className="h-9 w-9 rounded-full" disabled={streaming || !input.trim()}>

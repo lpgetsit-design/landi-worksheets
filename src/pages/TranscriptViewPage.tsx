@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import type { Transcript } from "@/lib/transcripts";
+import { normalizeTranscript, type Transcript } from "@/lib/transcripts";
 import { DEMO_TRANSCRIPTS } from "@/lib/transcriptDemo";
 import TranscriptDetail from "@/components/transcripts/TranscriptDetail";
 
@@ -27,11 +27,7 @@ export default function TranscriptViewPage() {
         .from("transcripts").select("*").eq("id", id).maybeSingle();
       if (cancelled) return;
       if (error) toast.error(error.message);
-      setTranscript(
-        data
-          ? ({ ...data, participants: data.participants ?? [], segments: data.segments ?? [] } as Transcript)
-          : null,
-      );
+      setTranscript(data ? normalizeTranscript(data) : null);
       setLoading(false);
     };
     run();
@@ -55,7 +51,7 @@ export default function TranscriptViewPage() {
 
   return (
     <main className="relative mx-auto h-[calc(100vh-3.5rem)] w-full max-w-3xl">
-      <TranscriptDetail transcript={transcript} />
+      <TranscriptDetail transcript={transcript} onChange={setTranscript} />
     </main>
   );
 }

@@ -7,8 +7,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  currentSummary, downloadTranscript, saveEditedSummary, undoSummary,
+  currentSummary, downloadTranscript, normalizeTranscript, saveEditedSummary, undoSummary,
   type CallSummary, type Transcript,
 } from "@/lib/transcripts";
 import { fetchPrompts, summarizeTranscript, type SummaryPrompt } from "@/lib/summaryPrompts";
@@ -102,8 +103,9 @@ export default function TranscriptDetail({
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
+      const { data } = await (supabase as any).from("transcripts").select("*").eq("id", transcript.id).maybeSingle();
+      if (data) onChange?.(normalizeTranscript(data));
       setRegenerating(false);
-      onChange?.({ ...transcript, summary_status: "pending" }); // parent refetches
     }
   };
 

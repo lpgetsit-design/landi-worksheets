@@ -14,9 +14,38 @@ export interface SummaryBullet {
   children?: string[];
 }
 
+export type SectionFormat = "bullets" | "table" | "key_value" | "checklist" | "paragraph";
+
 export interface SummarySection {
   heading: string;
-  bullets: SummaryBullet[];
+  /** Call type this section belongs to. */
+  category?: string;
+  format?: SectionFormat;
+  bullets?: SummaryBullet[];
+  columns?: string[];
+  rows?: string[][];
+  pairs?: { key: string; value: string }[];
+  checklist?: { item: string; status: "done" | "open" | "unknown" }[];
+  paragraph?: string;
+}
+
+/** Framed call summary: overview on top, topic sections, combined next steps. */
+export interface CallSummary {
+  overview: string | null;
+  sections: SummarySection[];
+  next_steps: string[];
+}
+
+export interface SummaryTopic {
+  id: string;
+  name: string;
+  confidence: number;
+}
+
+export interface SummarySnapshot extends CallSummary {
+  categories?: SummaryTopic[];
+  saved_at: string;
+  reason?: string;
 }
 
 export interface Transcript {
@@ -40,6 +69,11 @@ export interface Transcript {
   summary_prompt_id?: string | null;
   summary_status?: SummaryStatus;
   summary_sections?: SummarySection[];
+  summary_overview?: string | null;
+  summary_next_steps?: string[];
+  summary_categories?: SummaryTopic[];
+  summary_history?: SummarySnapshot[];
+  summary_started_at?: string | null;
   summary_error?: string | null;
   classified_reason?: string | null;
   summarized_at?: string | null;

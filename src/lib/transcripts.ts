@@ -87,8 +87,60 @@ function normalize(row: any): Transcript {
     participants: Array.isArray(row.participants) ? row.participants : [],
     segments: Array.isArray(row.segments) ? row.segments : [],
     summary_sections: Array.isArray(row.summary_sections) ? row.summary_sections : [],
+    summary_next_steps: Array.isArray(row.summary_next_steps) ? row.summary_next_steps : [],
+    summary_categories: Array.isArray(row.summary_categories) ? row.summary_categories : [],
+    summary_history: Array.isArray(row.summary_history) ? row.summary_history : [],
     summary_status: (row.summary_status ?? "pending") as SummaryStatus,
   } as Transcript;
+}
+
+export function normalizeTranscript(row: any): Transcript {
+  return normalize(row);
+}
+
+export function currentSummary(t: Transcript): CallSummary {
+  return {
+    overview: t.summary_overview ?? null,
+    sections: t.summary_sections ?? [],
+    next_steps: t.summary_next_steps ?? [],
+  };
+}
+
+/** Save an edited summary (e.g. from Ask Landi), keeping the previous one for undo. */
+export async function saveEditedSummary(t: Transcript, next: CallSummary): Promise<Transcript> {
+  const prev: SummarySnapshot = {
+    ...currentSummary(t),
+    categories: t.summary_categories,
+    saved_at: new Date().toISOString(),
+    reason: "edit",
+  };
+  const patch = {
+    summary_overview: next.overview,
+    summary_sections: next.sections,
+    summary_next_steps: next.next_steps,
+    summary_status: "ready" as const,
+    summary_history: [prev, ...(t.summary_history ?? [])].slice(0, 10),
+  };
+  const { error } = await (supabase as any).from(TABLE).update(patch).eq("id", t.id);
+  if (error) throw error;
+  return { ...t, ...patch };
+}
+
+/** One-click undo: restore the most recent previous summary. */
+export async function undoSummary(t: Transcript): Promise<Transcript> {
+  const [last, ...rest] = t.summary_history ?? [];
+  if (!last) return t;
+  const patch: Partial<Transcript> = {
+    summary_overview: last.overview ?? null,
+    summary_sections: last.sections ?? [],
+    summary_next_steps: last.next_steps ?? [],
+    summary_status: "ready",
+    summary_history: rest,
+    ...(last.categories ? { summary_categories: last.categories } : {}),
+  };
+  const { error } = await (supabase as any).from(TABLE).update(patch).eq("id", t.id);
+  if (error) throw error;
+  return { ...t, ...patch };
 }
 
 export async function fetchTranscripts(): Promise<Transcript[]> {

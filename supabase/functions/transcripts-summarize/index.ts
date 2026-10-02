@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: rows } = await supabase
       .from("summary_prompts")
-      .select("id, slug, name, description, detect_when, notes, sections, is_system, body")
+      .select("id, slug, name, description, distinct_from, detect_when, notes, sections, is_system, body")
       .order("sort_order");
     const types: CallType[] = (rows ?? []).map((r: any) => ({
       ...r,

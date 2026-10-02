@@ -6,7 +6,7 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1/responses";
 export const PRIMARY_MODEL = "openai/gpt-6-astra";
 // Backup topic check used when the primary detector is unavailable (per the workflow spec).
 export const BACKUP_MODEL = "openai/gpt-6-luna";
-export const DETECT_CUTOFF = 0.6;
+export const DETECT_CUTOFF = 0.7;
 export const MAX_TOPICS = 3;
 const PART_SIZE = 20_000;
 
@@ -157,7 +157,7 @@ const detectSchema = {
 /** Check every call type against every part. Each type gets its own yes/no. */
 export async function detectTopics(apiKey: string, text: string, types: CallType[], runId?: { value?: string }) {
   const candidates = types.filter((t) => t.slug !== "sys-general" && t.detect_when);
-  const list = candidates.map((t) => `- id: ${t.id}\n  name: ${t.name}\n  question: ${t.detect_when}`).join("\n");
+  const list = candidates.map((t) => `- id: ${t.id}\n  name: ${t.name}\n  question: ${t.detect_when}${(t as any).distinct_from ? `\n  not to confuse with: ${(t as any).distinct_from}` : ""}`).join("\n");
   const parts = splitIntoParts(text);
   const labels = (n: number, i: number) => n === 1 ? "whole call" : i === 0 ? "start" : i === n - 1 ? "end" : `middle ${i}`;
 
@@ -165,7 +165,7 @@ export async function detectTopics(apiKey: string, text: string, types: CallType
     const raw = await streamText({
       apiKey, model, runId,
       instructions:
-        "You check recruiting call transcripts against a list of call types. For EVERY call type answer its yes/no question independently: does this part of the call include a section about that topic (not whether the whole call is that topic)? Give confidence 0–1. Only say yes for clear evidence in the text. Return one result per id.",
+        "You check recruiting call transcripts against a list of call types. For EVERY call type answer its yes/no question independently: does this part of the call include a section about that topic (not whether the whole call is that topic)? Give confidence 0–1. Only say yes when the call spends a real part on that topic with clear evidence in the text — a passing mention or a status that belongs to another topic is no. When two types overlap, prefer the one whose question fits best (read the distinctions). Return one result per id.",
       input: `Call types:\n${list}\n\nTranscript part (${labels(parts.length, i)}):\n${part}`,
       schema: detectSchema,
     });

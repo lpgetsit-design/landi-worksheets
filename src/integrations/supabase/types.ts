@@ -340,34 +340,55 @@ export type Database = {
       summary_prompts: {
         Row: {
           body: string
+          category_group: string | null
           created_at: string
           description: string | null
+          detect_when: string | null
+          distinct_from: string | null
           id: string
           is_system: boolean
           match_hints: string | null
           name: string
+          notes: string | null
+          sections: Json
+          slug: string | null
+          sort_order: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
-          body: string
+          body?: string
+          category_group?: string | null
           created_at?: string
           description?: string | null
+          detect_when?: string | null
+          distinct_from?: string | null
           id?: string
           is_system?: boolean
           match_hints?: string | null
           name: string
+          notes?: string | null
+          sections?: Json
+          slug?: string | null
+          sort_order?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           body?: string
+          category_group?: string | null
           created_at?: string
           description?: string | null
+          detect_when?: string | null
+          distinct_from?: string | null
           id?: string
           is_system?: boolean
           match_hints?: string | null
           name?: string
+          notes?: string | null
+          sections?: Json
+          slug?: string | null
+          sort_order?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -392,9 +413,15 @@ export type Database = {
           source: string
           status: string
           summarized_at: string | null
+          summary_categories: Json
+          summary_detection: Json | null
           summary_error: string | null
+          summary_history: Json
+          summary_next_steps: Json
+          summary_overview: string | null
           summary_prompt_id: string | null
           summary_sections: Json
+          summary_started_at: string | null
           summary_status: string
           title: string
           updated_at: string
@@ -418,9 +445,15 @@ export type Database = {
           source: string
           status?: string
           summarized_at?: string | null
+          summary_categories?: Json
+          summary_detection?: Json | null
           summary_error?: string | null
+          summary_history?: Json
+          summary_next_steps?: Json
+          summary_overview?: string | null
           summary_prompt_id?: string | null
           summary_sections?: Json
+          summary_started_at?: string | null
           summary_status?: string
           title: string
           updated_at?: string
@@ -444,9 +477,15 @@ export type Database = {
           source?: string
           status?: string
           summarized_at?: string | null
+          summary_categories?: Json
+          summary_detection?: Json | null
           summary_error?: string | null
+          summary_history?: Json
+          summary_next_steps?: Json
+          summary_overview?: string | null
           summary_prompt_id?: string | null
           summary_sections?: Json
+          summary_started_at?: string | null
           summary_status?: string
           title?: string
           updated_at?: string

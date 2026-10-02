@@ -1,0 +1,1082 @@
+[
+ {
+  "slug": "sys-business-development",
+  "name": "Business Development",
+  "description": "A call to win a new search, reopen a quiet client, or float a candidate when there is no open role yet.",
+  "distinct": "Job Intake is the next step, once there is a role to define.",
+  "detect_when": "Does part of this call try to win new search work from a client, or pitch a candidate to a client who has no open role?",
+  "notes": "Name the client company and contact in the first section.",
+  "group": "Winning the work",
+  "sort_order": 0,
+  "sections": [
+   {
+    "title": "Client hiring needs",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- One bullet per hiring plan or role the client mentioned, with team and timing if said.\n- Then the pain points the client described, in their words where short.\n- Leave out LP's own pitch. Only what the client said."
+   },
+   {
+    "title": "Candidate pitched",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Candidate",
+     "Current role",
+     "Selling points shared",
+     "Client reaction"
+    ],
+    "instructions": "- Only when a specific candidate was pitched.\n- Selling points: only the ones the recruiter actually said, not the full profile.\n- Client reaction: a short quote if the client gave a clear yes or no."
+   },
+   {
+    "title": "Outcome",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Result",
+     "Detail",
+     "Reason if declined"
+    ],
+    "instructions": "- Result is one of: New job order, Intake call booked, Permission to send a profile, No interest, Follow up later.\n- Detail: the role name, intake date, or which profile can be sent."
+   }
+  ]
+ },
+ {
+  "slug": "sys-job-intake",
+  "name": "Job Intake",
+  "description": "The first full pass on a search: must-haves, pay, location, why the role is open, and how they will interview.",
+  "distinct": "Search Calibration is a later call that changes those requirements after the client has seen real people.",
+  "detect_when": "Does part of this call define a new role's requirements with the client?",
+  "notes": "If more than one role is discussed, repeat these sections for each role and name the role in each title.",
+  "group": "Winning the work",
+  "sort_order": 1,
+  "sections": [
+   {
+    "title": "Role requirements",
+    "format": "table",
+    "columns": [
+     "Requirement",
+     "Must-have or nice-to-have",
+     "Client's words"
+    ],
+    "keys": [],
+    "instructions": "- One row per requirement the client stated.\n- Mark must-have only if the client said it was required or a deal-breaker.\n- Client's words: short, close to what was said, no paraphrase.\n- Must-haves first."
+   },
+   {
+    "title": "Role setup and pay",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Why the role is open",
+     "Reporting line",
+     "Team",
+     "Base range",
+     "Bonus",
+     "Flexibility",
+     "Location",
+     "Work model"
+    ],
+    "instructions": "- Numbers exactly as said, with currency.\n- If the client gave a range and a stretch number, show both."
+   },
+   {
+    "title": "Interview process",
+    "format": "checklist",
+    "columns": [],
+    "keys": [],
+    "instructions": "- One line per step, in order, with the interviewer's name and role.\n- End with the overall timeline if the client gave one."
+   },
+   {
+    "title": "Selling points and exclusions",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Start with selling points of the role and company, written so the recruiter can repeat them to candidates.\n- Then client hot buttons, then exclusions (companies, backgrounds, or profiles the client said no to). Neutral tone for exclusions.\n- End with anything the client said they would confirm later, labeled \"To confirm\"."
+   }
+  ]
+ },
+ {
+  "slug": "sys-search-calibration",
+  "name": "Search Calibration",
+  "description": "The client has rejected or liked a first slate, and the target, pay, or must-haves need to change.",
+  "distinct": "Client Pipeline only reports where candidates stand. It does not rewrite the job.",
+  "detect_when": "Does part of this call change a search's requirements, pay, or target profile based on candidates the client has already seen?",
+  "notes": "Name the job in the first section.",
+  "group": "Winning the work",
+  "sort_order": 2,
+  "sections": [
+   {
+    "title": "Reaction to candidates",
+    "format": "table",
+    "columns": [
+     "Candidate",
+     "Client verdict",
+     "Reason"
+    ],
+    "keys": [],
+    "instructions": "- One row per submitted candidate the client discussed.\n- Client verdict is one of: Liked, Rejected, Undecided.\n- Reason in the client's words where short."
+   },
+   {
+    "title": "Changes to the search",
+    "format": "table",
+    "columns": [
+     "Item",
+     "Before",
+     "After"
+    ],
+    "keys": [],
+    "instructions": "- One row per change to requirements, pay, location, or target profile.\n- Only changes the client agreed to, not ideas that were floated.\n- Leave Before empty if it wasn't said. Do not guess it."
+   },
+   {
+    "title": "Market feedback",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Market observations the recruiter shared, then how the client responded. Neutral tone."
+   }
+  ]
+ },
+ {
+  "slug": "sys-candidate-screening",
+  "name": "Candidate Screening",
+  "description": "A short qualify before investing in a full interview: basic fit, whether they will move, work authorization, and a decision to book, hold, or stop.",
+  "distinct": "The New Person Interview is that full interview. Screening only decides whether to do it.",
+  "detect_when": "Does part of this call qualify a candidate before a full interview, checking basic fit and whether they would move?",
+  "notes": "None.",
+  "group": "Learning the candidate",
+  "sort_order": 3,
+  "sections": [
+   {
+    "title": "Basic fit",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Current role and employer",
+     "Reason for looking",
+     "Location and work model",
+     "Work authorization",
+     "Pay band"
+    ],
+    "instructions": "- Pay band as a range, exactly as the candidate said it.\n- Reason for looking in one line, in the candidate's words where short."
+   },
+   {
+    "title": "Decision",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Decision",
+     "Reason",
+     "NPI date and format",
+     "Resume"
+    ],
+    "instructions": "- Decision is one of: Book NPI, Hold for future roles, Disqualify.\n- NPI date and format only if booked (video or in person).\n- Resume: whether it is on file or was requested."
+   }
+  ]
+ },
+ {
+  "slug": "sys-npi",
+  "name": "New Person Interview",
+  "description": "The long first interview that builds the candidate file, plus any later call that only fills gaps from that interview.",
+  "distinct": "Role Interest is about one specific job. This call is about the person.",
+  "detect_when": "Does part of this call build or complete a candidate's full profile, such as reasons for change, motivations, pay, and availability?",
+  "notes": "On a follow-up call, cover only the items that were resolved, and say they were resolved.",
+  "group": "Learning the candidate",
+  "sort_order": 4,
+  "sections": [
+   {
+    "title": "Motivation",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Start with the 4 Reason Rank, numbered in the candidate's order.\n- Then the reason for change at each past job move, one line per move, most recent first.\n- Then hot buttons, in the candidate's own words."
+   },
+   {
+    "title": "Pay and timing",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Desired base",
+     "Desired total pay",
+     "Bonus paid date",
+     "Money left behind",
+     "Notice period",
+     "Vacation blocks"
+    ],
+    "instructions": "- Numbers exactly as said, with currency.\n- For LPC candidates, add Rate floor and Commitment duration as extra keys."
+   },
+   {
+    "title": "Profile",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Selling points first, written so the recruiter can use them in a pitch.\n- Then categories and skills, work authorization, and graduation confirmation.\n- Personal profile last: family, interests, and details worth remembering for future calls. Warm but factual."
+   },
+   {
+    "title": "Risks and activity",
+    "format": "table",
+    "columns": [
+     "Item",
+     "What was said"
+    ],
+    "keys": [],
+    "instructions": "- Possible rows: Counter-offer risk, Other search activity, Interview availability (next 48\u201372 hours), References (high-rate roles).\n- Only rows that were discussed."
+   }
+  ]
+ },
+ {
+  "slug": "sys-role-interest",
+  "name": "Role Interest",
+  "description": "Pitch one job to a candidate, or confirm they agree to be submitted to it. The result is interested, not interested, or not now, plus any constraint.",
+  "distinct": "Candidate Presentation is the same job, told to the client.",
+  "detect_when": "Does part of this call pitch a specific job to a candidate, or confirm they agree to be submitted to it?",
+  "notes": "If several jobs were pitched, repeat Role pitched and Candidate response for each job, with the job in the title.",
+  "group": "A specific role",
+  "sort_order": 5,
+  "sections": [
+   {
+    "title": "Role pitched",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job",
+     "Client",
+     "Hot buttons it matches",
+     "Pay fit",
+     "Location fit"
+    ],
+    "instructions": "- Hot buttons: only those the recruiter tied to this role on the call."
+   },
+   {
+    "title": "Candidate response",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Response",
+     "Reason",
+     "Constraints"
+    ],
+    "instructions": "- Response is one of: Interested, Not interested, Not now.\n- Constraints: commute, pay, notice, or other processes that affect this job.\n- Quote the candidate if the reason was clear and short."
+   },
+   {
+    "title": "Referrals",
+    "format": "table",
+    "columns": [
+     "Name",
+     "Context",
+     "Contact given"
+    ],
+    "keys": [],
+    "instructions": "- Only if the candidate named people."
+   }
+  ]
+ },
+ {
+  "slug": "sys-candidate-presentation",
+  "name": "Candidate Presentation",
+  "description": "Sell a specific candidate to the hiring manager so they will interview.",
+  "distinct": "Role Interest is the conversation with the candidate about that same job.",
+  "detect_when": "Does part of this call present a specific candidate to a client to win an interview?",
+  "notes": "Name the candidate and job in the first section.",
+  "group": "A specific role",
+  "sort_order": 6,
+  "sections": [
+   {
+    "title": "Candidate pitched",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Candidate and job first.\n- Then the selling points the recruiter used, written persuasively, as they were pitched.\n- Then why this candidate fits this role, in one or two lines."
+   },
+   {
+    "title": "Expectations shared",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Pay expectations",
+     "Start date",
+     "Constraints"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Client response",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Response",
+     "Reason",
+     "Information requested"
+    ],
+    "instructions": "- Response is one of: Interview agreed, Declined, More information requested."
+   }
+  ]
+ },
+ {
+  "slug": "sys-interview-scheduling",
+  "name": "Interview Scheduling",
+  "description": "Book the interview with the client: who, when, and video or onsite.",
+  "distinct": "Interview Prep is the conversation with the candidate about how to handle that interview.",
+  "detect_when": "Does part of this call book or reschedule a candidate's interview with the client?",
+  "notes": "If an interview was moved, show the old and the new time.",
+  "group": "Interviews",
+  "sort_order": 7,
+  "sections": [
+   {
+    "title": "Interview booked",
+    "format": "table",
+    "columns": [
+     "Round",
+     "Date and time",
+     "Time zone",
+     "Format",
+     "Duration",
+     "Interviewers"
+    ],
+    "keys": [],
+    "instructions": "- One row per round booked or moved.\n- Format: Video or Onsite. Add the onsite address if it was said.\n- Interviewers with name and role."
+   },
+   {
+    "title": "Constraints",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- The candidate's blocked dates, then any constraint flagged at submission."
+   }
+  ]
+ },
+ {
+  "slug": "sys-interview-prep",
+  "name": "Interview Prep",
+  "description": "Coach the candidate, and confirm time, link, and logistics so they show up ready.",
+  "distinct": "The Candidate Debrief is the call after the interview, about how it went.",
+  "detect_when": "Does part of this call prepare a candidate for an upcoming client interview, or confirm its logistics?",
+  "notes": "Include any conflict or reschedule the candidate raised.",
+  "group": "Interviews",
+  "sort_order": 8,
+  "sections": [
+   {
+    "title": "Interview details",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job and client",
+     "Date and time",
+     "Time zone",
+     "Link or address",
+     "Interviewers",
+     "Dress code",
+     "Arrival"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Coaching given",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Role context the recruiter gave, then likely questions.\n- STAR examples agreed, one line each with the situation and the result.\n- How to handle pay questions, as the recruiter advised it.\n- Direct and practical, written as reminders the recruiter can repeat before the interview."
+   },
+   {
+    "title": "Questions to ask",
+    "format": "checklist",
+    "columns": [],
+    "keys": [],
+    "instructions": "- One line per question the candidate should ask, hot-button questions first."
+   }
+  ]
+ },
+ {
+  "slug": "sys-client-interview",
+  "name": "Client Interview",
+  "description": "The interview itself, between candidate and client, when that conversation is what was recorded. LP is often not on this call.",
+  "distinct": "The Candidate Debrief and Client Interview Feedback are the two recap calls after it.",
+  "detect_when": "Is part of this call an interview of the candidate by the client's interviewers?",
+  "notes": "Report only what was said. Do not judge how well the candidate did. Neutral tone throughout.",
+  "group": "Interviews",
+  "sort_order": 9,
+  "sections": [
+   {
+    "title": "Interview",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job",
+     "Round",
+     "Interviewers"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Questions asked",
+    "format": "table",
+    "columns": [
+     "Question",
+     "Candidate's answer"
+    ],
+    "keys": [],
+    "instructions": "- One row per main question.\n- Answers in one or two lines, close to the candidate's words."
+   },
+   {
+    "title": "Candidate's questions",
+    "format": "table",
+    "columns": [
+     "Question",
+     "Answer given"
+    ],
+    "keys": [],
+    "instructions": ""
+   },
+   {
+    "title": "Signals",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Interest or concerns stated by either side, each labeled with who said it."
+   }
+  ]
+ },
+ {
+  "slug": "sys-candidate-debrief",
+  "name": "Candidate Debrief",
+  "description": "The candidate's reaction right after the interview: what they learned, interest, concerns, and whether to continue. A follow-up that only chases risks from that debrief stays in this category.",
+  "distinct": "The Trial Close comes later and asks whether they would accept an offer.",
+  "detect_when": "Does part of this call capture a candidate's reaction to an interview they have just had?",
+  "notes": "On a follow-up call, cover only the risks discussed and whether each was resolved.",
+  "group": "Interviews",
+  "sort_order": 10,
+  "sections": [
+   {
+    "title": "Interview recap",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job and round",
+     "Who they met",
+     "What they learned",
+     "Questions asked"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Candidate reaction",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- What they liked and why, in their words where short.\n- Which hot buttons the role addressed, and which it did not.\n- Interest level 1\u201310, and what is missing to get higher."
+   },
+   {
+    "title": "Concerns and activity",
+    "format": "table",
+    "columns": [
+     "Concern",
+     "Must-have or nice-to-have",
+     "Detail"
+    ],
+    "keys": [],
+    "instructions": "- One row per concern.\n- After the table, one line on other activity and how they rank this role."
+   },
+   {
+    "title": "Decision",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Decision",
+     "Next-round availability"
+    ],
+    "instructions": "- Decision is one of: Go forward, Not going forward, Undecided."
+   }
+  ]
+ },
+ {
+  "slug": "sys-client-interview-feedback",
+  "name": "Client Interview Feedback",
+  "description": "The client's view of the same interview: next round, offer, or pass.",
+  "distinct": "The Candidate Debrief is the candidate's recap of that same interview.",
+  "detect_when": "Does part of this call cover the client's feedback on a candidate's interview?",
+  "notes": "Name the candidate and the job in the first section.",
+  "group": "Interviews",
+  "sort_order": 11,
+  "sections": [
+   {
+    "title": "Client feedback",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- What they liked first, then concerns.\n- Keep the client's wording for concerns. Do not soften them.\n- Then how the candidate compares to others in process, if said."
+   },
+   {
+    "title": "Decision",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Decision",
+     "Reason",
+     "Pay or timing signals"
+    ],
+    "instructions": "- Decision is one of: Next round, Offer intended, Pass, Undecided."
+   }
+  ]
+ },
+ {
+  "slug": "sys-trial-close",
+  "name": "Trial Close",
+  "description": "After a second interview, test a hypothetical yes: the number they would accept, other offers, notice period, and red flags. No offer exists yet.",
+  "distinct": "Offer Alignment takes those answers to the client. The Offer category starts when a real offer exists.",
+  "detect_when": "Does part of this call test whether a candidate would accept an offer that has not been made yet?",
+  "notes": "Name the job in the first section.",
+  "group": "From \"maybe\" to a start date",
+  "sort_order": 12,
+  "sections": [
+   {
+    "title": "Commitment",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Wants the job (dollars aside)",
+     "Why",
+     "Mentors consulted",
+     "Decision time"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Numbers",
+    "format": "table",
+    "columns": [
+     "Item",
+     "Amount",
+     "Note"
+    ],
+    "keys": [],
+    "instructions": "- Possible rows: Submitted salary, Comfortable-accepting salary, Love number, Bonus expectation, Money left behind.\n- Amounts exactly as said, with currency."
+   },
+   {
+    "title": "Timing",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Start date",
+     "Notice period",
+     "Vacations"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Red flags",
+    "format": "checklist",
+    "columns": [],
+    "keys": [],
+    "instructions": "- One line per risk: other offers and ranking, background-check issues, social media, anything else that could stop an acceptance.\n- Direct tone. Most serious first."
+   }
+  ]
+ },
+ {
+  "slug": "sys-reference-check",
+  "name": "Reference Check",
+  "description": "A call with a former manager or colleague to verify the candidate's record.",
+  "distinct": "Every other category is a call with the candidate, the client, or the LP team.",
+  "detect_when": "Does part of this call check a candidate's background with a former manager or colleague?",
+  "notes": "Name the candidate in the first section. Neutral tone.",
+  "group": "From \"maybe\" to a start date",
+  "sort_order": 13,
+  "sections": [
+   {
+    "title": "Reference",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Name",
+     "Relationship",
+     "Overlap dates",
+     "Setting"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Track record",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Scope of the candidate's role, then individual contribution.\n- Strengths, then development areas.\n- Keep the reference's own words for anything critical."
+   },
+   {
+    "title": "Verdict",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Would rehire",
+     "Concerns raised"
+    ],
+    "instructions": ""
+   }
+  ]
+ },
+ {
+  "slug": "sys-offer-alignment",
+  "name": "Offer Alignment",
+  "description": "With the client, before they write the offer, so the terms match what the candidate said they would accept.",
+  "distinct": "The Offer category is for when those terms are already on the table.",
+  "detect_when": "Does part of this call shape offer terms with the client before an offer is made?",
+  "notes": "Name the candidate and job in the first section.",
+  "group": "From \"maybe\" to a start date",
+  "sort_order": 14,
+  "sections": [
+   {
+    "title": "Candidate's position shared",
+    "format": "table",
+    "columns": [
+     "Item",
+     "Candidate's position"
+    ],
+    "keys": [],
+    "instructions": "- Possible rows: Comfortable-accepting salary, Love number, Money left behind, Make-whole asked, Start date, Notice period, Vacations.\n- Only rows the recruiter shared on the call."
+   },
+   {
+    "title": "Risks shared",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Competing processes and their timelines, then red flags from the trial close."
+   },
+   {
+    "title": "Agreed terms",
+    "format": "table",
+    "columns": [
+     "Term",
+     "Client's position",
+     "Status"
+    ],
+    "keys": [],
+    "instructions": "- Status is one of: Agreed, Open."
+   }
+  ]
+ },
+ {
+  "slug": "sys-offer",
+  "name": "Offer",
+  "description": "Deliver the offer, negotiate a change with the candidate or the client, and record a yes, a counter, or a no.",
+  "distinct": "Start Protection begins only after they have accepted.",
+  "detect_when": "Does part of this call deliver, negotiate, or accept a job offer that has already been made?",
+  "notes": "Name the candidate and job, and whether the call was with the candidate or the client.",
+  "group": "From \"maybe\" to a start date",
+  "sort_order": 15,
+  "sections": [
+   {
+    "title": "Offer terms",
+    "format": "table",
+    "columns": [
+     "Term",
+     "Offered",
+     "Requested",
+     "Final"
+    ],
+    "keys": [],
+    "instructions": "- Possible rows: Base, Bonus, Equity, Benefits, Title, Reporting line, Start date.\n- Fill Requested and Final only if they came up on the call.\n- Amounts exactly as said, with currency."
+   },
+   {
+    "title": "Negotiation",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- What was asked to change and why, then the client's flexibility, as it was said."
+   },
+   {
+    "title": "Decision",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Decision",
+     "Reason",
+     "Decision deadline",
+     "Confirmed start date"
+    ],
+    "instructions": "- Decision is one of: Accepted, Countered, Declined, Pending."
+   }
+  ]
+ },
+ {
+  "slug": "sys-start-protection",
+  "name": "Start Protection",
+  "description": "Between the yes and the first day: how they resign, what to do if the current employer counters, and check-ins so the start still happens.",
+  "distinct": "A Placement Check-In happens after they have started.",
+  "detect_when": "Does part of this call cover a candidate's resignation, a counter-offer from their current employer, or the time before their start date?",
+  "notes": "Put any risk to the start date first in its section.",
+  "group": "From \"maybe\" to a start date",
+  "sort_order": 16,
+  "sections": [
+   {
+    "title": "Resignation",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Resignation date",
+     "Script agreed",
+     "Notice period",
+     "Bonus timing",
+     "Garden leave or non-compete"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Counter-offer",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- The counter-offer terms first.\n- Then the candidate's response.\n- Then the reasons for leaving the recruiter brought back, in the candidate's original words."
+   },
+   {
+    "title": "Start readiness",
+    "format": "checklist",
+    "columns": [],
+    "keys": [
+     "Background check",
+     "Paperwork",
+     "Pressure from current employer",
+     "First-day logistics",
+     "Start date reconfirmed"
+    ],
+    "instructions": "- Mark each item as done, pending, or at risk, based on what was said."
+   }
+  ]
+ },
+ {
+  "slug": "sys-placement-check-in",
+  "name": "Placement Check-In",
+  "description": "After the start date, with the candidate or the client, to see if the placement is healthy. A client check-in can also surface the next hiring need.",
+  "distinct": "LPC Extension is only for a contract that is about to end.",
+  "detect_when": "Does part of this call check how a placed candidate is doing after their start date?",
+  "notes": "Name the placed candidate, and whether the call was with the candidate or the client.",
+  "group": "After they start",
+  "sort_order": 17,
+  "sections": [
+   {
+    "title": "Placement health",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Check-in point",
+     "Fit with team and manager",
+     "Role matches what was sold",
+     "Performance",
+     "Concerns"
+    ],
+    "instructions": "- Check-in point: first week, 30, 60, or 90 days, if said.\n- Performance only from the client's side."
+   },
+   {
+    "title": "New business",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Additional hiring needs with role and timing, then referrals or leads."
+   }
+  ]
+ },
+ {
+  "slug": "sys-lpc-extension",
+  "name": "LPC Extension",
+  "description": "A contract assignment is ending: extend, line up the next project, or return them to the active pool.",
+  "distinct": "A Placement Check-In asks whether the current placement is going well, not what happens at a contract end date.",
+  "detect_when": "Does part of this call discuss extending a contract assignment or lining up the consultant's next project?",
+  "notes": "None.",
+  "group": "After they start",
+  "sort_order": 18,
+  "sections": [
+   {
+    "title": "Current assignment",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Client and project",
+     "End date",
+     "Interest in extending"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Rate and terms",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Current rate",
+     "Rate expected",
+     "Rate floor",
+     "Commitment duration"
+    ],
+    "instructions": "- Rates exactly as said, with currency and unit (hourly or daily)."
+   },
+   {
+    "title": "Next move",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Result",
+     "Availability"
+    ],
+    "instructions": "- Result is one of: Extension agreed, Next project lined up, Back to active pool, Undecided."
+   }
+  ]
+ },
+ {
+  "slug": "sys-client-pipeline",
+  "name": "Client Pipeline",
+  "description": "A status call with the client: the regular review of everyone in process, or a chase on one resume that has gone quiet.",
+  "distinct": "Search Calibration is the call that changes who you are looking for.",
+  "detect_when": "Does part of this call review the status of candidates in process with the client, or chase a decision on a submitted candidate?",
+  "notes": "If more than one job was discussed, sort the tables by job.",
+  "group": "Keeping people current",
+  "sort_order": 19,
+  "sections": [
+   {
+    "title": "Pipeline status",
+    "format": "table",
+    "columns": [
+     "Candidate",
+     "Job",
+     "Stage",
+     "Next event"
+    ],
+    "keys": [],
+    "instructions": "- One row per candidate discussed.\n- Next event: the interview or decision date, if said."
+   },
+   {
+    "title": "Feedback owed",
+    "format": "table",
+    "columns": [
+     "Candidate",
+     "Owed by",
+     "What is owed",
+     "Date committed"
+    ],
+    "keys": [],
+    "instructions": ""
+   },
+   {
+    "title": "Market notes",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Market observations shared on the call."
+   }
+  ]
+ },
+ {
+  "slug": "sys-candidate-check-in",
+  "name": "Candidate Check-In",
+  "description": "Update a candidate who is waiting on a live submission or has gone quiet during a search.",
+  "distinct": "A Relationship Reconnect is the same kind of care when nothing is in process.",
+  "detect_when": "Does part of this call update a candidate on a submission that is waiting, or check in on their search?",
+  "notes": "None.",
+  "group": "Keeping people current",
+  "sort_order": 20,
+  "sections": [
+   {
+    "title": "Submission status",
+    "format": "table",
+    "columns": [
+     "Job",
+     "Client",
+     "Status"
+    ],
+    "keys": [],
+    "instructions": ""
+   },
+   {
+    "title": "Candidate update",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Other activity",
+     "Availability",
+     "Change in interest"
+    ],
+    "instructions": ""
+   }
+  ]
+ },
+ {
+  "slug": "sys-relationship-reconnect",
+  "name": "Relationship Reconnect",
+  "description": "A keep-in-touch call with someone in the network who has no active submission.",
+  "distinct": "A Referral Request is only when the point of the call is to collect names.",
+  "detect_when": "Is part of this call a keep-in-touch conversation with a candidate who has no active submission?",
+  "notes": "None.",
+  "group": "Keeping people current",
+  "sort_order": 21,
+  "sections": [
+   {
+    "title": "Personal update",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Personal details and life or career changes worth remembering for the next call. Warm but factual."
+   },
+   {
+    "title": "Search status",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Current role",
+     "Motivation",
+     "Pay",
+     "Open to a move",
+     "Hot buttons changed"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Referrals",
+    "format": "table",
+    "columns": [
+     "Name",
+     "Context"
+    ],
+    "keys": [],
+    "instructions": ""
+   }
+  ]
+ },
+ {
+  "slug": "sys-referral-request",
+  "name": "Referral Request",
+  "description": "The call exists to get names of other people for a role.",
+  "distinct": "A referral asked at the end of a pitch, a decline, or a reconnect stays part of that call.",
+  "detect_when": "Does part of this call mainly ask the person for names of others who could fit a role?",
+  "notes": "Mark that the referrer's identity is confidential.",
+  "group": "Keeping people current",
+  "sort_order": 22,
+  "sections": [
+   {
+    "title": "Role described",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job",
+     "Profile wanted"
+    ],
+    "instructions": ""
+   },
+   {
+    "title": "Referrals",
+    "format": "table",
+    "columns": [
+     "Name",
+     "Current role",
+     "Why they fit",
+     "Contact given"
+    ],
+    "keys": [],
+    "instructions": ""
+   }
+  ]
+ },
+ {
+  "slug": "sys-candidate-withdrawal",
+  "name": "Candidate Withdrawal",
+  "description": "The candidate is choosing to leave a job process. The call records the real reason.",
+  "distinct": "A Client Decline is the opposite news: the client said no.",
+  "detect_when": "Does part of this call record a candidate's decision to withdraw from a job process?",
+  "notes": "None.",
+  "group": "Ending a process",
+  "sort_order": 23,
+  "sections": [
+   {
+    "title": "Withdrawal",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job",
+     "Real reason",
+     "Applies to similar roles",
+     "What would change their mind"
+    ],
+    "instructions": "- Real reason in the candidate's own words, not a general label."
+   }
+  ]
+ },
+ {
+  "slug": "sys-client-decline",
+  "name": "Client Decline",
+  "description": "Tell the candidate the client passed, share the feedback you can, and keep the relationship for the next role.",
+  "distinct": "A withdrawal is the candidate saying no.",
+  "detect_when": "Does part of this call tell a candidate that the client has passed on them?",
+  "notes": "None.",
+  "group": "Ending a process",
+  "sort_order": 24,
+  "sections": [
+   {
+    "title": "Decision shared",
+    "format": "key_value",
+    "columns": [],
+    "keys": [
+     "Job",
+     "Stage",
+     "Client feedback shared"
+    ],
+    "instructions": "- Feedback only as it was shared with the candidate."
+   },
+   {
+    "title": "Candidate response",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- The candidate's reaction, then any other roles discussed."
+   }
+  ]
+ },
+ {
+  "slug": "sys-job-match-meeting",
+  "name": "Job Match Meeting",
+  "description": "An internal recruiter meeting: search updates, pipeline movement, owners, and action items.",
+  "distinct": "Client Pipeline is the status update the client hears.",
+  "detect_when": "Is part of this call an internal Landing Point meeting reviewing searches across jobs?",
+  "notes": "Action items, with owners, go in Next steps.",
+  "group": "Inside LP",
+  "sort_order": 25,
+  "sections": [
+   {
+    "title": "Search updates",
+    "format": "table",
+    "columns": [
+     "Job",
+     "Update",
+     "Pipeline movement",
+     "Interviews scheduled"
+    ],
+    "keys": [],
+    "instructions": "- One row per job discussed."
+   },
+   {
+    "title": "Decisions made",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Ownership changes and priorities agreed, with who agreed them."
+   }
+  ]
+ },
+ {
+  "slug": "sys-general",
+  "name": "General",
+  "description": "Used when no type is a clear match. The call still gets a useful note: what was discussed, decisions, and key names, numbers and dates.",
+  "distinct": "",
+  "detect_when": "Not sent to Jev. Used only when no category clears the cutoff, or as the last fallback.",
+  "notes": "Never combined with other categories. Admins cannot delete it.",
+  "group": "Fallback",
+  "sort_order": 26,
+  "sections": [
+   {
+    "title": "Discussion",
+    "format": "bullets",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Main topics in the order they were discussed, then decisions made."
+   },
+   {
+    "title": "Key details",
+    "format": "key_value",
+    "columns": [],
+    "keys": [],
+    "instructions": "- Names, numbers, and dates that were mentioned. Use what the detail is as the key."
+   }
+  ]
+ }
+]

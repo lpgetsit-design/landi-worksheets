@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import { marked } from "marked";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export default function TranscriptChatOverlay({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fresh conversation whenever a different transcript is opened.
@@ -143,26 +143,38 @@ export default function TranscriptChatOverlay({
     }
   };
 
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        aria-label="Ask Landi about this transcript"
+        onClick={() => setCollapsed(false)}
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </button>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex flex-col",
-        "border-t border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55",
-        "shadow-[0_-8px_30px_-16px_hsl(var(--foreground)/0.35)] transition-[height] duration-200",
-        collapsed ? "h-[56px]" : "h-1/4 min-h-[180px]",
+        "fixed bottom-6 right-6 z-50 flex h-[min(560px,calc(100vh-6rem))] w-[min(400px,calc(100vw-3rem))] flex-col overflow-hidden",
+        "rounded-2xl border border-border/60 bg-background shadow-2xl animate-in fade-in zoom-in-95",
       )}
     >
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" />
+          <MessageCircle className="h-3.5 w-3.5" />
           Ask Landi about this transcript
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCollapsed((c) => !c)}>
-          {collapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close chat" onClick={() => setCollapsed(true)}>
+          <X className="h-4 w-4" />
         </Button>
       </div>
 
-      {!collapsed && (
+      {(
+
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 pb-2">
           {messages.length === 0 && (
             <p className="text-xs text-muted-foreground">
